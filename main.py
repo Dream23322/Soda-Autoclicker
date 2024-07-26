@@ -91,6 +91,7 @@ class sharp():
                 "rodBind": 0,
                 "rodDelay": 0.7,
                 "rodSlot": "2",
+                "pearlBind": 0,
             } 
         }
 
@@ -123,7 +124,7 @@ class sharp():
         threading.Thread(target=self.leftBindListener, daemon=True).start()
         threading.Thread(target=self.rightBindListener, daemon=True).start()
         threading.Thread(target=self.hideGUIBindListener, daemon=True).start()
-        threading.Thread(target=self.rodBindListener, daemon=True).start()
+        threading.Thread(target=self.bindListener, daemon=True).start()
 
         threading.Thread(target=self.leftClicker, daemon=True).start()
         threading.Thread(target=self.rightClicker, daemon=True).start()
@@ -205,8 +206,21 @@ class sharp():
 
             time.sleep(delay)
     def doRod(self):
-        # Switch to slot 2 by pressing 2
-        VK_2 = 0x32
+        # Switch to the rod slot
+        char_to_vk = {
+            '0': 0x30,
+            '1': 0x31,
+            '2': 0x32,
+            '3': 0x33,
+            '4': 0x34,
+            '5': 0x35,
+            '6': 0x36,
+            '7': 0x37,
+            '8': 0x38,
+            '9': 0x39,
+        }
+        # Use rodSlot to get the slot number
+        VK_2 = char_to_vk.get(self.config["misc"]["rodSlot"].lower(), None)
 
         # Press the '2' key
         win32api.keybd_event(VK_2, 0, 0, 0)
@@ -222,7 +236,7 @@ class sharp():
 
         # Press the '2' key
         win32api.keybd_event(VK_2, 0, 0, 0)
-        time.sleep(0.06)  # Brief pause to simulate a key press
+        time.sleep(int(self.config["misc"]["rodDelay"]))  # Brief pause to simulate a key press
         # Release the '2' key
         win32api.keybd_event(VK_2, 0, win32con.KEYEVENTF_KEYUP, 0)
 
@@ -346,7 +360,38 @@ class sharp():
                     threading.Thread(target=self.rightClick, args=(None,), daemon=True).start()
 
             time.sleep(delay)
-
+    def doPearl(self):
+        # Switch to the rod slot
+        char_to_vk = {
+            '0': 0x30,
+            '1': 0x31,
+            '2': 0x32,
+            '3': 0x33,
+            '4': 0x34,
+            '5': 0x35,
+            '6': 0x36,
+            '7': 0x37,
+            '8': 0x38,
+            '9': 0x39,
+        }
+        # Use rodSlot to get the slot number
+        VK_2 = char_to_vk.get("8", None)
+        # Press the '2' key
+        win32api.keybd_event(VK_2, 0, 0, 0)
+        time.sleep(0.01)  # Brief pause to simulate a key press
+        # Release the '2' key
+        win32api.keybd_event(VK_2, 0, win32con.KEYEVENTF_KEYUP, 0)
+        # Send Rod by right clicking
+        win32api.SendMessage(self.window, win32con.WM_RBUTTONDOWN, 0, 0)
+        time.sleep(0.02)
+        win32api.SendMessage(self.window, win32con.WM_RBUTTONUP, 0, 0)
+        # Switch back to slot 1
+        VK_2 = 0x31
+        # Press the '2' key
+        win32api.keybd_event(VK_2, 0, 0, 0)
+        time.sleep(0.8)
+        # Release the '2' key
+        win32api.keybd_event(VK_2, 0, win32con.KEYEVENTF_KEYUP, 0)        
     def rightClick(self, focused):
         if focused != None:
             win32api.SendMessage(self.window, win32con.WM_RBUTTONDOWN, 0, 0)
@@ -401,11 +446,12 @@ class sharp():
 
             time.sleep(0.001)
 
-    def rodBindListener(self):
+    def bindListener(self):
         while True:
             if win32api.GetAsyncKeyState(self.config["misc"]["rodBind"]) != 0:
                 self.doRod()
-
+            elif win32api.GetAsyncKeyState(self.config["misc"]["pearlBind"]) != 0:
+                self.doPearl()
             time.sleep(0.001)
     def hideGUIBindListener(self):
         while True:
@@ -554,6 +600,25 @@ if __name__ == "__main__":
 
                 waitingForKeyRight = False
 
+        def statusBindPearl(id: int):
+            global waitingForKeyRight
+            if not waitingForKeyRight:
+                with dpg.handler_registry(tag="Pearl Bind Handler"):
+                    dpg.add_key_press_handler(callback=setBindPearl)
+
+                dpg.set_item_label(buttonBindPearlKey, "...")
+
+                waitingForKeyRight = True
+        
+        def setBindPearl(id: int, value: str):
+            global waitingForKeyRight
+            if waitingForKeyRight:
+                sharpClass.config["misc"]["pearlBind"] = value
+
+                dpg.set_item_label(buttonBindPearlKey, f"Bind: {chr(value)}")
+                dpg.delete_item("Pearl Bind Handler")
+
+                waitingForKeyRight = False
         def setRodSlot(id: int, value: str):
             sharpClass.config["misc"]["rodSlot"] = value
         def setRightMode(id: int, value: str):
@@ -625,7 +690,8 @@ if __name__ == "__main__":
 
                     while win32api.GetAsyncKeyState(0x01) < 0:
                         time.sleep(0.001)
-
+        def setRodDelay(id: int, value: float):
+            sharpClass.config["misc"]["rodDelay"] = value
         def startRecording():
             if not recording:
                 threading.Thread(target=recorder, daemon=True).start()
@@ -858,9 +924,20 @@ if __name__ == "__main__":
                     rodSlot = dpg.add_combo(label="Rod Slot", items=["1", "2", "3", "4", "5", "6", "7", "8", "9"], default_value=sharpClass.config["misc"]["rodSlot"], callback=setRodSlot)
                     dpg.add_text(default_value="Which slot to switch to when throwing a rod")
 
+                    rodDelay = dpg.add_input_float(label="Rod Delay", default_value=sharpClass.config["misc"]["rodDelay"], min_value=0, max_value=2, callback=setRodDelay)
+                    dpg.add_text(default_value="Rod Delay is how long you want to be throwing the rod (Range)")
                     dpg.add_spacer(width=75)
                     dpg.add_separator()
                     dpg.add_spacer(width=75)
+
+                    with dpg.group(horizontal=True):
+                        buttonBindPearlKey = dpg.add_button(label="Click to Bind", callback=statusBindPearl)
+
+                        bind = sharpClass.config["misc"]["pearlBind"]
+                        if bind != 0:
+                            dpg.set_item_label(buttonBindPearlKey, f"Bind: {chr(bind)}")
+
+                    dpg.add_text(default_value="Press the binded key to throw a pearl")
 
                     creditsText = dpg.add_text(default_value="Credits: 4urxra (Developer)")
                     githubText = dpg.add_text(default_value="https://github.com/Dream23322/")
