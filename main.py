@@ -1,9 +1,12 @@
 version = "1.0"
-
-import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, base64, re, keyboard
-import dearpygui.dearpygui as dpg
-from pypresence import Presence
-
+try:
+    import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, base64, re, keyboard
+    import dearpygui.dearpygui as dpg
+    from pypresence import Presence
+except:
+    from os import system
+    system("pip install -r requirements.txt")
+    
 class configListener(dict): # Detecting changes to config
     def __init__(self, initialDict):
         for k, v in initialDict.items():
@@ -858,6 +861,10 @@ if __name__ == "__main__":
                         bind = sharpClass.config["misc"]["rodBind"]
                         if bind != 0:
                             dpg.set_item_label(buttonBindRodKey, f"Bind: {chr(bind)}")
+                
+                    dpg.add_spacer(width=75)
+                    dpg.add_separator()
+                    dpg.add_spacer(width=75)
 
                     creditsText = dpg.add_text(default_value="Credits: 4urxra (Developer)")
                     githubText = dpg.add_text(default_value="https://github.com/Dream23322/")
