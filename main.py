@@ -46,19 +46,19 @@ class sharp():
                 "enabled": False,
                 "mode": "Hold",
                 "bind": 0,
-                "averageCPS": 12,
+                "averageCPS": 18,
                 "onlyWhenFocused": True,
                 "breakBlocks": False,
                 "RMBLock": False,
                 "blockHit": False,
-                "blockHitChance": 25,
+                "blockHitChance": 20,
                 "shakeEffect": False,
                 "shakeEffectForce": 5,
                 "soundPath": "",
                 "workInMenus": False,
                 "blatant": False,
                 "AutoRod": False,
-                "AutoRodChance": 25,
+                "AutoRodChance": 10,
             },
             "right": {
                 "enabled": False,
@@ -90,6 +90,7 @@ class sharp():
                 "discordRichPresence": False,
                 "rodBind": 0,
                 "rodDelay": 0.7,
+                "rodSlot": "2",
             } 
         }
 
@@ -542,6 +543,7 @@ if __name__ == "__main__":
                 dpg.set_item_label(buttonBindRodKey, "...")
 
                 waitingForKeyRight = True
+
         def setBindRod(id: int, value: str):
             global waitingForKeyRight
             if waitingForKeyRight:
@@ -552,6 +554,8 @@ if __name__ == "__main__":
 
                 waitingForKeyRight = False
 
+        def setRodSlot(id: int, value: str):
+            sharpClass.config["misc"]["rodSlot"] = value
         def setRightMode(id: int, value: str):
             sharpClass.config["right"]["mode"] = value
 
@@ -672,7 +676,7 @@ if __name__ == "__main__":
         def toggleDiscordRPC(id: int, value: bool):
             sharpClass.config["misc"]["discordRichPresence"] = value
 
-        dpg.create_viewport(title=f"[v{version}] Soda - AutoClicker.ontop", width=810, height=435)
+        dpg.create_viewport(title=f"[v{version}] Soda - AutoClicker.ontop", width=860, height=645)
 
         with dpg.window(tag="Primary Window"):
             with dpg.tab_bar():
@@ -696,36 +700,27 @@ if __name__ == "__main__":
                     dpg.add_separator()
                     dpg.add_spacer(width=75)
 
-                    checkboxLeftOnlyWhenFocused = dpg.add_checkbox(label="Only In Game", default_value=sharpClass.config["left"]["onlyWhenFocused"], callback=toggleLeftOnlyWhenFocused)
-
-                    dpg.add_spacer(width=75)
-
-                    checkBoxLeftBreakBlocks = dpg.add_checkbox(label="Break Blocks", default_value=sharpClass.config["left"]["breakBlocks"], callback=toggleLeftBreakBlocks)
-
-                    dpg.add_spacer(width=75)
-
-                    checkboxLeftRMBLock = dpg.add_checkbox(label="RMB-Lock", default_value=sharpClass.config["left"]["RMBLock"], callback=toggleLeftRMBLock)
-
-                    dpg.add_spacer(width=125)
-
                     checkboxLeftBlockHit = dpg.add_checkbox(label="BlockHit", default_value=sharpClass.config["left"]["blockHit"], callback=toggleLeftBlockHit)
                     sliderLeftBlockHitChance = dpg.add_slider_int(label="BlockHit Chance", default_value=sharpClass.config["left"]["blockHitChance"], min_value=1, max_value=100, callback=setLeftBlockHitChance)
-
+                    dpg.add_text(default_value="Randomly right clicks to do a blockhit (MC version < 1.8.9). This can help reduce damage.\nWarning: Having the amount higher than 50 can cause it to be very hard to move while using the clicker")
                     dpg.add_spacer(width=125)
 
                     checkboxLeftShakeEffect = dpg.add_checkbox(label="Shake Effect", default_value=sharpClass.config["left"]["shakeEffect"], callback=toggleLeftShakeEffect)
                     sliderLeftShakeEffectForce = dpg.add_slider_int(label="Shake Effect Force", default_value=sharpClass.config["left"]["shakeEffectForce"], min_value=1, max_value=20, callback=setLeftShakeEffectForce)
-
+                    dpg.add_text(default_value="Makes your camera move a little bit when the autoclicker is active!\nThis can help bypass anticheats with strict autoclicker checks.")
                     dpg.add_spacer(width=75)
                     dpg.add_separator()
                     dpg.add_spacer(width=75)
 
                     inputLeftClickSoundPath = dpg.add_input_text(label="Click Sound Path (empty for no sound)", default_value=sharpClass.config["left"]["soundPath"], hint="Exemple: mysounds/G505.wav", callback=setLeftClickSoundPath)
-
+                    dpg.add_text(default_value="Plays a sound when you click!")
                     dpg.add_spacer(width=75)
                     dpg.add_separator()
                     dpg.add_spacer(width=75)
 
+                    checkboxLeftOnlyWhenFocused = dpg.add_checkbox(label="Only In Game", default_value=sharpClass.config["left"]["onlyWhenFocused"], callback=toggleLeftOnlyWhenFocused)
+                    checkBoxLeftBreakBlocks = dpg.add_checkbox(label="Break Blocks", default_value=sharpClass.config["left"]["breakBlocks"], callback=toggleLeftBreakBlocks)
+                    checkboxLeftRMBLock = dpg.add_checkbox(label="RMB-Lock", default_value=sharpClass.config["left"]["RMBLock"], callback=toggleLeftRMBLock)
                     checkboxLeftWorkInMenus = dpg.add_checkbox(label="Work in Menus", default_value=sharpClass.config["left"]["workInMenus"], callback=toggleLeftWorkInMenus)
                     checkboxLeftBlatantMode = dpg.add_checkbox(label="Blatant Mode", default_value=sharpClass.config["left"]["blatant"], callback=toggleLeftBlatantMode)
                 
@@ -735,7 +730,9 @@ if __name__ == "__main__":
 
                     checkboxLeftAutoRod = dpg.add_checkbox(label="Auto Rod", default_value=sharpClass.config["left"]["AutoRod"], callback=toggleLeftAutoRod)
                     sliderLeftAutoRodChance = dpg.add_slider_int(label="Auto Rod Chance", default_value=sharpClass.config["left"]["AutoRodChance"], min_value=1, max_value=100, callback=setLeftAutoRodChance)
-
+                    dpg.add_text(default_value="Works like blockhit but instead 'throws' a rod. Change your rod slot in MISC settings.\nIts not recommended to have Rod Change above 15!")
+                    dpg.add_spacer(width=75)
+                    dpg.add_separator()
                     dpg.add_spacer(width=75)
 
                     creditsText = dpg.add_text(default_value="Credits: 4urxra (Developer)")
@@ -760,14 +757,6 @@ if __name__ == "__main__":
                     dpg.add_separator()
                     dpg.add_spacer(width=75)
 
-                    checkboxRightOnlyWhenFocused = dpg.add_checkbox(label="Only In Game", default_value=sharpClass.config["right"]["onlyWhenFocused"], callback=toggleRightOnlyWhenFocused)
-
-                    dpg.add_spacer(width=75)
-
-                    checkboxRightLMBLock = dpg.add_checkbox(label="LMB-Lock", default_value=sharpClass.config["right"]["LMBLock"], callback=toggleRightLMBLock)
-
-                    dpg.add_spacer(width=75)
-
                     checkboxRightShakeEffect = dpg.add_checkbox(label="Shake Effect", default_value=sharpClass.config["right"]["shakeEffect"], callback=toggleRightShakeEffect)
                     sliderRightShakeEffectForce = dpg.add_slider_int(label="Shake Effect Force", default_value=sharpClass.config["right"]["shakeEffectForce"], min_value=1, max_value=20, callback=setRightShakeEffectForce)
 
@@ -781,6 +770,8 @@ if __name__ == "__main__":
                     dpg.add_separator()
                     dpg.add_spacer(width=75)
 
+                    checkboxRightLMBLock = dpg.add_checkbox(label="LMB-Lock", default_value=sharpClass.config["right"]["LMBLock"], callback=toggleRightLMBLock)
+                    checkboxRightOnlyWhenFocused = dpg.add_checkbox(label="Only In Game", default_value=sharpClass.config["right"]["onlyWhenFocused"], callback=toggleRightOnlyWhenFocused)
                     checkboxRightWorkInMenus = dpg.add_checkbox(label="Work in Menus", default_value=sharpClass.config["right"]["workInMenus"], callback=toggleRightWorkInMenus)
                     checkboxRightBlatantMode = dpg.add_checkbox(label="Blatant Mode", default_value=sharpClass.config["right"]["blatant"], callback=toggleRightBlatantMode)
                 with dpg.tab(label="Recorder"):
@@ -833,35 +824,40 @@ if __name__ == "__main__":
                         if bind != 0:
                             dpg.set_item_label(buttonBindHideGUI, f"Bind: {chr(bind)}")
 
-                    dpg.add_spacer(width=75)
-                    dpg.add_separator()
-                    dpg.add_spacer(width=75)
 
                     dpg.add_spacer(width=75)
                     dpg.add_separator()
                     dpg.add_spacer(width=75)
 
                     saveSettings = dpg.add_checkbox(label="Save Settings", default_value=sharpClass.config["misc"]["saveSettings"], callback=toggleSaveSettings)
-
+                    saveSettingsTooltip = dpg.add_text(default_value="Attempts to save settings on close.")
                     dpg.add_spacer(width=75)
 
                     checkboxAlwaysOnTop = dpg.add_checkbox(label="Always On Top", callback=toggleAlwaysOnTop)
+                    alwaysOnTopTooltip = dpg.add_text(default_value="Makes the GUI always on top.")
 
                     dpg.add_spacer(width=75)
 
                     checkboxAlwaysOnTop = dpg.add_checkbox(label="Discord Rich Presence", default_value=sharpClass.config["misc"]["discordRichPresence"], callback=toggleDiscordRPC)
+                    dpg.add_text(default_value="Shows your activity status as using Soda v1")
 
                     dpg.add_spacer(width=75)
                     dpg.add_separator()
                     dpg.add_spacer(width=75)
 
                     with dpg.group(horizontal=True):
+                        rodBindText = dpg.add_text(default_value="Rod Bind:")
                         buttonBindRodKey = dpg.add_button(label="Click to Bind", callback=statusBindRod)
 
                         bind = sharpClass.config["misc"]["rodBind"]
                         if bind != 0:
                             dpg.set_item_label(buttonBindRodKey, f"Bind: {chr(bind)}")
-                
+
+                    dpg.add_text(default_value="Press the binded key to throw a rod")
+
+                    rodSlot = dpg.add_combo(label="Rod Slot", items=["1", "2", "3", "4", "5", "6", "7", "8", "9"], default_value=sharpClass.config["misc"]["rodSlot"], callback=setRodSlot)
+                    dpg.add_text(default_value="Which slot to switch to when throwing a rod")
+
                     dpg.add_spacer(width=75)
                     dpg.add_separator()
                     dpg.add_spacer(width=75)
