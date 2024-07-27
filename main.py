@@ -6,7 +6,8 @@ try:
 except:
     from os import system
     system("pip install -r requirements.txt")
-    
+
+current_key = None
 class configListener(dict): # Detecting changes to config
     def __init__(self, initialDict):
         for k, v in initialDict.items():
@@ -92,6 +93,8 @@ class sharp():
                 "rodDelay": 0.7,
                 "rodSlot": "2",
                 "pearlBind": 0,
+                "pearlSlot": "8",
+                "movementFix": False
             } 
         }
 
@@ -220,11 +223,11 @@ class sharp():
             '9': 0x39,
         }
         # Use rodSlot to get the slot number
-        VK_2 = char_to_vk.get(self.config["misc"]["rodSlot"].lower(), None)
+        VK_2 = char_to_vk.get(self.config["misc"]["rodSlot"], None)
 
         # Press the '2' key
         win32api.keybd_event(VK_2, 0, 0, 0)
-        time.sleep(0.01)  # Brief pause to simulate a key press
+        time.sleep(round(float(self.config["misc"]["rodDelay"]) / 3, 3))  # Brief pause to simulate a key press
         # Release the '2' key
         win32api.keybd_event(VK_2, 0, win32con.KEYEVENTF_KEYUP, 0)
         # Send Rod by right clicking
@@ -375,10 +378,10 @@ class sharp():
             '9': 0x39,
         }
         # Use rodSlot to get the slot number
-        VK_2 = char_to_vk.get("8", None)
+        VK_2 = char_to_vk.get(self.config["misc"]["pearlSlot"], None)
         # Press the '2' key
         win32api.keybd_event(VK_2, 0, 0, 0)
-        time.sleep(0.01)  # Brief pause to simulate a key press
+        time.sleep(0.06)  # Brief pause to simulate a key press
         # Release the '2' key
         win32api.keybd_event(VK_2, 0, win32con.KEYEVENTF_KEYUP, 0)
         # Send Rod by right clicking
@@ -446,12 +449,49 @@ class sharp():
 
             time.sleep(0.001)
 
+
+    def movementFix(self):
+        key_a_pressed = False
+        key_d_pressed = False
+
+        def on_key_event(e):
+            
+
+            if self.config["misc"]["movementFix"]:
+                if e.name == 'a':
+                    
+                    if e.event_type == 'down':
+                        self.key_a_pressed = True
+                        if self.key_d_pressed:
+                            keyboard.block_key('d')
+                    elif e.event_type == 'up':
+                        self.key_a_pressed = False
+                        keyboard.unblock_key('d')
+
+                if e.name == 'd':
+                    if e.event_type == 'down':
+                        self.key_d_pressed = True
+                        if self.key_a_pressed:
+                            keyboard.block_key('a')
+                    elif e.event_type == 'up':
+                        self.key_d_pressed = False
+                        keyboard.unblock_key("a")
+
+        keyboard.hook(on_key_event)
+
+                
+
     def bindListener(self):
         while True:
             if win32api.GetAsyncKeyState(self.config["misc"]["rodBind"]) != 0:
                 self.doRod()
             elif win32api.GetAsyncKeyState(self.config["misc"]["pearlBind"]) != 0:
                 self.doPearl()
+            # Do movement correction
+            elif self.config["misc"]["movementFix"]:
+                # Run movement correction with current pressed key
+                self.movementFix()
+
             time.sleep(0.001)
     def hideGUIBindListener(self):
         while True:
@@ -557,6 +597,8 @@ if __name__ == "__main__":
         def setLeftAutoRodChance(id: int, value: int):
             sharpClass.config["left"]["AutoRodChance"] = value
 
+        def toggleMovementFix(id: int, value: bool):
+            sharpClass.config["misc"]["movementFix"] = value
         waitingForKeyRight = False
         def statusBindRightClicker(id: int):
             global waitingForKeyRight
@@ -621,6 +663,9 @@ if __name__ == "__main__":
                 waitingForKeyRight = False
         def setRodSlot(id: int, value: str):
             sharpClass.config["misc"]["rodSlot"] = value
+
+        def setPearlSlot(id: int, value: str):
+            sharpClass.config["misc"]["pearlSlot"] = value
         def setRightMode(id: int, value: str):
             sharpClass.config["right"]["mode"] = value
 
@@ -938,6 +983,15 @@ if __name__ == "__main__":
                             dpg.set_item_label(buttonBindPearlKey, f"Bind: {chr(bind)}")
 
                     dpg.add_text(default_value="Press the binded key to throw a pearl")
+
+                    dpg.add_combo(label="Pearl Slot", items=["1", "2", "3", "4", "5", "6", "7", "8", "9"], default_value=sharpClass.config["misc"]["pearlSlot"], callback=setPearlSlot)
+                    dpg.add_text(default_value="Which slot to switch to when throwing a pearl")
+
+                    dpg.add_spacer(width=75)
+                    dpg.add_separator()
+                    dpg.add_spacer(width=75)
+
+                    dpg.add_checkbox(label="Movement Fix (NOT WORKING)", default_value=sharpClass.config["misc"]["movementFix"], callback=toggleMovementFix)
 
                     creditsText = dpg.add_text(default_value="Credits: 4urxra (Developer)")
                     githubText = dpg.add_text(default_value="https://github.com/Dream23322/")
