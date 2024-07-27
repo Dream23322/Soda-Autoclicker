@@ -1,4 +1,4 @@
-version = "1.0"
+version = "1.1"
 try:
     import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, base64, re, keyboard
     import dearpygui.dearpygui as dpg
@@ -992,7 +992,9 @@ if __name__ == "__main__":
                     dpg.add_spacer(width=75)
 
                     dpg.add_checkbox(label="Movement Fix (NOT WORKING)", default_value=sharpClass.config["misc"]["movementFix"], callback=toggleMovementFix)
-
+                    dpg.add_spacer(width=75)
+                    dpg.add_separator()
+                    dpg.add_spacer(width=75)
                     creditsText = dpg.add_text(default_value="Credits: 4urxra (Developer)")
                     githubText = dpg.add_text(default_value="https://github.com/Dream23322/")
 
