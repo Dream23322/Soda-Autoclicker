@@ -14,6 +14,8 @@ class configListener(dict): # Detecting changes to config
             if isinstance(v, dict):
                 initialDict[k] = configListener(v)
 
+
+              
         super().__init__(initialDict)
 
     def __setitem__(self, item, value):
@@ -94,9 +96,18 @@ class sharp():
                 "rodSlot": "2",
                 "pearlBind": 0,
                 "pearlSlot": "8",
-                "movementFix": False
-            } 
+                "movementFix": False,
+            },
+            "potions": {
+                "potBind": 0,
+                "throwDelay": 0.7,
+                "switchBackSlot": "1",
+                "potResetBind": 0,
+                "lowestSlot": 1,
+                "highestSlot": 9
+            }
         }
+        self.current_pot_slot = 0 
 
         if os.path.isfile(f"{os.environ['LOCALAPPDATA']}\\temp\\{hwid}"):
             try:
@@ -142,12 +153,14 @@ class sharp():
 
         states = [
             "Being the best player in the world",
-            "Get shit on <3"
+            "Get shit on <3",
+            "Herro! Is anybody home?",
+            "CatClicker",
         ]
 
         while True:
             if self.config["misc"]["discordRichPresence"]:
-                discordRPC.update(state=random.choice(states), start=startTime, large_image="logo", large_text="I'm him, ur not", buttons=[{"label": "Website", "url": "https://github.com/Dream23322/Isolate-Anticheat"}])
+                discordRPC.update(state=random.choice(states), start=startTime, large_image="logo", large_text="I'm him, ur not", buttons=[{"label": "Website", "url": "https://github.com/Dream23322/Soda-Autoclicker/"}])
             else:
                 discordRPC.clear()
 
@@ -242,6 +255,50 @@ class sharp():
         time.sleep(int(self.config["misc"]["rodDelay"]))  # Brief pause to simulate a key press
         # Release the '2' key
         win32api.keybd_event(VK_2, 0, win32con.KEYEVENTF_KEYUP, 0)
+
+    def doPotion(self):
+        if(self.config["potions"]["lowestSlot"] > self.current_pot_slot):
+            self.current_pot_slot = self.config["potions"]["lowestSlot"]
+        else:
+            if(self.current_pot_slot <= self.config["potions"]["highestSlot"]):
+                
+
+                # Switch to the potion slot
+                char_to_vk = {
+                    '0': 0x30,
+                    '1': 0x31,
+                    '2': 0x32,
+                    '3': 0x33,
+                    '4': 0x34,
+                    '5': 0x35,
+                    '6': 0x36,
+                    '7': 0x37,
+                    '8': 0x38,
+                    '9': 0x39,
+                }
+                VK_TO_SLOT = char_to_vk.get(str(self.current_pot_slot), None)
+
+                # Press the slot key
+                win32api.keybd_event(VK_TO_SLOT, 0, 0, 0)
+                time.sleep(int(self.config["potions"]["throwDelay"]))
+
+                win32api.keybd_event(VK_TO_SLOT, 0, win32con.KEYEVENTF_KEYUP, 0)
+                # Send Rod by right clicking
+                win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTDOWN, 0, 0)
+                time.sleep(0.02)
+                win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTUP, 0, 0)
+                time.sleep(0.6)
+
+                win32api.keybd_event(0x31, 0, 0, 0)
+                self.current_pot_slot += 1
+
+
+
+            else:
+                print("No Potions Left!")
+
+
+
 
     def leftClick(self, focused):
         if focused != None:
@@ -451,8 +508,8 @@ class sharp():
 
 
     def movementFix(self):
-        key_a_pressed = False
-        key_d_pressed = False
+        self.key_a_pressed = False
+        self.key_d_pressed = False
 
         def on_key_event(e):
             
@@ -491,6 +548,12 @@ class sharp():
             elif self.config["misc"]["movementFix"]:
                 # Run movement correction with current pressed key
                 self.movementFix()
+            elif win32api.GetAsyncKeyState(self.config["potions"]["potBind"]) != 0:
+                self.doPotion()
+                time.sleep(0.5)
+
+            elif win32api.GetAsyncKeyState(self.config["potions"]["potResetBind"]) != 0:
+                self.current_pot_slot = int(self.config["potions"]["lowestSlot"])
 
             time.sleep(0.001)
     def hideGUIBindListener(self):
@@ -661,6 +724,46 @@ if __name__ == "__main__":
                 dpg.delete_item("Pearl Bind Handler")
 
                 waitingForKeyRight = False
+
+        def statusBindPot(id: int):
+            global waitingForKeyRight
+            if not waitingForKeyRight:
+                with dpg.handler_registry(tag="Pot Bind Handler"):
+                    dpg.add_key_press_handler(callback=setBindPot)
+
+                dpg.set_item_label(buttonBindPotKey, "...")
+
+                waitingForKeyRight = True
+        
+        def setBindPot(id: int, value: str):
+            global waitingForKeyRight
+            if waitingForKeyRight:
+                sharpClass.config["potions"]["potBind"] = value
+
+                dpg.set_item_label(buttonBindPotKey, f"Bind: {chr(value)}")
+                dpg.delete_item("Pot Bind Handler")
+
+                waitingForKeyRight = False
+
+        def statusBindPotReset(id: int):
+            global waitingForKeyRight
+            if not waitingForKeyRight:
+                with dpg.handler_registry(tag="Pot Reset Bind Handler"):
+                    dpg.add_key_press_handler(callback=setBindPotReset)
+
+                dpg.set_item_label(buttonBindPotResetKey, "...")
+
+                waitingForKeyRight = True
+
+        def setBindPotReset(id: int, value: str):
+            global waitingForKeyRight
+            if waitingForKeyRight:
+                sharpClass.config["potions"]["potResetBind"] = value
+
+                dpg.set_item_label(buttonBindPotResetKey, f"Bind: {chr(value)}")
+                dpg.delete_item("Pot Reset Bind Handler")
+
+                waitingForKeyRight = False              
         def setRodSlot(id: int, value: str):
             sharpClass.config["misc"]["rodSlot"] = value
 
@@ -668,7 +771,8 @@ if __name__ == "__main__":
             sharpClass.config["misc"]["pearlSlot"] = value
         def setRightMode(id: int, value: str):
             sharpClass.config["right"]["mode"] = value
-
+        def setPotDelay(id: int, value: float):
+            sharpClass.config["potions"]["throwDelay"] = value
         def setRightAverageCPS(id: int, value: int):
             sharpClass.config["right"]["averageCPS"] = value
         def toggleRightOnlyWhenFocused(id: int, value: int):
@@ -737,6 +841,15 @@ if __name__ == "__main__":
                         time.sleep(0.001)
         def setRodDelay(id: int, value: float):
             sharpClass.config["misc"]["rodDelay"] = value
+
+        def setLowestSlot(id: int, value: int):
+            sharpClass.config["potions"]["lowestSlot"] = value
+
+        def setHighestSlot(id: int, value: int):
+            sharpClass.config["potions"]["highestSlot"] = value
+
+        def setSwitchDelay(id: int, value: float):
+            sharpClass.config["potions"]["switchDelay"] = value
         def startRecording():
             if not recording:
                 threading.Thread(target=recorder, daemon=True).start()
@@ -847,7 +960,7 @@ if __name__ == "__main__":
                     dpg.add_spacer(width=75)
 
                     creditsText = dpg.add_text(default_value="Credits: 4urxra (Developer)")
-                    githubText = dpg.add_text(default_value="https://github.com/Dream23322/")
+                    githubText = dpg.add_text(default_value="https://github.com/Dream23322/Soda-Autoclicker/")
                 with dpg.tab(label="Right Clicker"):
                     dpg.add_spacer(width=75)
 
@@ -996,7 +1109,50 @@ if __name__ == "__main__":
                     dpg.add_separator()
                     dpg.add_spacer(width=75)
                     creditsText = dpg.add_text(default_value="Credits: 4urxra (Developer)")
-                    githubText = dpg.add_text(default_value="https://github.com/Dream23322/")
+                    githubText = dpg.add_text(default_value="https://github.com/Dream23322/Soda-Autoclicker/")
+
+                with dpg.tab(label="Potions"):
+
+                    dpg.add_spacer(width=75)
+
+                    dpg.add_text(default_value="Tools for potions, includes throwbind")
+
+                    dpg.add_spacer(width=75)
+                    dpg.add_separator()
+                    dpg.add_spacer(width=75)
+
+                    # Pot Bind Throw Bind System
+                    with dpg.group(horizontal=True):
+                        potBindText = dpg.add_text(default_value="Pot Bind:")
+                        buttonBindPotKey = dpg.add_button(label="Click to Bind", callback=statusBindPot)
+
+                        bind = sharpClass.config["potions"]["potBind"]
+                        if bind != 0:
+                            dpg.set_item_label(buttonBindPotKey, f"Bind: {chr(bind)}")
+
+                    # Bind Reset Bind System
+
+                    with dpg.group(horizontal=True):
+                        potResetBindText = dpg.add_text(default_value="Pot Reset Bind:")
+                        buttonBindPotResetKey = dpg.add_button(label="Click to Bind", callback=statusBindPotReset)
+
+                        bind = sharpClass.config["potions"]["potResetBind"]
+                        if bind != 0:
+                            dpg.set_item_label(buttonBindPotResetKey, f"Bind: {chr(bind)}")
+                    
+
+                    # Lowest Slot Slider
+
+                    dpg.add_slider_int(label="Lowest Slot", default_value=sharpClass.config["potions"]["lowestSlot"], min_value=1, max_value=9, callback=setLowestSlot)
+
+                    # Highest Slot
+
+                    dpg.add_slider_int(label="Highest Slot", default_value=sharpClass.config["potions"]["highestSlot"], min_value=1, max_value=9, callback=setHighestSlot)
+
+                    # Switch Delay
+
+                    potDelay = dpg.add_input_float(label="Pot Delay", default_value=sharpClass.config["potions"]["throwDelay"], min_value=0, max_value=2, callback=setPotDelay)
+
 
         with dpg.theme() as global_theme:
             with dpg.theme_component(dpg.mvAll):
