@@ -99,6 +99,7 @@ class sharp():
                 "movementFix": False,
             },
             "potions": {
+                "enabled": False,
                 "potBind": 0,
                 "throwDelay": 0.7,
                 "switchBackSlot": "1",
@@ -854,6 +855,9 @@ if __name__ == "__main__":
             if not recording:
                 threading.Thread(target=recorder, daemon=True).start()
 
+        def togglePotions(id:int, value: bool):
+            sharpClass.config["potions"]["enabled"] = value
+
         def stopRecording():
             global recording
 
@@ -998,6 +1002,12 @@ if __name__ == "__main__":
                     checkboxRightOnlyWhenFocused = dpg.add_checkbox(label="Only In Game", default_value=sharpClass.config["right"]["onlyWhenFocused"], callback=toggleRightOnlyWhenFocused)
                     checkboxRightWorkInMenus = dpg.add_checkbox(label="Work in Menus", default_value=sharpClass.config["right"]["workInMenus"], callback=toggleRightWorkInMenus)
                     checkboxRightBlatantMode = dpg.add_checkbox(label="Blatant Mode", default_value=sharpClass.config["right"]["blatant"], callback=toggleRightBlatantMode)
+                    dpg.add_spacer(width=75)    
+                    dpg.add_separator()
+                    dpg.add_spacer(width=75)
+
+                    creditsText = dpg.add_text(default_value="Credits: 4urxra (Developer)")
+                    githubText = dpg.add_text(default_value="https://github.com/Dream23322/Soda-Autoclicker/")                
                 with dpg.tab(label="Recorder"):
                     dpg.add_spacer(width=75)
 
@@ -1031,6 +1041,12 @@ if __name__ == "__main__":
 
                     recordingStatusText = dpg.add_text(default_value="Recording: ")
                     dpg.set_value(recordingStatusText, f"Recording: {recording}")
+                    dpg.add_spacer(width=75)    
+                    dpg.add_separator()
+                    dpg.add_spacer(width=75)
+
+                    creditsText = dpg.add_text(default_value="Credits: 4urxra (Developer)")
+                    githubText = dpg.add_text(default_value="https://github.com/Dream23322/Soda-Autoclicker/")                    
                 with dpg.tab(label="Misc"):
                     dpg.add_spacer(width=75)
 
@@ -1121,6 +1137,11 @@ if __name__ == "__main__":
                     dpg.add_separator()
                     dpg.add_spacer(width=75)
 
+                    dpg.add_checkbox(label="Enable Potions", default_value=sharpClass.config["potions"]["enabled"], callback=togglePotions)
+
+                    dpg.add_spacer(width=75)
+                    dpg.add_separator()
+                    dpg.add_spacer(width=75)
                     # Pot Bind Throw Bind System
                     with dpg.group(horizontal=True):
                         potBindText = dpg.add_text(default_value="Pot Bind:")
@@ -1129,6 +1150,8 @@ if __name__ == "__main__":
                         bind = sharpClass.config["potions"]["potBind"]
                         if bind != 0:
                             dpg.set_item_label(buttonBindPotKey, f"Bind: {chr(bind)}")
+                    dpg.add_text(default_value="Keybind which throws the potion")
+                    dpg.add_spacer(width=75)
 
                     # Bind Reset Bind System
 
@@ -1139,20 +1162,33 @@ if __name__ == "__main__":
                         bind = sharpClass.config["potions"]["potResetBind"]
                         if bind != 0:
                             dpg.set_item_label(buttonBindPotResetKey, f"Bind: {chr(bind)}")
-                    
 
+                    dpg.add_text(default_value="Keybind which resets the potion data (Sets the next slot to the starting slot)")
+                    
+                    dpg.add_spacer(width=75)    
+                    dpg.add_separator()
+                    dpg.add_spacer(width=75)
                     # Lowest Slot Slider
 
                     dpg.add_slider_int(label="Lowest Slot", default_value=sharpClass.config["potions"]["lowestSlot"], min_value=1, max_value=9, callback=setLowestSlot)
+                    dpg.add_text(default_value="First slot to throw from")
 
                     # Highest Slot
-
+                    dpg.add_spacer(width=75)
                     dpg.add_slider_int(label="Highest Slot", default_value=sharpClass.config["potions"]["highestSlot"], min_value=1, max_value=9, callback=setHighestSlot)
+                    dpg.add_text(default_value="Max slot to switch to when throwing")
 
                     # Switch Delay
-
+                    dpg.add_spacer(width=75)
                     potDelay = dpg.add_input_float(label="Pot Delay", default_value=sharpClass.config["potions"]["throwDelay"], min_value=0, max_value=2, callback=setPotDelay)
+                    dpg.add_text("Pot Delay is how long do you want to wait after switching to throw the potion (Higher this is, the less chance of failing to throw there will be, but it will also add more delay which can be bad during PvP)")
+                    
+                    dpg.add_spacer(width=75)    
+                    dpg.add_separator()
+                    dpg.add_spacer(width=75)
 
+                    creditsText = dpg.add_text(default_value="Credits: 4urxra (Developer)")
+                    githubText = dpg.add_text(default_value="https://github.com/Dream23322/Soda-Autoclicker/")
 
         with dpg.theme() as global_theme:
             with dpg.theme_component(dpg.mvAll):
