@@ -1,4 +1,4 @@
-version = "1.1"
+version = "1.3"
 try:
     import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, base64, re, keyboard
     import dearpygui.dearpygui as dpg
