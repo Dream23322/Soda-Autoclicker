@@ -26,12 +26,12 @@ class configListener(dict): # Detecting changes to config
 
         super().__setitem__(item, _value)
 
-        try: # Trash way of checking if Sharp class is initialized
-            sharpClass
+        try: # Trash way of checking if soda class is initialized
+            sodaClass
         except:
             while True:
                 try:
-                    sharpClass
+                    sodaClass
 
                     break
                 except:
@@ -39,10 +39,10 @@ class configListener(dict): # Detecting changes to config
 
                     pass
 
-        if sharpClass.config["misc"]["saveSettings"]:
-            json.dump(sharpClass.config, open(f"{os.environ['LOCALAPPDATA']}\\temp\\{hwid}", "w", encoding="utf-8"), indent=4)
+        if sodaClass.config["misc"]["saveSettings"]:
+            json.dump(sodaClass.config, open(f"{os.environ['LOCALAPPDATA']}\\temp\\{hwid}", "w", encoding="utf-8"), indent=4)
 
-class sharp():
+class soda():
     def __init__(self, hwid: str):
         self.config = {
             "left": {
@@ -92,11 +92,12 @@ class sharp():
                 "bindHideGUI": 0,
                 "discordRichPresence": False,
                 "rodBind": 0,
-                "rodDelay": 0.7,
+                "rodDelay": 0.2,
                 "rodSlot": "2",
                 "pearlBind": 0,
                 "pearlSlot": "8",
                 "movementFix": False,
+                "swordSlot": "1",
             },
             "potions": {
                 "enabled": False,
@@ -248,12 +249,13 @@ class sharp():
         win32api.SendMessage(self.window, win32con.WM_RBUTTONDOWN, 0, 0)
         time.sleep(0.02)
         win32api.SendMessage(self.window, win32con.WM_RBUTTONUP, 0, 0)
+        time.sleep(float(self.config["misc"]["rodDelay"]))  # Brief pause to simulate a key press
         # Switch back to slot 1
         VK_2 = 0x31
 
         # Press the '2' key
         win32api.keybd_event(VK_2, 0, 0, 0)
-        time.sleep(int(self.config["misc"]["rodDelay"]))  # Brief pause to simulate a key press
+        time.sleep(float(self.config["misc"]["rodDelay"]) / 5)  # Brief pause to simulate a key press
         # Release the '2' key
         win32api.keybd_event(VK_2, 0, win32con.KEYEVENTF_KEYUP, 0)
 
@@ -263,7 +265,6 @@ class sharp():
         else:
             if(self.current_pot_slot <= self.config["potions"]["highestSlot"]):
                 
-
                 # Switch to the potion slot
                 char_to_vk = {
                     '0': 0x30,
@@ -538,18 +539,19 @@ class sharp():
         keyboard.hook(on_key_event)
 
                 
-
+    def isFocused(self, config1: str, config2: str, config3: str):
+        return ("java" in self.focusedProcess or "AZ-Launcher" in self.focusedProcess or not self.config[config1][config2]) and (self.config[config1][config3] or win32gui.GetCursorInfo()[1] > 200000)
     def bindListener(self):
         while True:
-            if win32api.GetAsyncKeyState(self.config["misc"]["rodBind"]) != 0:
+            if win32api.GetAsyncKeyState(self.config["misc"]["rodBind"]) != 0 and self.isFocused("left", "onlyWhenFocused", "workInMenus"):
                 self.doRod()
-            elif win32api.GetAsyncKeyState(self.config["misc"]["pearlBind"]) != 0:
+            elif win32api.GetAsyncKeyState(self.config["misc"]["pearlBind"]) != 0 and self.isFocused("left", "onlyWhenFocused", "workInMenus"):
                 self.doPearl()
             # Do movement correction
             elif self.config["misc"]["movementFix"]:
                 # Run movement correction with current pressed key
                 self.movementFix()
-            elif win32api.GetAsyncKeyState(self.config["potions"]["potBind"]) != 0:
+            elif win32api.GetAsyncKeyState(self.config["potions"]["potBind"]) != 0 and self.isFocused("left", "onlyWhenFocused", "workInMenus"):
                 self.doPotion()
                 time.sleep(0.5)
 
@@ -575,7 +577,7 @@ class sharp():
 if __name__ == "__main__":
     try:
         if os.name != "nt":
-            input("sharp is only working on Windows.")
+            input("Soda Autoclicker is only working on Windows.")
 
             os._exit(0)
 
@@ -587,11 +589,11 @@ if __name__ == "__main__":
         if processName == "cmd.exe" or processName in sys.argv[0]:
             win32gui.ShowWindow(currentWindow, win32con.SW_HIDE)
 
-        sharpClass = sharp(hwid)
+        sodaClass = soda(hwid)
         dpg.create_context()
 
         def toggleLeftClicker(id: int, value: bool):
-            sharpClass.config["left"]["enabled"] = value
+            sodaClass.config["left"]["enabled"] = value
 
         waitingForKeyLeft = False
         def statusBindLeftClicker(id: int):
@@ -609,7 +611,7 @@ if __name__ == "__main__":
             global waitingForKeyLeft
 
             if waitingForKeyLeft:
-                sharpClass.config["left"]["bind"] = value
+                sodaClass.config["left"]["bind"] = value
 
                 dpg.set_item_label(buttonBindLeftClicker, f"Bind: {chr(value)}")
                 dpg.delete_item("Left Bind Handler")
@@ -617,52 +619,52 @@ if __name__ == "__main__":
                 waitingForKeyLeft = False
 
         def setLeftMode(id: int, value: str):
-            sharpClass.config["left"]["mode"] = value
+            sodaClass.config["left"]["mode"] = value
 
         def setLeftAverageCPS(id: int, value: int):
-            sharpClass.config["left"]["averageCPS"] = value
+            sodaClass.config["left"]["averageCPS"] = value
 
         def toggleLeftOnlyWhenFocused(id: int, value:bool):
-            sharpClass.config["left"]["onlyWhenFocused"] = value
+            sodaClass.config["left"]["onlyWhenFocused"] = value
 
         def toggleLeftBreakBlocks(id: int, value: bool):
-            sharpClass.config["left"]["breakBlocks"] = value
+            sodaClass.config["left"]["breakBlocks"] = value
 
         def toggleLeftRMBLock(id: int, value: bool):
-            sharpClass.config["left"]["RMBLock"] = value
+            sodaClass.config["left"]["RMBLock"] = value
 
         def toggleLeftBlockHit(id: int, value: bool):
-            sharpClass.config["left"]["blockHit"] = value
+            sodaClass.config["left"]["blockHit"] = value
 
         def setLeftBlockHitChance(id: int, value: int):
-            sharpClass.config["left"]["blockHitChance"] = value
+            sodaClass.config["left"]["blockHitChance"] = value
 
         def toggleLeftShakeEffect(id: int, value: bool):
-            sharpClass.config["left"]["shakeEffect"] = value
+            sodaClass.config["left"]["shakeEffect"] = value
 
         def setLeftShakeEffectForce(id: int, value: int):
-            sharpClass.config["left"]["shakeEffectForce"] = value
+            sodaClass.config["left"]["shakeEffectForce"] = value
 
         def setLeftClickSoundPath(id: int, value: str):
-            sharpClass.config["left"]["soundPath"] = value
+            sodaClass.config["left"]["soundPath"] = value
 
         def toggleLeftWorkInMenus(id: int, value: bool):
-            sharpClass.config["left"]["workInMenus"] = value
+            sodaClass.config["left"]["workInMenus"] = value
 
         def toggleLeftBlatantMode(id: int, value: bool):
-            sharpClass.config["left"]["blatant"] = value
+            sodaClass.config["left"]["blatant"] = value
 
         def toggleRightClicker(id: int, value: bool):
-            sharpClass.config["right"]["enabled"] = value
+            sodaClass.config["right"]["enabled"] = value
 
         def toggleLeftAutoRod(id: int, value: bool):
-            sharpClass.config["left"]["AutoRod"] = value
+            sodaClass.config["left"]["AutoRod"] = value
 
         def setLeftAutoRodChance(id: int, value: int):
-            sharpClass.config["left"]["AutoRodChance"] = value
+            sodaClass.config["left"]["AutoRodChance"] = value
 
         def toggleMovementFix(id: int, value: bool):
-            sharpClass.config["misc"]["movementFix"] = value
+            sodaClass.config["misc"]["movementFix"] = value
         waitingForKeyRight = False
         def statusBindRightClicker(id: int):
             global waitingForKeyRight
@@ -679,7 +681,7 @@ if __name__ == "__main__":
             global waitingForKeyRight
 
             if waitingForKeyRight:
-                sharpClass.config["right"]["bind"] = value
+                sodaClass.config["right"]["bind"] = value
 
                 dpg.set_item_label(buttonBindRightClicker, f"Bind: {chr(value)}")
                 dpg.delete_item("Right Bind Handler")
@@ -699,7 +701,7 @@ if __name__ == "__main__":
         def setBindRod(id: int, value: str):
             global waitingForKeyRight
             if waitingForKeyRight:
-                sharpClass.config["misc"]["rodBind"] = value
+                sodaClass.config["misc"]["rodBind"] = value
 
                 dpg.set_item_label(buttonBindRodKey, f"Bind: {chr(value)}")
                 dpg.delete_item("Rod Bind Handler")
@@ -719,7 +721,7 @@ if __name__ == "__main__":
         def setBindPearl(id: int, value: str):
             global waitingForKeyRight
             if waitingForKeyRight:
-                sharpClass.config["misc"]["pearlBind"] = value
+                sodaClass.config["misc"]["pearlBind"] = value
 
                 dpg.set_item_label(buttonBindPearlKey, f"Bind: {chr(value)}")
                 dpg.delete_item("Pearl Bind Handler")
@@ -739,7 +741,7 @@ if __name__ == "__main__":
         def setBindPot(id: int, value: str):
             global waitingForKeyRight
             if waitingForKeyRight:
-                sharpClass.config["potions"]["potBind"] = value
+                sodaClass.config["potions"]["potBind"] = value
 
                 dpg.set_item_label(buttonBindPotKey, f"Bind: {chr(value)}")
                 dpg.delete_item("Pot Bind Handler")
@@ -759,46 +761,47 @@ if __name__ == "__main__":
         def setBindPotReset(id: int, value: str):
             global waitingForKeyRight
             if waitingForKeyRight:
-                sharpClass.config["potions"]["potResetBind"] = value
+                sodaClass.config["potions"]["potResetBind"] = value
 
                 dpg.set_item_label(buttonBindPotResetKey, f"Bind: {chr(value)}")
                 dpg.delete_item("Pot Reset Bind Handler")
 
-                waitingForKeyRight = False              
+                waitingForKeyRight = False 
         def setRodSlot(id: int, value: str):
-            sharpClass.config["misc"]["rodSlot"] = value
-
+            sodaClass.config["misc"]["rodSlot"] = value
+        def setSwordSlot(id: int, value: str):
+            sodaClass.config["misc"]["swordSlot"] = value
         def setPearlSlot(id: int, value: str):
-            sharpClass.config["misc"]["pearlSlot"] = value
+            sodaClass.config["misc"]["pearlSlot"] = value
         def setRightMode(id: int, value: str):
-            sharpClass.config["right"]["mode"] = value
+            sodaClass.config["right"]["mode"] = value
         def setPotDelay(id: int, value: float):
-            sharpClass.config["potions"]["throwDelay"] = value
+            sodaClass.config["potions"]["throwDelay"] = value
         def setRightAverageCPS(id: int, value: int):
-            sharpClass.config["right"]["averageCPS"] = value
+            sodaClass.config["right"]["averageCPS"] = value
         def toggleRightOnlyWhenFocused(id: int, value: int):
-            sharpClass.config["right"]["onlyWhenFocused"] = True
+            sodaClass.config["right"]["onlyWhenFocused"] = True
 
         def toggleRightLMBLock(id: int, value: bool):
-            sharpClass.config["right"]["LMBLock"] = value
+            sodaClass.config["right"]["LMBLock"] = value
 
         def toggleRightShakeEffect(id: int, value: bool):
-            sharpClass.config["right"]["shakeEffect"] = value
+            sodaClass.config["right"]["shakeEffect"] = value
 
         def setRightShakeEffectForce(id: int, value: int):
-            sharpClass.config["right"]["shakeEffectForce"] = value
+            sodaClass.config["right"]["shakeEffectForce"] = value
 
         def setRightClickSoundPath(id: int, value: str):
-            sharpClass.config["right"]["soundPath"] = value
+            sodaClass.config["right"]["soundPath"] = value
 
         def toggleRightWorkInMenus(id: int, value: bool):
-            sharpClass.config["right"]["workInMenus"] = value
+            sodaClass.config["right"]["workInMenus"] = value
 
         def toggleRightBlatantMode(id: int, value: bool):
-            sharpClass.config["right"]["blatant"] = value
+            sodaClass.config["right"]["blatant"] = value
 
         def toggleRecorder(id: int, value: bool):
-            sharpClass.config["recorder"]["enabled"] = value
+            sodaClass.config["recorder"]["enabled"] = value
 
         recording = False
         def recorder():
@@ -819,9 +822,9 @@ if __name__ == "__main__":
 
                         del recorded[-1] # Deleting last record time because that's when you click on stop button and it can take some time
 
-                    sharpClass.config["recorder"]["record"] = recorded
+                    sodaClass.config["recorder"]["record"] = recorded
 
-                    sharpClass.record = itertools.cycle(recorded)
+                    sodaClass.record = itertools.cycle(recorded)
 
                     totalTime = 0
                     for clickTime in recorded:
@@ -841,22 +844,22 @@ if __name__ == "__main__":
                     while win32api.GetAsyncKeyState(0x01) < 0:
                         time.sleep(0.001)
         def setRodDelay(id: int, value: float):
-            sharpClass.config["misc"]["rodDelay"] = value
+            sodaClass.config["misc"]["rodDelay"] = value
 
         def setLowestSlot(id: int, value: int):
-            sharpClass.config["potions"]["lowestSlot"] = value
+            sodaClass.config["potions"]["lowestSlot"] = value
 
         def setHighestSlot(id: int, value: int):
-            sharpClass.config["potions"]["highestSlot"] = value
+            sodaClass.config["potions"]["highestSlot"] = value
 
         def setSwitchDelay(id: int, value: float):
-            sharpClass.config["potions"]["switchDelay"] = value
+            sodaClass.config["potions"]["switchDelay"] = value
         def startRecording():
             if not recording:
                 threading.Thread(target=recorder, daemon=True).start()
 
         def togglePotions(id:int, value: bool):
-            sharpClass.config["potions"]["enabled"] = value
+            sodaClass.config["potions"]["enabled"] = value
 
         def stopRecording():
             global recording
@@ -884,7 +887,7 @@ if __name__ == "__main__":
             global waitingForKeyHideGUI
 
             if waitingForKeyHideGUI:
-                sharpClass.config["misc"]["bindHideGUI"] = value
+                sodaClass.config["misc"]["bindHideGUI"] = value
 
                 dpg.set_item_label(buttonBindHideGUI, f"Bind: {chr(value)}")
                 dpg.delete_item("Hide GUI Bind Handler")
@@ -893,7 +896,7 @@ if __name__ == "__main__":
 
 
         def toggleSaveSettings(id: int, value: bool):
-            sharpClass.config["misc"]["saveSettings"] = value
+            sodaClass.config["misc"]["saveSettings"] = value
 
         def toggleAlwaysOnTop(id: int, value: bool):
             if value:
@@ -902,7 +905,7 @@ if __name__ == "__main__":
                 win32gui.SetWindowPos(guiWindows, win32con.HWND_NOTOPMOST, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
 
         def toggleDiscordRPC(id: int, value: bool):
-            sharpClass.config["misc"]["discordRichPresence"] = value
+            sodaClass.config["misc"]["discordRichPresence"] = value
 
         dpg.create_viewport(title=f"[v{version}] Soda - AutoClicker.ontop", width=860, height=645)
 
@@ -912,52 +915,52 @@ if __name__ == "__main__":
                     dpg.add_spacer(width=75)
 
                     with dpg.group(horizontal=True):
-                        checkboxToggleLeftClicker = dpg.add_checkbox(label="Toggle", default_value=sharpClass.config["left"]["enabled"], callback=toggleLeftClicker)
+                        checkboxToggleLeftClicker = dpg.add_checkbox(label="Toggle", default_value=sodaClass.config["left"]["enabled"], callback=toggleLeftClicker)
                         buttonBindLeftClicker = dpg.add_button(label="Click to Bind", callback=statusBindLeftClicker)
-                        dropdownLeftMode = dpg.add_combo(label="Mode", items=["Hold", "Always"], default_value=sharpClass.config["left"]["mode"], callback=setLeftMode)
+                        dropdownLeftMode = dpg.add_combo(label="Mode", items=["Hold", "Always"], default_value=sodaClass.config["left"]["mode"], callback=setLeftMode)
 
-                        bind = sharpClass.config["left"]["bind"]
+                        bind = sodaClass.config["left"]["bind"]
                         if bind != 0:
                             dpg.set_item_label(buttonBindLeftClicker, f"Bind: {chr(bind)}")
 
                     dpg.add_spacer(width=75)
 
-                    sliderLeftAverageCPS = dpg.add_slider_int(label="Average CPS", default_value=sharpClass.config["left"]["averageCPS"], min_value=1, callback=setLeftAverageCPS)
+                    sliderLeftAverageCPS = dpg.add_slider_int(label="Average CPS", default_value=sodaClass.config["left"]["averageCPS"], min_value=1, callback=setLeftAverageCPS)
 
                     dpg.add_spacer(width=75)
                     dpg.add_separator()
                     dpg.add_spacer(width=75)
 
-                    checkboxLeftBlockHit = dpg.add_checkbox(label="BlockHit", default_value=sharpClass.config["left"]["blockHit"], callback=toggleLeftBlockHit)
-                    sliderLeftBlockHitChance = dpg.add_slider_int(label="BlockHit Chance", default_value=sharpClass.config["left"]["blockHitChance"], min_value=1, max_value=100, callback=setLeftBlockHitChance)
+                    checkboxLeftBlockHit = dpg.add_checkbox(label="BlockHit", default_value=sodaClass.config["left"]["blockHit"], callback=toggleLeftBlockHit)
+                    sliderLeftBlockHitChance = dpg.add_slider_int(label="BlockHit Chance", default_value=sodaClass.config["left"]["blockHitChance"], min_value=1, max_value=100, callback=setLeftBlockHitChance)
                     dpg.add_text(default_value="Randomly right clicks to do a blockhit (MC version < 1.8.9). This can help reduce damage.\nWarning: Having the amount higher than 50 can cause it to be very hard to move while using the clicker")
                     dpg.add_spacer(width=125)
 
-                    checkboxLeftShakeEffect = dpg.add_checkbox(label="Shake Effect", default_value=sharpClass.config["left"]["shakeEffect"], callback=toggleLeftShakeEffect)
-                    sliderLeftShakeEffectForce = dpg.add_slider_int(label="Shake Effect Force", default_value=sharpClass.config["left"]["shakeEffectForce"], min_value=1, max_value=20, callback=setLeftShakeEffectForce)
+                    checkboxLeftShakeEffect = dpg.add_checkbox(label="Shake Effect", default_value=sodaClass.config["left"]["shakeEffect"], callback=toggleLeftShakeEffect)
+                    sliderLeftShakeEffectForce = dpg.add_slider_int(label="Shake Effect Force", default_value=sodaClass.config["left"]["shakeEffectForce"], min_value=1, max_value=20, callback=setLeftShakeEffectForce)
                     dpg.add_text(default_value="Makes your camera move a little bit when the autoclicker is active!\nThis can help bypass anticheats with strict autoclicker checks.")
                     dpg.add_spacer(width=75)
                     dpg.add_separator()
                     dpg.add_spacer(width=75)
 
-                    inputLeftClickSoundPath = dpg.add_input_text(label="Click Sound Path (empty for no sound)", default_value=sharpClass.config["left"]["soundPath"], hint="Exemple: mysounds/G505.wav", callback=setLeftClickSoundPath)
+                    inputLeftClickSoundPath = dpg.add_input_text(label="Click Sound Path (empty for no sound)", default_value=sodaClass.config["left"]["soundPath"], hint="Exemple: mysounds/G505.wav", callback=setLeftClickSoundPath)
                     dpg.add_text(default_value="Plays a sound when you click!")
                     dpg.add_spacer(width=75)
                     dpg.add_separator()
                     dpg.add_spacer(width=75)
 
-                    checkboxLeftOnlyWhenFocused = dpg.add_checkbox(label="Only In Game", default_value=sharpClass.config["left"]["onlyWhenFocused"], callback=toggleLeftOnlyWhenFocused)
-                    checkBoxLeftBreakBlocks = dpg.add_checkbox(label="Break Blocks", default_value=sharpClass.config["left"]["breakBlocks"], callback=toggleLeftBreakBlocks)
-                    checkboxLeftRMBLock = dpg.add_checkbox(label="RMB-Lock", default_value=sharpClass.config["left"]["RMBLock"], callback=toggleLeftRMBLock)
-                    checkboxLeftWorkInMenus = dpg.add_checkbox(label="Work in Menus", default_value=sharpClass.config["left"]["workInMenus"], callback=toggleLeftWorkInMenus)
-                    checkboxLeftBlatantMode = dpg.add_checkbox(label="Blatant Mode", default_value=sharpClass.config["left"]["blatant"], callback=toggleLeftBlatantMode)
+                    checkboxLeftOnlyWhenFocused = dpg.add_checkbox(label="Only In Game", default_value=sodaClass.config["left"]["onlyWhenFocused"], callback=toggleLeftOnlyWhenFocused)
+                    checkBoxLeftBreakBlocks = dpg.add_checkbox(label="Break Blocks", default_value=sodaClass.config["left"]["breakBlocks"], callback=toggleLeftBreakBlocks)
+                    checkboxLeftRMBLock = dpg.add_checkbox(label="RMB-Lock", default_value=sodaClass.config["left"]["RMBLock"], callback=toggleLeftRMBLock)
+                    checkboxLeftWorkInMenus = dpg.add_checkbox(label="Work in Menus", default_value=sodaClass.config["left"]["workInMenus"], callback=toggleLeftWorkInMenus)
+                    checkboxLeftBlatantMode = dpg.add_checkbox(label="Blatant Mode", default_value=sodaClass.config["left"]["blatant"], callback=toggleLeftBlatantMode)
                 
                     dpg.add_spacer(width=75)
                     dpg.add_separator()
                     dpg.add_spacer(width=75)
 
-                    checkboxLeftAutoRod = dpg.add_checkbox(label="Auto Rod", default_value=sharpClass.config["left"]["AutoRod"], callback=toggleLeftAutoRod)
-                    sliderLeftAutoRodChance = dpg.add_slider_int(label="Auto Rod Chance", default_value=sharpClass.config["left"]["AutoRodChance"], min_value=1, max_value=100, callback=setLeftAutoRodChance)
+                    checkboxLeftAutoRod = dpg.add_checkbox(label="Auto Rod", default_value=sodaClass.config["left"]["AutoRod"], callback=toggleLeftAutoRod)
+                    sliderLeftAutoRodChance = dpg.add_slider_int(label="Auto Rod Chance", default_value=sodaClass.config["left"]["AutoRodChance"], min_value=1, max_value=100, callback=setLeftAutoRodChance)
                     dpg.add_text(default_value="Works like blockhit but instead 'throws' a rod. Change your rod slot in MISC settings.\nIts not recommended to have Rod Change above 15!")
                     dpg.add_spacer(width=75)
                     dpg.add_separator()
@@ -969,39 +972,39 @@ if __name__ == "__main__":
                     dpg.add_spacer(width=75)
 
                     with dpg.group(horizontal=True):
-                        checkboxToggleRightClicker = dpg.add_checkbox(label="Toggle", default_value=sharpClass.config["right"]["enabled"], callback=toggleRightClicker)
+                        checkboxToggleRightClicker = dpg.add_checkbox(label="Toggle", default_value=sodaClass.config["right"]["enabled"], callback=toggleRightClicker)
                         buttonBindRightClicker = dpg.add_button(label="Click to Bind", callback=statusBindRightClicker)
-                        dropdownRightMode = dpg.add_combo(label="Mode", items=["Hold", "Always"], default_value=sharpClass.config["right"]["mode"], callback=setRightMode)
+                        dropdownRightMode = dpg.add_combo(label="Mode", items=["Hold", "Always"], default_value=sodaClass.config["right"]["mode"], callback=setRightMode)
 
-                        bind = sharpClass.config["right"]["bind"]
+                        bind = sodaClass.config["right"]["bind"]
                         if bind != 0:
                             dpg.set_item_label(buttonBindRightClicker, f"Bind: {chr(bind)}")
 
                     dpg.add_spacer(width=75)
 
-                    sliderRightAverageCPS = dpg.add_slider_int(label="Average CPS", default_value=sharpClass.config["right"]["averageCPS"], min_value=1, callback=setRightAverageCPS)
+                    sliderRightAverageCPS = dpg.add_slider_int(label="Average CPS", default_value=sodaClass.config["right"]["averageCPS"], min_value=1, callback=setRightAverageCPS)
 
                     dpg.add_spacer(width=75)
                     dpg.add_separator()
                     dpg.add_spacer(width=75)
 
-                    checkboxRightShakeEffect = dpg.add_checkbox(label="Shake Effect", default_value=sharpClass.config["right"]["shakeEffect"], callback=toggleRightShakeEffect)
-                    sliderRightShakeEffectForce = dpg.add_slider_int(label="Shake Effect Force", default_value=sharpClass.config["right"]["shakeEffectForce"], min_value=1, max_value=20, callback=setRightShakeEffectForce)
+                    checkboxRightShakeEffect = dpg.add_checkbox(label="Shake Effect", default_value=sodaClass.config["right"]["shakeEffect"], callback=toggleRightShakeEffect)
+                    sliderRightShakeEffectForce = dpg.add_slider_int(label="Shake Effect Force", default_value=sodaClass.config["right"]["shakeEffectForce"], min_value=1, max_value=20, callback=setRightShakeEffectForce)
 
                     dpg.add_spacer(width=75)
                     dpg.add_separator()
                     dpg.add_spacer(width=75)
 
-                    inputRightClickSoundPath = dpg.add_input_text(label="Click Sound Path (empty for no sound)", default_value=sharpClass.config["right"]["soundPath"], hint="Exemple: mysounds/G505.wav", callback=setRightClickSoundPath)
+                    inputRightClickSoundPath = dpg.add_input_text(label="Click Sound Path (empty for no sound)", default_value=sodaClass.config["right"]["soundPath"], hint="Exemple: mysounds/G505.wav", callback=setRightClickSoundPath)
 
                     dpg.add_spacer(width=75)
                     dpg.add_separator()
                     dpg.add_spacer(width=75)
 
-                    checkboxRightLMBLock = dpg.add_checkbox(label="LMB-Lock", default_value=sharpClass.config["right"]["LMBLock"], callback=toggleRightLMBLock)
-                    checkboxRightOnlyWhenFocused = dpg.add_checkbox(label="Only In Game", default_value=sharpClass.config["right"]["onlyWhenFocused"], callback=toggleRightOnlyWhenFocused)
-                    checkboxRightWorkInMenus = dpg.add_checkbox(label="Work in Menus", default_value=sharpClass.config["right"]["workInMenus"], callback=toggleRightWorkInMenus)
-                    checkboxRightBlatantMode = dpg.add_checkbox(label="Blatant Mode", default_value=sharpClass.config["right"]["blatant"], callback=toggleRightBlatantMode)
+                    checkboxRightLMBLock = dpg.add_checkbox(label="LMB-Lock", default_value=sodaClass.config["right"]["LMBLock"], callback=toggleRightLMBLock)
+                    checkboxRightOnlyWhenFocused = dpg.add_checkbox(label="Only In Game", default_value=sodaClass.config["right"]["onlyWhenFocused"], callback=toggleRightOnlyWhenFocused)
+                    checkboxRightWorkInMenus = dpg.add_checkbox(label="Work in Menus", default_value=sodaClass.config["right"]["workInMenus"], callback=toggleRightWorkInMenus)
+                    checkboxRightBlatantMode = dpg.add_checkbox(label="Blatant Mode", default_value=sodaClass.config["right"]["blatant"], callback=toggleRightBlatantMode)
                     dpg.add_spacer(width=75)    
                     dpg.add_separator()
                     dpg.add_spacer(width=75)
@@ -1017,7 +1020,7 @@ if __name__ == "__main__":
                     dpg.add_separator()
                     dpg.add_spacer(width=75)
 
-                    checkboxRecorderEnabled = dpg.add_checkbox(label="Enabled", default_value=sharpClass.config["recorder"]["enabled"], callback=toggleRecorder)
+                    checkboxRecorderEnabled = dpg.add_checkbox(label="Enabled", default_value=sodaClass.config["recorder"]["enabled"], callback=toggleRecorder)
 
                     dpg.add_spacer(width=75)
                     dpg.add_separator()
@@ -1034,10 +1037,10 @@ if __name__ == "__main__":
                     averageRecordCPSText = dpg.add_text(default_value="Average CPS of previous Record: ")
                     
                     totalTime = 0
-                    for clickTime in sharpClass.config["recorder"]["record"]:
+                    for clickTime in sodaClass.config["recorder"]["record"]:
                         totalTime += float(clickTime)
 
-                    dpg.set_value(averageRecordCPSText, f"Average CPS of previous Record: {round(len(sharpClass.config['recorder']['record']) / totalTime, 2)}")
+                    dpg.set_value(averageRecordCPSText, f"Average CPS of previous Record: {round(len(sodaClass.config['recorder']['record']) / totalTime, 2)}")
 
                     recordingStatusText = dpg.add_text(default_value="Recording: ")
                     dpg.set_value(recordingStatusText, f"Recording: {recording}")
@@ -1060,7 +1063,7 @@ if __name__ == "__main__":
                         buttonBindHideGUI = dpg.add_button(label="Click to Bind", callback=statusBindHideGUI)
                         hideGUIText = dpg.add_text(default_value="Hide GUI")
 
-                        bind = sharpClass.config["misc"]["bindHideGUI"]
+                        bind = sodaClass.config["misc"]["bindHideGUI"]
                         if bind != 0:
                             dpg.set_item_label(buttonBindHideGUI, f"Bind: {chr(bind)}")
 
@@ -1069,7 +1072,7 @@ if __name__ == "__main__":
                     dpg.add_separator()
                     dpg.add_spacer(width=75)
 
-                    saveSettings = dpg.add_checkbox(label="Save Settings", default_value=sharpClass.config["misc"]["saveSettings"], callback=toggleSaveSettings)
+                    saveSettings = dpg.add_checkbox(label="Save Settings", default_value=sodaClass.config["misc"]["saveSettings"], callback=toggleSaveSettings)
                     saveSettingsTooltip = dpg.add_text(default_value="Attempts to save settings on close.")
                     dpg.add_spacer(width=75)
 
@@ -1078,7 +1081,7 @@ if __name__ == "__main__":
 
                     dpg.add_spacer(width=75)
 
-                    checkboxAlwaysOnTop = dpg.add_checkbox(label="Discord Rich Presence", default_value=sharpClass.config["misc"]["discordRichPresence"], callback=toggleDiscordRPC)
+                    checkboxAlwaysOnTop = dpg.add_checkbox(label="Discord Rich Presence", default_value=sodaClass.config["misc"]["discordRichPresence"], callback=toggleDiscordRPC)
                     dpg.add_text(default_value="Shows your activity status as using Soda v1")
 
                     dpg.add_spacer(width=75)
@@ -1089,16 +1092,16 @@ if __name__ == "__main__":
                         rodBindText = dpg.add_text(default_value="Rod Bind:")
                         buttonBindRodKey = dpg.add_button(label="Click to Bind", callback=statusBindRod)
 
-                        bind = sharpClass.config["misc"]["rodBind"]
+                        bind = sodaClass.config["misc"]["rodBind"]
                         if bind != 0:
                             dpg.set_item_label(buttonBindRodKey, f"Bind: {chr(bind)}")
 
                     dpg.add_text(default_value="Press the binded key to throw a rod")
 
-                    rodSlot = dpg.add_combo(label="Rod Slot", items=["1", "2", "3", "4", "5", "6", "7", "8", "9"], default_value=sharpClass.config["misc"]["rodSlot"], callback=setRodSlot)
+                    rodSlot = dpg.add_combo(label="Rod Slot", items=["1", "2", "3", "4", "5", "6", "7", "8", "9"], default_value=sodaClass.config["misc"]["rodSlot"], callback=setRodSlot)
                     dpg.add_text(default_value="Which slot to switch to when throwing a rod")
 
-                    rodDelay = dpg.add_input_float(label="Rod Delay", default_value=sharpClass.config["misc"]["rodDelay"], min_value=0, max_value=2, callback=setRodDelay)
+                    rodDelay = dpg.add_input_float(label="Rod Delay", default_value=sodaClass.config["misc"]["rodDelay"], min_value=0, max_value=2, callback=setRodDelay)
                     dpg.add_text(default_value="Rod Delay is how long you want to be throwing the rod (Range)")
                     dpg.add_spacer(width=75)
                     dpg.add_separator()
@@ -1107,20 +1110,23 @@ if __name__ == "__main__":
                     with dpg.group(horizontal=True):
                         buttonBindPearlKey = dpg.add_button(label="Click to Bind", callback=statusBindPearl)
 
-                        bind = sharpClass.config["misc"]["pearlBind"]
+                        bind = sodaClass.config["misc"]["pearlBind"]
                         if bind != 0:
                             dpg.set_item_label(buttonBindPearlKey, f"Bind: {chr(bind)}")
 
                     dpg.add_text(default_value="Press the binded key to throw a pearl")
 
-                    dpg.add_combo(label="Pearl Slot", items=["1", "2", "3", "4", "5", "6", "7", "8", "9"], default_value=sharpClass.config["misc"]["pearlSlot"], callback=setPearlSlot)
+                    dpg.add_combo(label="Pearl Slot", items=["1", "2", "3", "4", "5", "6", "7", "8", "9"], default_value=sodaClass.config["misc"]["pearlSlot"], callback=setPearlSlot)
                     dpg.add_text(default_value="Which slot to switch to when throwing a pearl")
 
                     dpg.add_spacer(width=75)
                     dpg.add_separator()
                     dpg.add_spacer(width=75)
 
-                    dpg.add_checkbox(label="Movement Fix (NOT WORKING)", default_value=sharpClass.config["misc"]["movementFix"], callback=toggleMovementFix)
+                    dpg.add_combo(label="Sword Slot", items=["1", "2", "3", "4", "5", "6", "7", "8", "9"], default_value=sodaClass.config["misc"]["swordSlot"], callback=setSwordSlot)
+                    dpg.add_text(default_value="Which slot to switch back to after auto-throwing an item")
+
+                    dpg.add_checkbox(label="Movement Fix (NOT WORKING)", default_value=sodaClass.config["misc"]["movementFix"], callback=toggleMovementFix)
                     dpg.add_spacer(width=75)
                     dpg.add_separator()
                     dpg.add_spacer(width=75)
@@ -1137,7 +1143,7 @@ if __name__ == "__main__":
                     dpg.add_separator()
                     dpg.add_spacer(width=75)
 
-                    dpg.add_checkbox(label="Enable Potions", default_value=sharpClass.config["potions"]["enabled"], callback=togglePotions)
+                    dpg.add_checkbox(label="Enable Potions", default_value=sodaClass.config["potions"]["enabled"], callback=togglePotions)
 
                     dpg.add_spacer(width=75)
                     dpg.add_separator()
@@ -1147,7 +1153,7 @@ if __name__ == "__main__":
                         potBindText = dpg.add_text(default_value="Pot Bind:")
                         buttonBindPotKey = dpg.add_button(label="Click to Bind", callback=statusBindPot)
 
-                        bind = sharpClass.config["potions"]["potBind"]
+                        bind = sodaClass.config["potions"]["potBind"]
                         if bind != 0:
                             dpg.set_item_label(buttonBindPotKey, f"Bind: {chr(bind)}")
                     dpg.add_text(default_value="Keybind which throws the potion")
@@ -1159,7 +1165,7 @@ if __name__ == "__main__":
                         potResetBindText = dpg.add_text(default_value="Pot Reset Bind:")
                         buttonBindPotResetKey = dpg.add_button(label="Click to Bind", callback=statusBindPotReset)
 
-                        bind = sharpClass.config["potions"]["potResetBind"]
+                        bind = sodaClass.config["potions"]["potResetBind"]
                         if bind != 0:
                             dpg.set_item_label(buttonBindPotResetKey, f"Bind: {chr(bind)}")
 
@@ -1170,17 +1176,17 @@ if __name__ == "__main__":
                     dpg.add_spacer(width=75)
                     # Lowest Slot Slider
 
-                    dpg.add_slider_int(label="Lowest Slot", default_value=sharpClass.config["potions"]["lowestSlot"], min_value=1, max_value=9, callback=setLowestSlot)
+                    dpg.add_slider_int(label="Lowest Slot", default_value=sodaClass.config["potions"]["lowestSlot"], min_value=1, max_value=9, callback=setLowestSlot)
                     dpg.add_text(default_value="First slot to throw from")
 
                     # Highest Slot
                     dpg.add_spacer(width=75)
-                    dpg.add_slider_int(label="Highest Slot", default_value=sharpClass.config["potions"]["highestSlot"], min_value=1, max_value=9, callback=setHighestSlot)
+                    dpg.add_slider_int(label="Highest Slot", default_value=sodaClass.config["potions"]["highestSlot"], min_value=1, max_value=9, callback=setHighestSlot)
                     dpg.add_text(default_value="Max slot to switch to when throwing")
 
                     # Switch Delay
                     dpg.add_spacer(width=75)
-                    potDelay = dpg.add_input_float(label="Pot Delay", default_value=sharpClass.config["potions"]["throwDelay"], min_value=0, max_value=2, callback=setPotDelay)
+                    potDelay = dpg.add_input_float(label="Pot Delay", default_value=sodaClass.config["potions"]["throwDelay"], min_value=0, max_value=2, callback=setPotDelay)
                     dpg.add_text("Pot Delay is how long do you want to wait after switching to throw the potion (Higher this is, the less chance of failing to throw there will be, but it will also add more delay which can be bad during PvP)")
                     
                     dpg.add_spacer(width=75)    
