@@ -295,7 +295,7 @@ class soda():
                 win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTUP, 0, 0)
                 time.sleep(0.6)
 
-                win32api.keybd_event(0x31, 0, 0, 0)
+                win32api.keybd_event(char_to_vk.get(self.config["misc"]["swordSlot"]), 0, 0, 0)
                 self.current_pot_slot += 1
 
 
@@ -452,7 +452,7 @@ class soda():
         time.sleep(0.02)
         win32api.SendMessage(self.window, win32con.WM_RBUTTONUP, 0, 0)
         # Switch back to slot 1
-        VK_2 = 0x31
+        VK_2 = char_to_vk.get(self.config["misc"]["swordSlot"], None)
         # Press the '2' key
         win32api.keybd_event(VK_2, 0, 0, 0)
         time.sleep(0.8)
@@ -1189,7 +1189,7 @@ if __name__ == "__main__":
                     dpg.add_spacer(width=75)
 
                     dpg.add_combo(label="Theme", items=["light", "dark", "sakura", "purple", "blue", "lightblue", "orange", "red", "beach_green", "forest_green", "custom"], default_value=sodaClass.config["misc"]["theme"], callback=setTheme)
-                    dpg.add_text(default_value="Changes the theme of the GUI")
+                    dpg.add_text(default_value="Changes the theme of the GUI (Requires Restart!)")
 
                     dpg.add_slider_int(label="Red", default_value=sodaClass.config["misc"]["red"], min_value=0, max_value=255, callback=setRed)
                     dpg.add_slider_int(label="Green", default_value=sodaClass.config["misc"]["green"], min_value=0, max_value=255, callback=setGreen)
@@ -1198,6 +1198,7 @@ if __name__ == "__main__":
                     dpg.add_spacer(width=75)
                     dpg.add_separator()
                     dpg.add_spacer(width=75)
+
                     creditsText = dpg.add_text(default_value="Credits: 4urxra (Developer)")
                     githubText = dpg.add_text(default_value="https://github.com/Dream23322/Soda-Autoclicker/")
 
