@@ -98,6 +98,10 @@ class soda():
                 "pearlSlot": "8",
                 "movementFix": False,
                 "swordSlot": "1",
+                "theme": "purple",
+                "red": 0,
+                "green": 0,
+                "blue": 0,
             },
             "potions": {
                 "enabled": False,
@@ -861,6 +865,9 @@ if __name__ == "__main__":
         def togglePotions(id:int, value: bool):
             sodaClass.config["potions"]["enabled"] = value
 
+        def setTheme(id: int, value: str):
+            sodaClass.config["misc"]["theme"] = value
+
         def stopRecording():
             global recording
 
@@ -883,6 +890,15 @@ if __name__ == "__main__":
 
                 waitingForKeyHideGUI = True
 
+        # set RGB
+        def setRed(id: int, value: int):
+            sodaClass.config["misc"]["red"] = value
+
+        def setGreen(id: int, value: int):
+            sodaClass.config["misc"]["green"] = value
+
+        def setBlue(id: int, value: int):
+            sodaClass.config["misc"]["blue"] = value 
         def setBindHideGUI(id: int, value: str):
             global waitingForKeyHideGUI
 
@@ -906,14 +922,52 @@ if __name__ == "__main__":
 
         def toggleDiscordRPC(id: int, value: bool):
             sodaClass.config["misc"]["discordRichPresence"] = value
+        def themeToRGB(theme: str):
+            try:
+                themeMap = {
+                    "light": (250, 250, 250),
+                    "dark": (40, 40, 40),
+                    "sakura": (217, 156, 195),
+                    "purple": (181, 92, 224),
+                    "blue": (58, 110, 230),
+                    "lightblue": (113, 190, 235),
+                    "orange": (232, 165, 22),
+                    "red": (222, 90, 90),
+                    "beach_green": (133, 207, 182),
+                    "forest_green": (51, 120, 78),
+                }
+
+                return themeMap[theme]
+            except:
+                return None
+        with dpg.theme() as container_theme:
+            if(sodaClass.config["misc"]["theme"] != "custom"):
+                rgb_data = themeToRGB(sodaClass.config["misc"]["theme"])
+            else:
+                rgb_data = (sodaClass.config["misc"]["red"], sodaClass.config["misc"]["green"], sodaClass.config["misc"]["blue"])
+            with dpg.theme_component(dpg.mvAll):
+                dpg.add_theme_color(dpg.mvThemeCol_Tab, rgb_data, category=dpg.mvThemeCat_Core)
+                dpg.add_theme_color(dpg.mvThemeCol_TabHovered, rgb_data, category=dpg.mvThemeCat_Core)
+                dpg.add_theme_color(dpg.mvThemeCol_TabActive, rgb_data, category=dpg.mvThemeCat_Core),
+                dpg.add_theme_color(dpg.mvThemeCol_CheckMark, rgb_data, category=dpg.mvThemeCat_Core)
+                dpg.add_theme_color(dpg.mvThemeCol_SliderGrab, rgb_data, category=dpg.mvThemeCat_Core)
+                dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered, rgb_data, category=dpg.mvThemeCat_Core)
+                dpg.add_theme_color(dpg.mvThemeCol_ScrollbarGrab, rgb_data, category=dpg.mvThemeCat_Core)
+                if(sodaClass.config["misc"]["theme"] == "light"):
+                    # Set all items to white except text
+                    dpg.add_theme_color(dpg.mvThemeCol_Text, (0, 0, 0), category=dpg.mvThemeCat_Core)
+                    dpg.add_theme_color(dpg.mvThemeCol_WindowBg, (230, 230, 230), category=dpg.mvThemeCat_Core)
+                    dpg.add_theme_color(dpg.mvThemeCol_FrameBg, rgb_data, category=dpg.mvThemeCat_Core)
+                    dpg.add_theme_color(dpg.mvThemeCol_Button, rgb_data, category=dpg.mvThemeCat_Core)
 
         dpg.create_viewport(title=f"[v{version}] Soda - AutoClicker.ontop", width=860, height=645)
 
         with dpg.window(tag="Primary Window"):
+            dpg.bind_item_theme("Primary Window", container_theme)
             with dpg.tab_bar():
                 with dpg.tab(label="Left Clicker"):
                     dpg.add_spacer(width=75)
-
+                    
                     with dpg.group(horizontal=True):
                         checkboxToggleLeftClicker = dpg.add_checkbox(label="Toggle", default_value=sodaClass.config["left"]["enabled"], callback=toggleLeftClicker)
                         buttonBindLeftClicker = dpg.add_button(label="Click to Bind", callback=statusBindLeftClicker)
@@ -1125,8 +1179,22 @@ if __name__ == "__main__":
 
                     dpg.add_combo(label="Sword Slot", items=["1", "2", "3", "4", "5", "6", "7", "8", "9"], default_value=sodaClass.config["misc"]["swordSlot"], callback=setSwordSlot)
                     dpg.add_text(default_value="Which slot to switch back to after auto-throwing an item")
-
+                    dpg.add_spacer(width=75)
+                    dpg.add_separator()
+                    dpg.add_spacer(width=75)
                     dpg.add_checkbox(label="Movement Fix (NOT WORKING)", default_value=sodaClass.config["misc"]["movementFix"], callback=toggleMovementFix)
+                    
+                    dpg.add_spacer(width=75)
+                    dpg.add_separator()
+                    dpg.add_spacer(width=75)
+
+                    dpg.add_combo(label="Theme", items=["light", "dark", "sakura", "purple", "blue", "lightblue", "orange", "red", "beach_green", "forest_green", "custom"], default_value=sodaClass.config["misc"]["theme"], callback=setTheme)
+                    dpg.add_text(default_value="Changes the theme of the GUI")
+
+                    dpg.add_slider_int(label="Red", default_value=sodaClass.config["misc"]["red"], min_value=0, max_value=255, callback=setRed)
+                    dpg.add_slider_int(label="Green", default_value=sodaClass.config["misc"]["green"], min_value=0, max_value=255, callback=setGreen)
+                    dpg.add_slider_int(label="Blue", default_value=sodaClass.config["misc"]["blue"], min_value=0, max_value=255, callback=setBlue)
+                    
                     dpg.add_spacer(width=75)
                     dpg.add_separator()
                     dpg.add_spacer(width=75)
