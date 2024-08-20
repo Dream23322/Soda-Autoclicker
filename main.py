@@ -1,11 +1,14 @@
-version = "1.3"
+version = "1.4"
 try:
-    import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, base64, re, keyboard
+    import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, re, keyboard
     import dearpygui.dearpygui as dpg
     from pypresence import Presence
 except:
     from os import system
     system("pip install -r requirements.txt")
+    import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, re, keyboard
+    import dearpygui.dearpygui as dpg
+    from pypresence import Presence
 
 current_key = None
 class configListener(dict): # Detecting changes to config
