@@ -7,6 +7,8 @@ The best autoclicker for minecraft 1.8.9 pvp
 
 This Autoclicker was based off sharp autoclicker, all credits to the dev of sharp
 
+Sharp Autoclicker Github: github.com/B4mb0u/Sharp
+
 #
 
 Features:
@@ -24,6 +26,8 @@ Jitter Simulation
 Block Hit
 
 Auto Rod
+
+Destruct
 
 
 # If you want to make it an exe yourself
