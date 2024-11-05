@@ -10,6 +10,11 @@ This Autoclicker was based off sharp autoclicker, all credits to the dev of shar
 Sharp Autoclicker Github: github.com/B4mb0u/Sharp
 
 #
+# Sorry if there aren't many updates
+#
+I have been busy with school and other projects, but trust me I will keep updating Soda-Autoclicker, just give me time.
+
+#
 
 Features:
 
