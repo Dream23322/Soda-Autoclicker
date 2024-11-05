@@ -10,15 +10,12 @@ except:
     import dearpygui.dearpygui as dpg
     from pypresence import Presence
 
-current_key = None
 class configListener(dict): # Detecting changes to config
     def __init__(self, initialDict):
         for k, v in initialDict.items():
             if isinstance(v, dict):
                 initialDict[k] = configListener(v)
 
-
-              
         super().__init__(initialDict)
 
     def __setitem__(self, item, value):
@@ -93,6 +90,7 @@ class soda():
                 "saveSettings": True,
                 "guiHidden": False,
                 "bindHideGUI": 0,
+                "consoleFaker": "NullBind",
                 "discordRichPresence": False,
                 "rodBind": 0,
                 "rodDelay": 0.2,
@@ -570,7 +568,12 @@ class soda():
         while True:
             if win32api.GetAsyncKeyState(self.config["misc"]["bindHideGUI"]) != 0:
                 self.config["misc"]["guiHidden"] = not self.config["misc"]["guiHidden"]
-
+                if(self.config["misc"]["consoleFaker"] == "NullBind"):
+                    print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nNullBind - Rampage 1.0.4 Beta\n\n\n\n\n\n")
+                elif(self.config["misc"]["consoleFaker"] == "Optimiser"):
+                    print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nEntropy Optimiser - Eagle 1.0.4 Beta\n\n\n\n\n\n")
+                else:
+                    print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nBetterRGB - Hawk 1.0.4 Beta\n\n\n\n\n\n")
                 if not self.config["misc"]["guiHidden"]:
                     win32gui.ShowWindow(guiWindows, win32con.SW_SHOW)
                 else:
@@ -871,6 +874,9 @@ if __name__ == "__main__":
         def setTheme(id: int, value: str):
             sodaClass.config["misc"]["theme"] = value
 
+        def setConsoleFaker(id: int, value: str):
+            sodaClass.config["misc"]["consoleFaker"] = value
+
         def stopRecording():
             global recording
 
@@ -1123,6 +1129,9 @@ if __name__ == "__main__":
                         bind = sodaClass.config["misc"]["bindHideGUI"]
                         if bind != 0:
                             dpg.set_item_label(buttonBindHideGUI, f"Bind: {chr(bind)}")
+
+                
+                    consoleFaker = dpg.add_combo(label="Console Faker", default_value=sodaClass.config["misc"]["consoleFaker"], items=["NullBind", "Optimiser", "CustomRGB"], callback=setConsoleFaker)
 
 
                     dpg.add_spacer(width=75)
