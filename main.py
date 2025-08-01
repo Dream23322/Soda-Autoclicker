@@ -74,7 +74,8 @@ class soda():
                 "shakeEffectForce": False,
                 "soundPath": "",
                 "workInMenus": False,
-                "blatant": False
+                "blatant": False,
+                "Items": False
             },
             "recorder": {
                 "enabled": False,
@@ -154,16 +155,19 @@ class soda():
     def discordRichPresence(self):
         asyncio.set_event_loop(asyncio.new_event_loop())
 
-        discordRPC = Presence("1044302531272126534")
+        discordRPC = Presence("1400790093312032808")
         discordRPC.connect()
 
         startTime = time.time()
 
         states = [
-            "Being the best player in the world",
+            "V1.5?",
             "Get shit on <3",
-            "Herro! Is anybody home?",
-            "CatClicker",
+            "Clicks sponsored by 4urxra",
+            "Quick Paws",
+            "Simply Aura",
+            "I'm gonna steal ur street sign :3",
+            "I could use this for advertising 🤔"
         ]
 
         while True:
@@ -469,12 +473,14 @@ class soda():
     def rightClick(self, focused):
         if focused != None:
             win32api.SendMessage(self.window, win32con.WM_RBUTTONDOWN, 0, 0)
-            time.sleep(0.02)
-            win32api.SendMessage(self.window, win32con.WM_RBUTTONUP, 0, 0)
+            if not self.config["right"]["items"]:
+                time.sleep(0.02)
+                win32api.SendMessage(self.window, win32con.WM_RBUTTONUP, 0, 0)
         else:
             win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTDOWN, 0, 0)
-            time.sleep(0.02)
-            win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTUP, 0, 0)
+            if not self.config["right"]["items"]:
+                time.sleep(0.02)
+                win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTUP, 0, 0)
 
         if self.config["right"]["soundPath"] != "" and os.path.isfile(self.config["right"]["soundPath"]):
             winsound.PlaySound(self.config["right"]["soundPath"], winsound.SND_ASYNC)
