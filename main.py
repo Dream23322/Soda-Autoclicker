@@ -821,6 +821,9 @@ if __name__ == "__main__":
         def toggleRightBlatantMode(id: int, value: bool):
             sodaClass.config["right"]["blatant"] = value
 
+        def toggleRightItems(id: int, value: bool):
+            sodaClass.config["right"]["items"] = value
+
         def toggleRecorder(id: int, value: bool):
             sodaClass.config["recorder"]["enabled"] = value
 
@@ -1081,6 +1084,7 @@ if __name__ == "__main__":
                     checkboxRightOnlyWhenFocused = dpg.add_checkbox(label="Only In Game", default_value=sodaClass.config["right"]["onlyWhenFocused"], callback=toggleRightOnlyWhenFocused)
                     checkboxRightWorkInMenus = dpg.add_checkbox(label="Work in Menus", default_value=sodaClass.config["right"]["workInMenus"], callback=toggleRightWorkInMenus)
                     checkboxRightBlatantMode = dpg.add_checkbox(label="Blatant Mode", default_value=sodaClass.config["right"]["blatant"], callback=toggleRightBlatantMode)
+                    checkboxRightItems = dpg.add_checkbox(label="Items", default_value=sodaClass.config["right"]["items"], callback=toggleRightItems)
                     dpg.add_spacer(width=75)    
                     dpg.add_separator()
                     dpg.add_spacer(width=75)
