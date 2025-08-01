@@ -1,12 +1,12 @@
 version = "1.5"
 try:
-    import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, re, keyboard
+    import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, re, keyboard, shutil
     import dearpygui.dearpygui as dpg
     from pypresence import Presence
 except:
     from os import system
     system("pip install -r requirements.txt")
-    import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, re, keyboard
+    import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, re, keyboard, shutil
     import dearpygui.dearpygui as dpg
     from pypresence import Presence
 
@@ -126,6 +126,26 @@ class soda():
             os.makedirs(folder_path, exist_ok=True)
             print("Created Soda Folder in User Profile:", folder_path)
 
+        if not os.path.exists(os.path.join(folder_path, "resource")):
+            # Download resource folder from github (https://github.com/Dream23322/Soda-Autoclicker/tree/main/resource)
+            try:
+                print("====================\nInstalling\n====================")
+                time.sleep(1)
+                print("Cloning from github")
+                os.makedirs(os.path.join(folder_path, "temp"), exist_ok=True)
+                os.makedirs(os.path.join(folder_path, "resource"), exist_ok=True)
+                subprocess.run(["git", "clone", "https://github.com/Dream23322/Soda-Autoclicker.git", os.path.join(folder_path, "temp")], check=True)
+                print("Cloned from github")
+                print("Moving resource folder")
+                subprocess.run(["copy", "/V", os.path.join(folder_path, "temp", "resource", "*"), os.path.join(folder_path, "resource")], shell=True, check=True)
+                print("Moved resource folder")
+                subprocess.run(["del", "/Q", "/F", "/S", os.path.join(folder_path, "temp")], shell=True, check=True)
+                shutil.rmtree(os.path.join(folder_path, "temp"), ignore_errors=True)
+                print("Installed")
+
+            except subprocess.CalledProcessError as e:
+                print("Failed to clone resource folder from github:", e)
+
         # Load config if the file exists
         file_path = os.path.join(folder_path, "config.json")
         if os.path.isfile(file_path):
@@ -147,7 +167,7 @@ class soda():
             except Exception as e:
                 print("Error loading config:", e)
 
-
+        configs = []
         self.config = configListener(self.config)
 
         self.record = itertools.cycle(self.config["recorder"]["record"])
@@ -612,6 +632,46 @@ class soda():
                     time.sleep(0.001)
 
             time.sleep(0.001)
+
+    def getConfigs(self):
+        configs = []
+        folder = os.path.join(os.environ['USERPROFILE'], 'soda', 'resource')
+
+        print("All files:", os.listdir(folder))
+
+        for file in os.listdir(folder):
+            file_path = os.path.join(folder, file)
+
+            if not file.endswith(".json"):
+                continue
+
+            try:
+                with open(file_path, encoding="utf-8") as f:
+                    config = json.load(f)
+                config["filename"] = os.path.splitext(file)[0]  # add filename for loading
+                configs.append(config)
+                print("Loaded config:", file)
+            except Exception as e:
+                print(f"⚠️ Failed to load {file}: {e}")
+        self.configs = configs
+        return configs
+    
+    def loadConfig(self, configID: int):
+        print("Config Amount", len(self.configs))
+        print("Config ID", configID - 233)
+        config = self.configs[configID - 233]
+        print(f"Applying Config: {config['filename']}")
+        file_path = os.path.join(os.environ['USERPROFILE'], 'soda', 'resource', f"{config['filename']}.json")
+        if os.path.isfile(file_path):
+            try:
+                with open(file_path, encoding="utf-8") as f:
+                    config = json.load(f)
+                    sodaClass.config = config
+                print("Loaded config from:", file_path)
+                isConfigOk = True
+            except Exception as e:
+                print(f"Failed to load config from {file_path}: {e}")
+                isConfigOk = False
 
 if __name__ == "__main__":
     try:
@@ -1312,6 +1372,36 @@ if __name__ == "__main__":
 
                     creditsText = dpg.add_text(default_value="Credits: 4urxra (Developer)")
                     githubText = dpg.add_text(default_value="https://github.com/Dream23322/Soda-Autoclicker/")
+
+                with dpg.tab(label="Config Manager"):
+                    # Load all configs from the config folder
+
+                    dpg.add_spacer(width=75)
+                    dpg.add_text(default_value="Config Manager")
+                    dpg.add_separator()
+                    dpg.add_spacer(width=100)
+                    
+                    configs = sodaClass.getConfigs()
+
+                    if len(configs) == 0:
+                        dpg.add_text(default_value="No configs found!")
+                    else:
+                        dpg.add_text(default_value="Configs found:")
+                        dpg.add_spacer(width=75)
+                        dpg.add_separator()
+                        dpg.add_spacer(width=75)
+                        for config in configs:
+                            with dpg.group():
+                                # Display name
+                                dpg.add_text(default_value=config["displayName"])
+                                dpg.add_text(default_value=f"Author: {config['Author']}")
+                                dpg.add_text(default_value=f"Description: {config['description']}")
+                                dpg.add_button(label="Load", callback=sodaClass.loadConfig, user_data=0)
+                                dpg.add_spacer(width=75)
+                                dpg.add_separator()
+                                dpg.add_spacer(width=75)
+
+                    dpg.add_spacer(width=75)
 
         with dpg.theme() as global_theme:
             with dpg.theme_component(dpg.mvAll):

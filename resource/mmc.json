@@ -3,12 +3,12 @@
         "enabled": true,
         "mode": "Hold",
         "bind": 82,
-        "averageCPS": 18,
+        "averageCPS": 16,
         "onlyWhenFocused": true,
         "breakBlocks": true,
         "RMBLock": false,
         "blockHit": true,
-        "blockHitChance": 6,
+        "blockHitChance": 7,
         "shakeEffect": false,
         "shakeEffectForce": 5,
         "soundPath": "",
@@ -21,7 +21,7 @@
         "enabled": true,
         "mode": "Hold",
         "bind": 89,
-        "averageCPS": 30,
+        "averageCPS": 16,
         "onlyWhenFocused": true,
         "LMBLock": false,
         "shakeEffect": false,
@@ -29,7 +29,7 @@
         "soundPath": "",
         "workInMenus": false,
         "blatant": false,
-        "items": true
+        "items": false
     },
     "recorder": {
         "enabled": false,
@@ -51,13 +51,13 @@
         "discordRichPresence": true,
         "rodBind": 88,
         "longRod": true,
-        "rodDelay": 0.2,
+        "rodDelay": 0.25,
         "rodSlot": "2",
         "pearlBind": 0,
         "pearlSlot": "8",
         "movementFix": false,
         "swordSlot": "1",
-        "theme": "sakura",
+        "theme": "beach_green",
         "red": 0,
         "green": 0,
         "blue": 0
@@ -71,8 +71,8 @@
         "lowestSlot": 1,
         "highestSlot": 9
     },
-    "filename": "hypixel",
-    "displayName": "Hypixel",
-    "description": "Config for hypixel.net - V1.5",
+    "filename": "mmc",
+    "displayName": "Minemen Club",
+    "description": "Config for mmc - V1.5",
     "Author": "4urxra"
 }
