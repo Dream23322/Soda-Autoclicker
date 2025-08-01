@@ -16,23 +16,23 @@ I have been busy with school and other projects, but trust me I will keep updati
 
 #
 
-Features:
+### Features:
 
-Random Clicks
+- Random Clicks
 
-Fast Autoclicker
+- Fast Autoclicker
 
-Block break
+- Block break
 
-Mouse Lock
+- Mouse Lock
 
-Jitter Simulation
+- Jitter Simulation
 
-Block Hit
+- Block Hit
 
-Auto Rod
+- Auto Rod
 
-Destruct
+- Destruct
 
 
 # If you want to make it an exe yourself

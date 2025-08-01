@@ -1,4 +1,4 @@
-version = "1.4"
+version = "1.5"
 try:
     import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, re, keyboard
     import dearpygui.dearpygui as dpg
@@ -93,6 +93,7 @@ class soda():
                 "consoleFaker": "NullBind",
                 "discordRichPresence": False,
                 "rodBind": 0,
+                "longRod": False,
                 "rodDelay": 0.2,
                 "rodSlot": "2",
                 "pearlBind": 0,
@@ -228,7 +229,7 @@ class soda():
                     threading.Thread(target=self.leftClick, args=(None,), daemon=True).start()
 
             time.sleep(delay)
-    def doRod(self):
+    def doRod(self, val):
         # Switch to the rod slot
         char_to_vk = {
             '0': 0x30,
@@ -254,7 +255,13 @@ class soda():
         win32api.SendMessage(self.window, win32con.WM_RBUTTONDOWN, 0, 0)
         time.sleep(0.02)
         win32api.SendMessage(self.window, win32con.WM_RBUTTONUP, 0, 0)
-        time.sleep(float(self.config["misc"]["rodDelay"]))  # Brief pause to simulate a key press
+        dly = float(self.config["misc"]["rodDelay"]) * 2 if val and self.config["misc"]["longRod"] else float(self.config["misc"]["rodDelay"])
+        # dly = 0
+        # if (val and self.config["misc"]["longRod"]):
+        #     dly = float(self.config["misc"]["rodDelay"]) * 2
+        # else:
+        #     dly = float(self.config["misc"]["rodDelay"])
+        time.sleep(dly)  # Brief pause to simulate a key press
         # Switch back to slot 1
         VK_2 = 0x31
 
@@ -324,7 +331,7 @@ class soda():
 
             if self.config["left"]["AutoRod"] or (self.config["left"]["AutoRod"] and self.config["right"]["enabled"] and self.config["right"]["RMBLock"] and not win32api.GetAsyncKeyState(0x01) < 0):
                 if random.uniform(0, 1) <= self.config["left"]["AutoRodChance"] / 100.0:
-                    self.doRod()
+                    self.doRod(False)
         else:
             if self.config["left"]["breakBlocks"]:
                 # time.sleep(0.02)
@@ -343,7 +350,7 @@ class soda():
 
             if self.config["left"]["AutoRod"] or (self.config["left"]["AutoRod"] and self.config["right"]["enabled"] and self.config["right"]["RMBLock"] and not win32api.GetAsyncKeyState(0x01) < 0):
                 if random.uniform(0, 1) <= self.config["left"]["AutoRodChance"] / 100.0:
-                    self.doRod()
+                    self.doRod(False)
 
         if self.config["left"]["soundPath"] != "" and os.path.isfile(self.config["left"]["soundPath"]):
             winsound.PlaySound(self.config["left"]["soundPath"], winsound.SND_ASYNC)
@@ -549,7 +556,7 @@ class soda():
     def bindListener(self):
         while True:
             if win32api.GetAsyncKeyState(self.config["misc"]["rodBind"]) != 0 and self.isFocused("left", "onlyWhenFocused", "workInMenus"):
-                self.doRod()
+                self.doRod(True)
             elif win32api.GetAsyncKeyState(self.config["misc"]["pearlBind"]) != 0 and self.isFocused("left", "onlyWhenFocused", "workInMenus"):
                 self.doPearl()
             # Do movement correction
@@ -619,13 +626,12 @@ if __name__ == "__main__":
 
         def setBindLeftClicker(id: int, value: str):
             global waitingForKeyLeft
-
             if waitingForKeyLeft:
-                sodaClass.config["left"]["bind"] = value
-
-                dpg.set_item_label(buttonBindLeftClicker, f"Bind: {chr(value)}")
+                key = keyboard.read_event(suppress=True).name  # Get actual key name
+                virtual_key = ord(key.upper())  # Convert to virtual key code
+                sodaClass.config["left"]["bind"] = virtual_key
+                dpg.set_item_label(buttonBindLeftClicker, f"Bind: {key.upper()}")
                 dpg.delete_item("Left Bind Handler")
-
                 waitingForKeyLeft = False
 
         def setLeftMode(id: int, value: str):
@@ -689,13 +695,12 @@ if __name__ == "__main__":
 
         def setBindRightClicker(id: int, value: str):
             global waitingForKeyRight
-
             if waitingForKeyRight:
-                sodaClass.config["right"]["bind"] = value
-
-                dpg.set_item_label(buttonBindRightClicker, f"Bind: {chr(value)}")
+                key = keyboard.read_event(suppress=True).name
+                virtual_key = ord(key.upper())
+                sodaClass.config["right"]["bind"] = virtual_key
+                dpg.set_item_label(buttonBindRightClicker, f"Bind: {key.upper()}")
                 dpg.delete_item("Right Bind Handler")
-
                 waitingForKeyRight = False
         def statusBindRod(id: int):
             global waitingForKeyRight
@@ -711,11 +716,11 @@ if __name__ == "__main__":
         def setBindRod(id: int, value: str):
             global waitingForKeyRight
             if waitingForKeyRight:
-                sodaClass.config["misc"]["rodBind"] = value
-
-                dpg.set_item_label(buttonBindRodKey, f"Bind: {chr(value)}")
+                key = keyboard.read_event(suppress=True).name
+                virtual_key = ord(key.upper())
+                sodaClass.config["misc"]["rodBind"] = virtual_key
+                dpg.set_item_label(buttonBindRodKey, f"Bind: {key.upper()}")
                 dpg.delete_item("Rod Bind Handler")
-
                 waitingForKeyRight = False
 
         def statusBindPearl(id: int):
@@ -731,11 +736,11 @@ if __name__ == "__main__":
         def setBindPearl(id: int, value: str):
             global waitingForKeyRight
             if waitingForKeyRight:
-                sodaClass.config["misc"]["pearlBind"] = value
-
-                dpg.set_item_label(buttonBindPearlKey, f"Bind: {chr(value)}")
+                key = keyboard.read_event(suppress=True).name
+                virtual_key = ord(key.upper())
+                sodaClass.config["misc"]["pearlBind"] = virtual_key
+                dpg.set_item_label(buttonBindPearlKey, f"Bind: {key.upper()}")
                 dpg.delete_item("Pearl Bind Handler")
-
                 waitingForKeyRight = False
 
         def statusBindPot(id: int):
@@ -751,11 +756,11 @@ if __name__ == "__main__":
         def setBindPot(id: int, value: str):
             global waitingForKeyRight
             if waitingForKeyRight:
-                sodaClass.config["potions"]["potBind"] = value
-
-                dpg.set_item_label(buttonBindPotKey, f"Bind: {chr(value)}")
+                key = keyboard.read_event(suppress=True).name
+                virtual_key = ord(key.upper())
+                sodaClass.config["potions"]["potBind"] = virtual_key
+                dpg.set_item_label(buttonBindPotKey, f"Bind: {key.upper()}")
                 dpg.delete_item("Pot Bind Handler")
-
                 waitingForKeyRight = False
 
         def statusBindPotReset(id: int):
@@ -771,12 +776,12 @@ if __name__ == "__main__":
         def setBindPotReset(id: int, value: str):
             global waitingForKeyRight
             if waitingForKeyRight:
-                sodaClass.config["potions"]["potResetBind"] = value
-
-                dpg.set_item_label(buttonBindPotResetKey, f"Bind: {chr(value)}")
+                key = keyboard.read_event(suppress=True).name
+                virtual_key = ord(key.upper())
+                sodaClass.config["potions"]["potResetBind"] = virtual_key
+                dpg.set_item_label(buttonBindPotResetKey, f"Bind: {key.upper()}")
                 dpg.delete_item("Pot Reset Bind Handler")
-
-                waitingForKeyRight = False 
+                waitingForKeyRight = False
         def setRodSlot(id: int, value: str):
             sodaClass.config["misc"]["rodSlot"] = value
         def setSwordSlot(id: int, value: str):
@@ -856,6 +861,9 @@ if __name__ == "__main__":
         def setRodDelay(id: int, value: float):
             sodaClass.config["misc"]["rodDelay"] = value
 
+        def setLongRod(id: int, value: bool):
+            sodaClass.config["misc"]["longRod"] = value
+
         def setLowestSlot(id: int, value: int):
             sodaClass.config["potions"]["lowestSlot"] = value
 
@@ -910,13 +918,12 @@ if __name__ == "__main__":
             sodaClass.config["misc"]["blue"] = value 
         def setBindHideGUI(id: int, value: str):
             global waitingForKeyHideGUI
-
             if waitingForKeyHideGUI:
-                sodaClass.config["misc"]["bindHideGUI"] = value
-
-                dpg.set_item_label(buttonBindHideGUI, f"Bind: {chr(value)}")
+                key = keyboard.read_event(suppress=True).name
+                virtual_key = ord(key.upper())
+                sodaClass.config["misc"]["bindHideGUI"] = virtual_key
+                dpg.set_item_label(buttonBindHideGUI, f"Bind: {key.upper()}")
                 dpg.delete_item("Hide GUI Bind Handler")
-
                 waitingForKeyHideGUI = False
 
 
@@ -1163,6 +1170,9 @@ if __name__ == "__main__":
                             dpg.set_item_label(buttonBindRodKey, f"Bind: {chr(bind)}")
 
                     dpg.add_text(default_value="Press the binded key to throw a rod")
+
+                    dpg.add_checkbox(label="Long Rod", default_value=sodaClass.config["misc"]["longRod"], callback=setLongRod)
+                    dpg.add_text(default_value="Long Rod makes it so when a rod is thrown using the bind, it will throw it further (doubles the rod delay)")
 
                     rodSlot = dpg.add_combo(label="Rod Slot", items=["1", "2", "3", "4", "5", "6", "7", "8", "9"], default_value=sodaClass.config["misc"]["rodSlot"], callback=setRodSlot)
                     dpg.add_text(default_value="Which slot to switch to when throwing a rod")
