@@ -1,6 +1,6 @@
 {
     "left": {
-        "enabled": true,
+        "enabled": false,
         "mode": "Hold",
         "bind": 82,
         "averageCPS": 18,
@@ -18,7 +18,7 @@
         "AutoRodChance": 10
     },
     "right": {
-        "enabled": true,
+        "enabled": false,
         "mode": "Hold",
         "bind": 89,
         "averageCPS": 30,
