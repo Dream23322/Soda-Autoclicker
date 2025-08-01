@@ -40,7 +40,7 @@ class configListener(dict): # Detecting changes to config
                     pass
 
         if sodaClass.config["misc"]["saveSettings"]:
-            json.dump(sodaClass.config, open(f"{os.environ['LOCALAPPDATA']}\\temp\\{hwid}", "w", encoding="utf-8"), indent=4)
+            json.dump(sodaClass.config, open(f"{os.environ['USERPROFILE']}\\soda\\config.json", "w", encoding="utf-8"), indent=4)
 
 class soda():
     def __init__(self, hwid: str):
@@ -101,7 +101,7 @@ class soda():
                 "pearlSlot": "8",
                 "movementFix": False,
                 "swordSlot": "1",
-                "theme": "purple",
+                "theme": "lightblue",
                 "red": 0,
                 "green": 0,
                 "blue": 0,
@@ -118,15 +118,25 @@ class soda():
         }
         self.current_pot_slot = 0 
 
-        if os.path.isfile(f"{os.environ['LOCALAPPDATA']}\\temp\\{hwid}"):
-            try:
-                config = json.loads(open(f"{os.environ['LOCALAPPDATA']}\\temp\\{hwid}", encoding="utf-8").read())
+        # Check if the Soda Folder exists, if not create it
+        folder_path = os.path.join(os.environ['USERPROFILE'], 'soda')
 
+        # Only create folder if it doesn't exist
+        if not os.path.exists(folder_path):
+            os.makedirs(folder_path, exist_ok=True)
+            print("Created Soda Folder in User Profile:", folder_path)
+
+        # Load config if the file exists
+        file_path = os.path.join(folder_path, "config.json")
+        if os.path.isfile(file_path):
+            try:
+                with open(file_path, encoding="utf-8") as f:
+                    config = json.load(f)
+                print("Loaded config from:", file_path)
                 isConfigOk = True
                 for key in self.config:
-                    if not key in config or len(self.config[key]) != len(config[key]):
+                    if key not in config or len(self.config[key]) != len(config[key]):
                         isConfigOk = False
-
                         break
 
                 if isConfigOk:
@@ -134,8 +144,9 @@ class soda():
                         self.config["misc"]["saveSettings"] = False
                     else:
                         self.config = config
-            except:
-                pass
+            except Exception as e:
+                print("Error loading config:", e)
+
 
         self.config = configListener(self.config)
 
@@ -167,7 +178,11 @@ class soda():
             "Quick Paws",
             "Simply Aura",
             "I'm gonna steal ur street sign :3",
-            "I could use this for advertising 🤔"
+            "I could use this for advertising 🤔",
+            "Click click click",
+            ":3",
+            "Soda Pop <3",
+            "Download today!"
         ]
 
         while True:
@@ -577,6 +592,7 @@ class soda():
                 self.current_pot_slot = int(self.config["potions"]["lowestSlot"])
 
             time.sleep(0.001)
+            
     def hideGUIBindListener(self):
         while True:
             if win32api.GetAsyncKeyState(self.config["misc"]["bindHideGUI"]) != 0:

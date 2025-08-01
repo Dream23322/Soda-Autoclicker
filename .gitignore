@@ -2,3 +2,6 @@ build
 dist
 main.spec
 .gitignore
+mac.py
+mac.spec
+test.py
