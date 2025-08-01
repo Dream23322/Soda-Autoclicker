@@ -9,9 +9,10 @@ except:
     import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, re, keyboard, shutil
     import dearpygui.dearpygui as dpg
     from pypresence import Presence
-
+refresh = False
 class configListener(dict): # Detecting changes to config
     def __init__(self, initialDict):
+        global refresh
         for k, v in initialDict.items():
             if isinstance(v, dict):
                 initialDict[k] = configListener(v)
@@ -658,20 +659,38 @@ class soda():
     
     def loadConfig(self, configID: int):
         print("Config Amount", len(self.configs))
-        print("Config ID", configID - 233)
-        config = self.configs[configID - 233]
+        cid = 0
+        if configID != 240:
+            cid = int((configID - 240) / 8)
+        print("Config ID", cid)
+        config = self.configs[cid]
         print(f"Applying Config: {config['filename']}")
         file_path = os.path.join(os.environ['USERPROFILE'], 'soda', 'resource', f"{config['filename']}.json")
         if os.path.isfile(file_path):
             try:
                 with open(file_path, encoding="utf-8") as f:
                     config = json.load(f)
-                    sodaClass.config = config
+                    self.config = config
                 print("Loaded config from:", file_path)
+                print("Config:")
+                print(self.config)
                 isConfigOk = True
+                json.dump(self.config, open(f"{os.environ['USERPROFILE']}\\soda\\config.json", "w", encoding="utf-8"), indent=4)
+                
             except Exception as e:
                 print(f"Failed to load config from {file_path}: {e}")
                 isConfigOk = False
+
+    def openConfigFolder(self):
+        folder_path = os.path.join(os.environ['USERPROFILE'], 'soda', 'resource')
+        if os.path.exists(folder_path):
+            try:
+                os.startfile(folder_path)
+                print("Opened config folder:", folder_path)
+            except Exception as e:
+                print(f"Failed to open config folder: {e}")
+        else:
+            print("Config folder does not exist:", folder_path)
 
 if __name__ == "__main__":
     try:
@@ -1402,6 +1421,13 @@ if __name__ == "__main__":
                                 dpg.add_spacer(width=75)
 
                     dpg.add_spacer(width=75)
+
+                    dpg.add_text(default_value="Requires restart to apply changes!")
+
+                    dpg.add_spacer(width=75)
+
+                    dpg.add_button(label="Open Config Folder", callback=sodaClass.openConfigFolder)
+
 
         with dpg.theme() as global_theme:
             with dpg.theme_component(dpg.mvAll):
