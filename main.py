@@ -75,7 +75,7 @@ class soda():
                 "soundPath": "",
                 "workInMenus": False,
                 "blatant": False,
-                "Items": False
+                "items": False
             },
             "recorder": {
                 "enabled": False,
