@@ -71,7 +71,8 @@
         "lowestSlot": 1,
         "highestSlot": 9
     },
-    "name": "Hypixel",
-    "description": "Hypixel Config - V1.5",
+    "name": "hypixel",
+    "displayName": "Hypixel Config",
+    "description": "Config for hypixel.net - V1.5",
     "Author": "4urxra"
 }
