@@ -1,0 +1,78 @@
+{
+    "left": {
+        "enabled": false,
+        "mode": "Hold",
+        "bind": 82,
+        "averageCPS": 100,
+        "onlyWhenFocused": true,
+        "breakBlocks": true,
+        "RMBLock": false,
+        "blockHit": false,
+        "blockHitChance": 5,
+        "shakeEffect": false,
+        "shakeEffectForce": 1,
+        "soundPath": "",
+        "workInMenus": false,
+        "blatant": true,
+        "AutoRod": false,
+        "AutoRodChance": 4
+    },
+    "right": {
+        "enabled": true,
+        "mode": "Hold",
+        "bind": 89,
+        "averageCPS": 100,
+        "onlyWhenFocused": true,
+        "LMBLock": false,
+        "shakeEffect": false,
+        "shakeEffectForce": false,
+        "soundPath": "",
+        "workInMenus": false,
+        "blatant": true,
+        "items": true
+    },
+    "recorder": {
+        "enabled": false,
+        "record": [
+            0.08
+        ]
+    },
+    "overlay": {
+        "enabled": false,
+        "onlyWhenFocused": true,
+        "x": 0,
+        "y": 0
+    },
+    "misc": {
+        "saveSettings": true,
+        "guiHidden": false,
+        "bindHideGUI": 0,
+        "consoleFaker": "NullBind",
+        "discordRichPresence": true,
+        "rodBind": 88,
+        "longRod": true,
+        "rodDelay": 0.2,
+        "rodSlot": "2",
+        "pearlBind": 0,
+        "pearlSlot": "8",
+        "movementFix": false,
+        "swordSlot": "1",
+        "theme": "light",
+        "red": 0,
+        "green": 0,
+        "blue": 0
+    },
+    "potions": {
+        "enabled": false,
+        "potBind": 0,
+        "throwDelay": 0.7,
+        "switchBackSlot": "1",
+        "potResetBind": 0,
+        "lowestSlot": 1,
+        "highestSlot": 9
+    },
+    "filename": "maxed",
+    "displayName": "Max",
+    "description": "Most blatant settings possible (Don't use this lol) - V1.5",
+    "Author": "4urxra"
+}
