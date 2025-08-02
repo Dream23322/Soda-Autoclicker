@@ -53,6 +53,7 @@ class soda():
                 "averageCPS": 18,
                 "onlyWhenFocused": True,
                 "breakBlocks": False,
+                "breakShift": False,
                 "RMBLock": False,
                 "blockHit": False,
                 "blockHitChance": 20,
@@ -372,8 +373,9 @@ class soda():
 
     def leftClick(self, focused):
         if focused != None:
-            if self.config["left"]["breakBlocks"]:
+            if self.config["left"]["breakBlocks"] and (not self.config["left"]["breakShift"] or (self.config["left"]["breakShift"] and win32api.GetAsyncKeyState(0x10) < 0)):
                 win32api.SendMessage(self.window, win32con.WM_LBUTTONDOWN, 0, 0)
+                time.sleep(0.02)
             else:
                 win32api.SendMessage(self.window, win32con.WM_LBUTTONDOWN, 0, 0)
                 time.sleep(0.02)
@@ -389,9 +391,10 @@ class soda():
                 if random.uniform(0, 1) <= self.config["left"]["AutoRodChance"] / 100.0:
                     self.doRod(False)
         else:
-            if self.config["left"]["breakBlocks"]:
+            if self.config["left"]["breakBlocks"] and (not self.config["left"]["breakShift"] or (self.config["left"]["breakShift"] and win32api.GetAsyncKeyState(0x10) < 0)):
                 # time.sleep(0.02)
                 win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0)
+                time.sleep(0.02)
                 # win32api.SendMessage(self.window, win32con.WM_LBUTTONUP, 0, 0)
             else:
                 win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0)
@@ -1050,6 +1053,9 @@ if __name__ == "__main__":
         def toggleSaveSettings(id: int, value: bool):
             sodaClass.config["misc"]["saveSettings"] = value
 
+        def toggleLeftBreakShift(id: int, value: bool):
+            sodaClass.config["left"]["breakShift"] = value
+
         def toggleAlwaysOnTop(id: int, value: bool):
             if value:
                 win32gui.SetWindowPos(guiWindows, win32con.HWND_TOPMOST, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
@@ -1141,6 +1147,8 @@ if __name__ == "__main__":
 
                     checkboxLeftOnlyWhenFocused = dpg.add_checkbox(label="Only In Game", default_value=sodaClass.config["left"]["onlyWhenFocused"], callback=toggleLeftOnlyWhenFocused)
                     checkBoxLeftBreakBlocks = dpg.add_checkbox(label="Break Blocks", default_value=sodaClass.config["left"]["breakBlocks"], callback=toggleLeftBreakBlocks)
+                    checkBoxLeftBreakShift = dpg.add_checkbox(label="Break Shift", default_value=sodaClass.config["left"]["breakShift"], callback=toggleLeftBreakShift)
+                    dpg.add_text(default_value="Only does break block when shifting, useful for Hypixel as their server is picky with how clicks are sent (Having it enabled can cause hits to not register), having shift fixes this.")
                     checkboxLeftRMBLock = dpg.add_checkbox(label="RMB-Lock", default_value=sodaClass.config["left"]["RMBLock"], callback=toggleLeftRMBLock)
                     checkboxLeftWorkInMenus = dpg.add_checkbox(label="Work in Menus", default_value=sodaClass.config["left"]["workInMenus"], callback=toggleLeftWorkInMenus)
                     checkboxLeftBlatantMode = dpg.add_checkbox(label="Blatant Mode", default_value=sodaClass.config["left"]["blatant"], callback=toggleLeftBlatantMode)

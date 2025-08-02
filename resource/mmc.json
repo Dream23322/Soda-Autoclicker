@@ -6,6 +6,7 @@
         "averageCPS": 16,
         "onlyWhenFocused": true,
         "breakBlocks": true,
+        "breakShift": true,
         "RMBLock": false,
         "blockHit": true,
         "blockHitChance": 7,
