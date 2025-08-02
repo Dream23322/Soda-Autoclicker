@@ -1,12 +1,12 @@
 version = "1.5"
 try:
-    import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, re, keyboard, shutil
+    import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, re, keyboard, shutil, urllib, tempfile
     import dearpygui.dearpygui as dpg
     from pypresence import Presence
 except:
     from os import system
     system("pip install -r requirements.txt")
-    import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, re, keyboard, shutil
+    import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, re, keyboard, shutil, urllib, tempfile
     import dearpygui.dearpygui as dpg
     from pypresence import Presence
 refresh = False
@@ -120,35 +120,49 @@ class soda():
         self.current_pot_slot = 0 
 
         # Check if the Soda Folder exists, if not create it
-        folder_path = os.path.join(os.environ['USERPROFILE'], 'soda')
+        self.folder_path = os.path.join(os.environ['USERPROFILE'], 'soda')
 
         # Only create folder if it doesn't exist
-        if not os.path.exists(folder_path):
-            os.makedirs(folder_path, exist_ok=True)
-            print("Created Soda Folder in User Profile:", folder_path)
+        if not os.path.exists(self.folder_path):
+            os.makedirs(self.folder_path, exist_ok=True)
+            print("Created Soda Folder in User Profile:", self.folder_path)
 
-        if not os.path.exists(os.path.join(folder_path, "resource")):
+        #if not os.path.exists(os.path.join(folder_path, "resource")):
             # Download resource folder from github (https://github.com/Dream23322/Soda-Autoclicker/tree/main/resource)
-            try:
-                print("====================\nInstalling\n====================")
-                time.sleep(1)
-                print("Cloning from github")
-                os.makedirs(os.path.join(folder_path, "temp"), exist_ok=True)
-                os.makedirs(os.path.join(folder_path, "resource"), exist_ok=True)
-                subprocess.run(["git", "clone", "https://github.com/Dream23322/Soda-Autoclicker.git", os.path.join(folder_path, "temp")], check=True)
-                print("Cloned from github")
-                print("Moving resource folder")
-                subprocess.run(["copy", "/V", os.path.join(folder_path, "temp", "resource", "*"), os.path.join(folder_path, "resource")], shell=True, check=True)
-                print("Moved resource folder")
-                subprocess.run(["del", "/Q", "/F", "/S", os.path.join(folder_path, "temp")], shell=True, check=True)
-                shutil.rmtree(os.path.join(folder_path, "temp"), ignore_errors=True)
-                print("Installed")
+        try:
+            print("====================\nInstalling Configs\n====================")
+            time.sleep(1)
 
-            except subprocess.CalledProcessError as e:
-                print("Failed to clone resource folder from github:", e)
+            print("Cloning from github")
+            os.makedirs(os.path.join(self.folder_path, "temp"), exist_ok=True)
+            os.makedirs(os.path.join(self.folder_path, "resource"), exist_ok=True)
+
+            # Check if git is installed
+            if shutil.which("git") is None:
+                print("Downloading Git for Windows...")
+                installer_path = os.path.join(tempfile.gettempdir(), "git-installer.exe")
+                subprocess.run(["winget", "install", "--id", "Git.Git", "--source", "winget"], check=True)
+
+                print("Installing Git...")
+                subprocess.run([installer_path, "/VERYSILENT", "/NORESTART"], check=True)
+                print("Git installation finished.")
+
+            subprocess.run(["git", "clone", "https://github.com/Dream23322/Soda-Autoclicker.git", os.path.join(self.folder_path, "temp")], check=True)
+            print("Cloned from github")
+
+            print("Moving resource folder")
+            subprocess.run(["copy", "/V", os.path.join(self.folder_path, "temp", "resource", "*"), os.path.join(self.folder_path, "resource")], shell=True, check=True)
+            print("Moved resource folder")
+
+            subprocess.run(["del", "/Q", "/F", "/S", os.path.join(self.folder_path, "temp")], shell=True, check=True)
+            shutil.rmtree(os.path.join(self.folder_path, "temp"), ignore_errors=True)
+            print("Installed")
+
+        except subprocess.CalledProcessError as e:
+            print("Failed to clone resource folder from github:", e)
 
         # Load config if the file exists
-        file_path = os.path.join(folder_path, "config.json")
+        file_path = os.path.join(self.folder_path, "config.json")
         if os.path.isfile(file_path):
             try:
                 with open(file_path, encoding="utf-8") as f:
@@ -227,6 +241,8 @@ class soda():
 
             time.sleep(0.5)
 
+    def click(self):
+        winsound.PlaySound(os.path.join(self.folder_path, self.config["left"]["soundPath"]), winsound.SND_ASYNC)
 
     def leftClicker(self):
         while True:
@@ -392,8 +408,8 @@ class soda():
                 if random.uniform(0, 1) <= self.config["left"]["AutoRodChance"] / 100.0:
                     self.doRod(False)
 
-        if self.config["left"]["soundPath"] != "" and os.path.isfile(self.config["left"]["soundPath"]):
-            winsound.PlaySound(self.config["left"]["soundPath"], winsound.SND_ASYNC)
+        if self.config["left"]["soundPath"] != "" and os.path.isfile(os.path.join(self.folder_path, self.config["left"]["soundPath"])):
+            threading.Thread(target=self.click, args=(), daemon=True).start()
 
         if self.config["left"]["shakeEffect"]:
             currentPos = win32api.GetCursorPos()
@@ -519,7 +535,7 @@ class soda():
                 win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTUP, 0, 0)
 
         if self.config["right"]["soundPath"] != "" and os.path.isfile(self.config["right"]["soundPath"]):
-            winsound.PlaySound(self.config["right"]["soundPath"], winsound.SND_ASYNC)
+            threading.Thread(target=self.click, args=(), daemon=True).start()
 
         if self.config["right"]["shakeEffect"]:
             currentPos = win32api.GetCursorPos()
