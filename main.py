@@ -1,4 +1,4 @@
-version = "1.5"
+version = "1.5.1"
 try:
     import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, re, keyboard, shutil, urllib, tempfile
     import dearpygui.dearpygui as dpg
@@ -1148,7 +1148,7 @@ if __name__ == "__main__":
                     checkboxLeftOnlyWhenFocused = dpg.add_checkbox(label="Only In Game", default_value=sodaClass.config["left"]["onlyWhenFocused"], callback=toggleLeftOnlyWhenFocused)
                     checkBoxLeftBreakBlocks = dpg.add_checkbox(label="Break Blocks", default_value=sodaClass.config["left"]["breakBlocks"], callback=toggleLeftBreakBlocks)
                     checkBoxLeftBreakShift = dpg.add_checkbox(label="Break Shift", default_value=sodaClass.config["left"]["breakShift"], callback=toggleLeftBreakShift)
-                    dpg.add_text(default_value="Only does break block when shifting, useful for Hypixel as their server is picky with how clicks are sent (Having it enabled can cause hits to not register), having shift fixes this.")
+                    dpg.add_text(default_value="Only does break block when shifting, useful for Hypixel as their server is picky with how clicks are sent\nHaving it enabled can cause hits to not register, having shift fixes this.")
                     checkboxLeftRMBLock = dpg.add_checkbox(label="RMB-Lock", default_value=sodaClass.config["left"]["RMBLock"], callback=toggleLeftRMBLock)
                     checkboxLeftWorkInMenus = dpg.add_checkbox(label="Work in Menus", default_value=sodaClass.config["left"]["workInMenus"], callback=toggleLeftWorkInMenus)
                     checkboxLeftBlatantMode = dpg.add_checkbox(label="Blatant Mode", default_value=sodaClass.config["left"]["blatant"], callback=toggleLeftBlatantMode)
