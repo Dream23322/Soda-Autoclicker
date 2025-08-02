@@ -5,18 +5,18 @@
         "bind": 82,
         "averageCPS": 18,
         "onlyWhenFocused": true,
-        "breakBlocks": true,
-        "breakShift": true,
+        "breakBlocks": false,
+        "breakShift": false,
         "RMBLock": false,        
         "blockHit": true,
-        "blockHitChance": 6,
+        "blockHitChance": 5,
         "shakeEffect": false,
         "shakeEffectForce": 5,
         "soundPath": "",
         "workInMenus": false,
         "blatant": false,
         "AutoRod": false,
-        "AutoRodChance": 10
+        "AutoRodChance": 3
     },
     "right": {
         "enabled": false,
@@ -72,8 +72,8 @@
         "lowestSlot": 1,
         "highestSlot": 9
     },
-    "filename": "hypixel",
-    "displayName": "Hypixel",
-    "description": "Config for hypixel.net - V1.5",
+    "filename": "hypixeldules",
+    "displayName": "Hypixel - Duels",
+    "description": "Config for Classic Duels on Hypixel - V1.5",
     "Author": "4urxra"
 }
