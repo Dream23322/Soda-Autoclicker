@@ -50,6 +50,7 @@
         "bindHideGUI": 0,
         "consoleFaker": "NullBind",
         "discordRichPresence": true,
+        "switchDelay": 0.05,
         "rodBind": 88,
         "longRod": true,
         "rodDelay": 0.25,

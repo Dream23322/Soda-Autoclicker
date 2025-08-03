@@ -95,6 +95,7 @@ class soda():
                 "bindHideGUI": 0,
                 "consoleFaker": "NullBind",
                 "discordRichPresence": False,
+                "switchDelay": 0.05,
                 "rodBind": 0,
                 "longRod": False,
                 "rodDelay": 0.2,
@@ -537,7 +538,7 @@ class soda():
                 time.sleep(0.02)
                 win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTUP, 0, 0)
 
-        if self.config["right"]["soundPath"] != "" and os.path.isfile(self.config["right"]["soundPath"]):
+        if self.config["right"]["soundPath"] != "" and os.path.isfile(os.path.join(self.config["left"]["soundPath"])):
             threading.Thread(target=self.click, args=(), daemon=True).start()
 
         if self.config["right"]["shakeEffect"]:
