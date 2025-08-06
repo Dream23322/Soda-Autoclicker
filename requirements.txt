@@ -6,3 +6,4 @@ asyncio
 pyMeow
 win32api
 keyboard
+webbrowser
