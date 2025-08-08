@@ -1,12 +1,13 @@
-version = "1.5.1"
+version = "1.5.2"
+
 try:
-    import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, re, keyboard, shutil, urllib, tempfile
+    import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, re, keyboard, shutil, urllib, tempfile, webbrowser
     import dearpygui.dearpygui as dpg
     from pypresence import Presence
 except:
     from os import system
     system("pip install -r requirements.txt")
-    import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, re, keyboard, shutil, urllib, tempfile
+    import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, re, keyboard, shutil, urllib, tempfile, webbrowser
     import dearpygui.dearpygui as dpg
     from pypresence import Presence
 refresh = False
@@ -18,6 +19,9 @@ class configListener(dict): # Detecting changes to config
                 initialDict[k] = configListener(v)
 
         super().__init__(initialDict)
+
+        self.newver = False
+        self.newverid = ""
 
     def __setitem__(self, item, value):
         if isinstance(value, dict):
@@ -95,7 +99,7 @@ class soda():
                 "bindHideGUI": 0,
                 "consoleFaker": "NullBind",
                 "discordRichPresence": False,
-                "switchDelay": 0.05,
+                "switchDelay": 0.1,
                 "rodBind": 0,
                 "longRod": False,
                 "rodDelay": 0.2,
@@ -121,6 +125,9 @@ class soda():
         }
         self.current_pot_slot = 0 
 
+        self.newver = False
+        self.newverid = ""
+
         # Check if the Soda Folder exists, if not create it
         self.folder_path = os.path.join(os.environ['USERPROFILE'], 'soda')
 
@@ -136,6 +143,9 @@ class soda():
             time.sleep(1)
 
             print("Cloning from github")
+            if(os.path.exists(os.path.join(self.folder_path, "temp"))):
+                print("Temp folder already exists, deleting it")
+                shutil.rmtree(os.path.join(self.folder_path, "temp"), ignore_errors=True)
             os.makedirs(os.path.join(self.folder_path, "temp"), exist_ok=True)
             os.makedirs(os.path.join(self.folder_path, "resource"), exist_ok=True)
 
@@ -149,6 +159,7 @@ class soda():
                 subprocess.run([installer_path, "/VERYSILENT", "/NORESTART"], check=True)
                 print("Git installation finished.")
 
+
             subprocess.run(["git", "clone", "https://github.com/Dream23322/Soda-Autoclicker.git", os.path.join(self.folder_path, "temp")], check=True)
             print("Cloned from github")
 
@@ -159,6 +170,15 @@ class soda():
             subprocess.run(["del", "/Q", "/F", "/S", os.path.join(self.folder_path, "temp")], shell=True, check=True)
             shutil.rmtree(os.path.join(self.folder_path, "temp"), ignore_errors=True)
             print("Installed")
+            print("Checking for updates...")
+            if os.path.isfile(os.path.join(self.folder_path, "resource", "update.txt")):
+                with open(os.path.join(self.folder_path, "resource", "update.txt"), "r") as f:
+                    update_info = f.read().strip()
+                    if update_info != version:
+                        print(f"New version available: {update_info} (Current: {version})")
+                        self.newver = True
+                        self.newverid = update_info
+
 
         except subprocess.CalledProcessError as e:
             print("Failed to clone resource folder from github:", e)
@@ -202,33 +222,36 @@ class soda():
 
     def discordRichPresence(self):
         asyncio.set_event_loop(asyncio.new_event_loop())
+        try:
+            discordRPC = Presence("1400790093312032808")
+            discordRPC.connect()
 
-        discordRPC = Presence("1400790093312032808")
-        discordRPC.connect()
+            startTime = time.time()
 
-        startTime = time.time()
+            states = [
+                "V1.5?",
+                "Get shit on <3",
+                "Clicks sponsored by 4urxra",
+                "Quick Paws",
+                "Simply Aura",
+                "I'm gonna steal ur street sign :3",
+                "I could use this for advertising 🤔",
+                "Click click click",
+                ":3",
+                "Soda Pop <3",
+                "Download today!"
+            ]
 
-        states = [
-            "V1.5?",
-            "Get shit on <3",
-            "Clicks sponsored by 4urxra",
-            "Quick Paws",
-            "Simply Aura",
-            "I'm gonna steal ur street sign :3",
-            "I could use this for advertising 🤔",
-            "Click click click",
-            ":3",
-            "Soda Pop <3",
-            "Download today!"
-        ]
+            while True:
+                if self.config["misc"]["discordRichPresence"]:
+                    discordRPC.update(state=random.choice(states), start=startTime, large_image="logo", large_text="I'm him, ur not", buttons=[{"label": "Website", "url": "https://github.com/Dream23322/Soda-Autoclicker/"}])
+                else:
+                    discordRPC.clear()
 
-        while True:
-            if self.config["misc"]["discordRichPresence"]:
-                discordRPC.update(state=random.choice(states), start=startTime, large_image="logo", large_text="I'm him, ur not", buttons=[{"label": "Website", "url": "https://github.com/Dream23322/Soda-Autoclicker/"}])
-            else:
-                discordRPC.clear()
-
-            time.sleep(15)
+                time.sleep(15)
+        except:
+            print("Discord not found running or installed")
+            return
 
     def windowListener(self):
         while True:
@@ -306,7 +329,7 @@ class soda():
 
         # Press the '2' key
         win32api.keybd_event(VK_2, 0, 0, 0)
-        time.sleep(round(float(self.config["misc"]["rodDelay"]) / 3, 3))  # Brief pause to simulate a key press
+        time.sleep(round(float(self.config["misc"]["rodDelay"]) / 10, 3))  # Brief pause to simulate a key press
         # Release the '2' key
         win32api.keybd_event(VK_2, 0, win32con.KEYEVENTF_KEYUP, 0)
         # Send Rod by right clicking
@@ -325,7 +348,7 @@ class soda():
 
         # Press the '2' key
         win32api.keybd_event(VK_2, 0, 0, 0)
-        time.sleep(float(self.config["misc"]["rodDelay"]) / 5)  # Brief pause to simulate a key press
+        time.sleep(float(self.config["misc"]["rodDelay"]) / 10)  # Brief pause to simulate a key press
         # Release the '2' key
         win32api.keybd_event(VK_2, 0, win32con.KEYEVENTF_KEYUP, 0)
 
@@ -1140,7 +1163,7 @@ if __name__ == "__main__":
                     dpg.add_separator()
                     dpg.add_spacer(width=75)
 
-                    inputLeftClickSoundPath = dpg.add_input_text(label="Click Sound Path (empty for no sound)", default_value=sodaClass.config["left"]["soundPath"], hint="Exemple: mysounds/G505.wav", callback=setLeftClickSoundPath)
+                    inputLeftClickSoundPath = dpg.add_input_text(label="Click Sound Path (empty for no sound)", default_value=sodaClass.config["left"]["soundPath"], hint="Exemple: resource\click.wav", callback=setLeftClickSoundPath)
                     dpg.add_text(default_value="Plays a sound when you click!")
                     dpg.add_spacer(width=75)
                     dpg.add_separator()
@@ -1452,7 +1475,15 @@ if __name__ == "__main__":
                     dpg.add_spacer(width=75)
 
                     dpg.add_button(label="Open Config Folder", callback=sodaClass.openConfigFolder)
+                if sodaClass.newver:
+                    with dpg.tab(label="Update"):
+                        dpg.add_spacer(width=75)
+                        dpg.add_text(default_value="A new version of Soda is available!")
+                        dpg.add_text(default_value=f"Current version: {version}")
+                        dpg.add_text(default_value=f"Latest version: {sodaClass.newverid}")
 
+                        dpg.add_text(default_value="You can download it from the GitHub repository.")
+                        dpg.add_button(label="Download", callback=lambda: webbrowser.open("https://github.com/Dream23322/Soda-Autoclicker/releases"))
 
         with dpg.theme() as global_theme:
             with dpg.theme_component(dpg.mvAll):
