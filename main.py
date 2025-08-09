@@ -411,21 +411,31 @@ class soda():
         win32api.SendMessage(self.window, win32con.WM_LBUTTONUP, 0, 0)
 
     def blockHit(self):
-        if (((self.config["left"]["blockHit"] or (self.config["left"]["blockHit"] and self.config["right"]["enabled"] and self.config["right"]["LMBLock"] and not win32api.GetAsyncKeyState(0x02) < 0)) and not self.config["left"]["blockHitHold"]) or (self.config["left"]["blockHit"] and self.config["left"]["blockHitHold"] and win32api.GetAsyncKeyState(0x02) < 0)) and win32api.GetAsyncKeyState(0x01) < 0:
-            if random.uniform(0, 1) <= self.config["left"]["blockHitChance"] / 100.0:
-                win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTDOWN, 0, 0)
-                time.sleep(0.02)
-                win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTUP, 0, 0)
+        if self.config["left"]["blockHit"] and win32api.GetAsyncKeyState(0x01) < 0:
+            # If blockHitHold is enabled, only blockhit while RMB is held down
+            if self.config["left"]["blockHitHold"]:
+                blockHitCondition = win32api.GetAsyncKeyState(0x02) < 0
+            else:
+                blockHitCondition = not win32api.GetAsyncKeyState(0x02) < 0
+
+            print("Block hit condition:", blockHitCondition)
+            if blockHitCondition:
+                if random.uniform(0, 1) <= self.config["left"]["blockHitChance"] / 100.0:
+                    win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTDOWN, 0, 0)
+                    time.sleep(0.02)
+                    if(not self.config["left"]["blockHitHold"]):
+                        win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTUP, 0, 0)
+                    print("Block hit")
 
     def leftClick(self, focused):
         if focused != None:
             self.clickLeft()
-
-            if self.config["left"]["blockHit"] or (self.config["left"]["blockHit"] and self.config["right"]["enabled"] and self.config["right"]["LMBLock"] and not win32api.GetAsyncKeyState(0x02) < 0):
-                if random.uniform(0, 1) <= self.config["left"]["blockHitChance"] / 100.0:
-                    win32api.SendMessage(self.window, win32con.WM_RBUTTONDOWN, 0, 0)
-                    time.sleep(0.02)
-                    win32api.SendMessage(self.window, win32con.WM_RBUTTONUP, 0, 0)     
+            self.blockHit()
+            # if self.config["left"]["blockHit"] or (self.config["left"]["blockHit"] and self.config["right"]["enabled"] and self.config["right"]["LMBLock"] and not win32api.GetAsyncKeyState(0x02) < 0):
+            #     if random.uniform(0, 1) <= self.config["left"]["blockHitChance"] / 100.0:
+            #         win32api.SendMessage(self.window, win32con.WM_RBUTTONDOWN, 0, 0)
+            #         time.sleep(0.02)
+            #         win32api.SendMessage(self.window, win32con.WM_RBUTTONUP, 0, 0)     
 
             if self.config["left"]["AutoRod"] or (self.config["left"]["AutoRod"] and self.config["right"]["enabled"] and self.config["right"]["RMBLock"] and not win32api.GetAsyncKeyState(0x01) < 0):
                 if random.uniform(0, 1) <= self.config["left"]["AutoRodChance"] / 100.0:
@@ -433,7 +443,7 @@ class soda():
         else:
             self.clickLeft()
 
-
+            self.blockhit()
 
             if self.config["left"]["AutoRod"] or (self.config["left"]["AutoRod"] and self.config["right"]["enabled"] and self.config["right"]["RMBLock"] and not win32api.GetAsyncKeyState(0x01) < 0):
                 if random.uniform(0, 1) <= self.config["left"]["AutoRodChance"] / 100.0:
