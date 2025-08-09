@@ -8,6 +8,7 @@
         "breakBlocks": "Shift No Click",
         "RMBLock": false,
         "blockHit": true,
+        "blockHitHold": false,
         "blockHitChance": 7,
         "shakeEffect": false,
         "shakeEffectForce": 5,

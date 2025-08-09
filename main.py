@@ -60,6 +60,7 @@ class soda():
                 "RMBLock": False,
                 "blockHit": False,
                 "blockHitChance": 20,
+                "blockHitHold": False,
                 "shakeEffect": False,
                 "shakeEffectForce": 5,
                 "soundPath": "None",
@@ -192,8 +193,9 @@ class soda():
                 isConfigOk = True
                 for key in self.config:
                     if key not in config or len(self.config[key]) != len(config[key]):
-                        isConfigOk = False
-                        break
+                        print(f"Config key '{key}' is missing or has incorrect length. Using default.")
+                        # Try add the key
+                        config[key] = self.config[key]
 
                 if isConfigOk:
                     if not config["misc"]["saveSettings"]:
@@ -408,6 +410,13 @@ class soda():
         time.sleep(0.02)
         win32api.SendMessage(self.window, win32con.WM_LBUTTONUP, 0, 0)
 
+    def blockHit(self):
+        if (((self.config["left"]["blockHit"] or (self.config["left"]["blockHit"] and self.config["right"]["enabled"] and self.config["right"]["LMBLock"] and not win32api.GetAsyncKeyState(0x02) < 0)) and not self.config["left"]["blockHitHold"]) or (self.config["left"]["blockHit"] and self.config["left"]["blockHitHold"] and win32api.GetAsyncKeyState(0x02) < 0)) and win32api.GetAsyncKeyState(0x01) < 0:
+            if random.uniform(0, 1) <= self.config["left"]["blockHitChance"] / 100.0:
+                win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTDOWN, 0, 0)
+                time.sleep(0.02)
+                win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTUP, 0, 0)
+
     def leftClick(self, focused):
         if focused != None:
             self.clickLeft()
@@ -424,11 +433,7 @@ class soda():
         else:
             self.clickLeft()
 
-            if (self.config["left"]["blockHit"] or (self.config["left"]["blockHit"] and self.config["right"]["enabled"] and self.config["right"]["LMBLock"] and not win32api.GetAsyncKeyState(0x02) < 0)):
-                if random.uniform(0, 1) <= self.config["left"]["blockHitChance"] / 100.0:
-                    win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTDOWN, 0, 0)
-                    time.sleep(0.02)
-                    win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTUP, 0, 0)
+
 
             if self.config["left"]["AutoRod"] or (self.config["left"]["AutoRod"] and self.config["right"]["enabled"] and self.config["right"]["RMBLock"] and not win32api.GetAsyncKeyState(0x01) < 0):
                 if random.uniform(0, 1) <= self.config["left"]["AutoRodChance"] / 100.0:
@@ -813,6 +818,9 @@ if __name__ == "__main__":
         def setLeftBlockHitChance(id: int, value: int):
             sodaClass.config["left"]["blockHitChance"] = value
 
+        def toggleLeftBlockHitHold(id: int, value: bool):
+            sodaClass.config["left"]["blockHitHold"] = value
+
         def toggleLeftShakeEffect(id: int, value: bool):
             sodaClass.config["left"]["shakeEffect"] = value
 
@@ -965,7 +973,7 @@ if __name__ == "__main__":
             sodaClass.config["right"]["shakeEffectForce"] = value
 
         def setRightClickSoundPath(id: int, value: str):
-            sodaClass.config["right"]["soundPath"] = value
+            sodaClass.config["right"]["soundPath"] = "resource\\" + value
 
         def toggleRightWorkInMenus(id: int, value: bool):
             sodaClass.config["right"]["workInMenus"] = value
@@ -1169,6 +1177,8 @@ if __name__ == "__main__":
                     checkboxLeftBlockHit = dpg.add_checkbox(label="BlockHit", default_value=sodaClass.config["left"]["blockHit"], callback=toggleLeftBlockHit)
                     sliderLeftBlockHitChance = dpg.add_slider_int(label="BlockHit Chance", default_value=sodaClass.config["left"]["blockHitChance"], min_value=1, max_value=100, callback=setLeftBlockHitChance)
                     dpg.add_text(default_value="Randomly right clicks to do a blockhit (MC version < 1.8.9). This can help reduce damage.\nWarning: Having the amount higher than 50 can cause it to be very hard to move while using the clicker")
+                    dpg.add_checkbox(label="Blockhit Hold", default_value=sodaClass.config["left"]["blockHitHold"], callback=toggleLeftBlockHitHold)
+                    dpg.add_text(default_value="Only block hits if RMB is held down.")
                     dpg.add_spacer(width=125)
 
                     checkboxLeftShakeEffect = dpg.add_checkbox(label="Shake Effect", default_value=sodaClass.config["left"]["shakeEffect"], callback=toggleLeftShakeEffect)
@@ -1236,8 +1246,9 @@ if __name__ == "__main__":
                     dpg.add_separator()
                     dpg.add_spacer(width=75)
 
-                    inputRightClickSoundPath = dpg.add_input_text(label="Click Sound Path (empty for no sound)", default_value=sodaClass.config["right"]["soundPath"], hint="Exemple: mysounds/G505.wav", callback=setRightClickSoundPath)
-
+                    dropdownRightClickSound = dpg.add_combo(label="Click Sound", items=clicks, default_value=sodaClass.config["right"]["soundPath"], callback=setRightClickSoundPath)
+                    dpg.add_text(default_value="Plays a sound when you click!")
+   
                     dpg.add_spacer(width=75)
                     dpg.add_separator()
                     dpg.add_spacer(width=75)
