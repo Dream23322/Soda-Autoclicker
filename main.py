@@ -48,7 +48,7 @@ class configListener(dict): # Detecting changes to config
             json.dump(sodaClass.config, open(f"{os.environ['USERPROFILE']}\\soda\\config.json", "w", encoding="utf-8"), indent=4)
 
 class soda():
-    def __init__(self, hwid: str):
+    def __init__(self):
         self.config = {
             "left": {
                 "enabled": False,
@@ -56,8 +56,7 @@ class soda():
                 "bind": 0,
                 "averageCPS": 18,
                 "onlyWhenFocused": True,
-                "breakBlocks": False,
-                "breakShift": False,
+                "breakBlocks": "None",
                 "RMBLock": False,
                 "blockHit": False,
                 "blockHitChance": 20,
@@ -739,18 +738,16 @@ if __name__ == "__main__":
     try:
         if os.name != "nt":
             input("Soda Autoclicker is only working on Windows.")
-
             os._exit(0)
 
         (suppost_sid, error) = subprocess.Popen("wmic useraccount where name='%username%' get sid", stdout=subprocess.PIPE, shell=True).communicate()
-        hwid = suppost_sid.split(b"\n")[1].strip().decode()
 
         currentWindow = win32gui.GetForegroundWindow()
         processName = psutil.Process(win32process.GetWindowThreadProcessId(currentWindow)[-1]).name()
         if processName == "cmd.exe" or processName in sys.argv[0]:
             win32gui.ShowWindow(currentWindow, win32con.SW_HIDE)
 
-        sodaClass = soda(hwid)
+        sodaClass = soda()
         dpg.create_context()
 
         def toggleLeftClicker(id: int, value: bool):
