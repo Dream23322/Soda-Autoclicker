@@ -62,7 +62,7 @@ class soda():
                 "blockHitChance": 20,
                 "shakeEffect": False,
                 "shakeEffectForce": 5,
-                "soundPath": "",
+                "soundPath": "None",
                 "workInMenus": False,
                 "blatant": False,
                 "AutoRod": False,
@@ -77,7 +77,7 @@ class soda():
                 "LMBLock": False,
                 "shakeEffect": False,
                 "shakeEffectForce": False,
-                "soundPath": "",
+                "soundPath": "None",
                 "workInMenus": False,
                 "blatant": False,
                 "items": False
@@ -204,6 +204,7 @@ class soda():
                 print("Error loading config:", e)
 
         configs = []
+        clickSounds = []
         self.config = configListener(self.config)
 
         self.record = itertools.cycle(self.config["recorder"]["record"])
@@ -391,13 +392,13 @@ class soda():
             else:
                 print("No Potions Left!")
 
-
     def clickLeft(self):
         if self.config["left"]["breakBlocks"] == "Shift With Click" and win32api.GetAsyncKeyState(0x10) < 0:
             win32api.SendMessage(self.window, win32con.WM_LBUTTONDOWN, 0, 0)
             time.sleep(0.02)
             return;
         if self.config["left"]["breakBlocks"] == "Shift No Click" and win32api.GetAsyncKeyState(0x10) < 0:
+
             return;
         if self.config["left"]["breakBlocks"] == "Full":
             win32api.SendMessage(self.window, win32con.WM_LBUTTONDOWN, 0, 0)
@@ -722,6 +723,23 @@ class soda():
                 print(f"Failed to load config from {file_path}: {e}")
                 isConfigOk = False
 
+    def getClickSounds(self):
+        clickSounds = []
+        clickSounds.append("None")
+        folder = os.path.join(os.environ['USERPROFILE'], 'soda', 'resource')
+
+        print("All files:", os.listdir(folder))
+
+        for file in os.listdir(folder):
+            file_path = os.path.join(folder, file)
+
+            if not file.endswith(".wav"):
+                continue
+            clickSounds.append(file)
+            #print("Loaded " + file.title)
+        self.clickSounds = clickSounds
+        return clickSounds
+
     def openConfigFolder(self):
         folder_path = os.path.join(os.environ['USERPROFILE'], 'soda', 'resource')
         if os.path.exists(folder_path):
@@ -802,7 +820,7 @@ if __name__ == "__main__":
             sodaClass.config["left"]["shakeEffectForce"] = value
 
         def setLeftClickSoundPath(id: int, value: str):
-            sodaClass.config["left"]["soundPath"] = value
+            sodaClass.config["left"]["soundPath"] = "resource\\" + value
 
         def toggleLeftWorkInMenus(id: int, value: bool):
             sodaClass.config["left"]["workInMenus"] = value
@@ -1126,6 +1144,7 @@ if __name__ == "__main__":
 
         with dpg.window(tag="Primary Window"):
             dpg.bind_item_theme("Primary Window", container_theme)
+            clicks = sodaClass.getClickSounds()
             with dpg.tab_bar():
                 with dpg.tab(label="Left Clicker"):
                     dpg.add_spacer(width=75)
@@ -1159,7 +1178,8 @@ if __name__ == "__main__":
                     dpg.add_separator()
                     dpg.add_spacer(width=75)
 
-                    inputLeftClickSoundPath = dpg.add_input_text(label="Click Sound Path (empty for no sound)", default_value=sodaClass.config["left"]["soundPath"], hint="Exemple: resource\click.wav", callback=setLeftClickSoundPath)
+                    dropDownLeftClickSound = dpg.add_combo(label="Click Sound", items=clicks, default_value=sodaClass.config["left"]["soundPath"], callback=setLeftClickSoundPath)
+                    
                     dpg.add_text(default_value="Plays a sound when you click!")
                     dpg.add_spacer(width=75)
                     dpg.add_separator()

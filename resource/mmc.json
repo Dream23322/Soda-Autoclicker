@@ -11,7 +11,7 @@
         "blockHitChance": 7,
         "shakeEffect": false,
         "shakeEffectForce": 5,
-        "soundPath": "",
+        "soundPath": "None",
         "workInMenus": false,
         "blatant": false,
         "AutoRod": false,
@@ -26,7 +26,7 @@
         "LMBLock": false,
         "shakeEffect": false,
         "shakeEffectForce": false,
-        "soundPath": "",
+        "soundPath": "None",
         "workInMenus": false,
         "blatant": false,
         "items": false
