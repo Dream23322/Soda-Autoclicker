@@ -1,4 +1,4 @@
-version = "1.5.2"
+version = "1.5.3"
 
 try:
     import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, re, keyboard, shutil, urllib, tempfile, webbrowser
@@ -418,14 +418,12 @@ class soda():
             else:
                 blockHitCondition = not win32api.GetAsyncKeyState(0x02) < 0
 
-            print("Block hit condition:", blockHitCondition)
             if blockHitCondition:
                 if random.uniform(0, 1) <= self.config["left"]["blockHitChance"] / 100.0:
                     win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTDOWN, 0, 0)
                     time.sleep(0.02)
                     if(not self.config["left"]["blockHitHold"]):
                         win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTUP, 0, 0)
-                    print("Block hit")
 
     def leftClick(self, focused):
         if focused != None:
@@ -1188,7 +1186,7 @@ if __name__ == "__main__":
                     sliderLeftBlockHitChance = dpg.add_slider_int(label="BlockHit Chance", default_value=sodaClass.config["left"]["blockHitChance"], min_value=1, max_value=100, callback=setLeftBlockHitChance)
                     dpg.add_text(default_value="Randomly right clicks to do a blockhit (MC version < 1.8.9). This can help reduce damage.\nWarning: Having the amount higher than 50 can cause it to be very hard to move while using the clicker")
                     dpg.add_checkbox(label="Blockhit Hold", default_value=sodaClass.config["left"]["blockHitHold"], callback=toggleLeftBlockHitHold)
-                    dpg.add_text(default_value="Only block hits if RMB is held down.")
+                    dpg.add_text(default_value="Only block hits if RMB is held down - Not working, will be fixed in 1.5.4")
                     dpg.add_spacer(width=125)
 
                     checkboxLeftShakeEffect = dpg.add_checkbox(label="Shake Effect", default_value=sodaClass.config["left"]["shakeEffect"], callback=toggleLeftShakeEffect)
