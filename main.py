@@ -623,6 +623,7 @@ class soda():
             if win32api.GetAsyncKeyState(self.config["right"]["bind"]) != 0:
                 if not self.isFocused("right", "onlyWhenFocused", "workInMenus"):
                     time.sleep(0.001)
+                    continue
 
                 self.config["right"]["enabled"] = not self.config["right"]["enabled"]
 
