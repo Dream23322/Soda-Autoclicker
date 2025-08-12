@@ -625,36 +625,6 @@ class soda():
 
             time.sleep(0.001)
 
-
-    def movementFix(self):
-        self.key_a_pressed = False
-        self.key_d_pressed = False
-
-        def on_key_event(e):
-            
-
-            if self.config["misc"]["movementFix"]:
-                if e.name == 'a':
-                    
-                    if e.event_type == 'down':
-                        self.key_a_pressed = True
-                        if self.key_d_pressed:
-                            keyboard.block_key('d')
-                    elif e.event_type == 'up':
-                        self.key_a_pressed = False
-                        keyboard.unblock_key('d')
-
-                if e.name == 'd':
-                    if e.event_type == 'down':
-                        self.key_d_pressed = True
-                        if self.key_a_pressed:
-                            keyboard.block_key('a')
-                    elif e.event_type == 'up':
-                        self.key_d_pressed = False
-                        keyboard.unblock_key("a")
-
-        keyboard.hook(on_key_event)
-
                 
     def isFocused(self, config1: str, config2: str, config3: str):
         return ("java" in self.focusedProcess or "AZ-Launcher" in self.focusedProcess or not self.config[config1][config2]) and (self.config[config1][config3] or win32gui.GetCursorInfo()[1] > 200000)
@@ -664,10 +634,6 @@ class soda():
                 self.doRod(True)
             elif win32api.GetAsyncKeyState(self.config["misc"]["pearlBind"]) != 0 and self.isFocused("left", "onlyWhenFocused", "workInMenus"):
                 self.doPearl()
-            # Do movement correction
-            elif self.config["misc"]["movementFix"]:
-                # Run movement correction with current pressed key
-                self.movementFix()
             elif win32api.GetAsyncKeyState(self.config["potions"]["potBind"]) != 0 and self.isFocused("left", "onlyWhenFocused", "workInMenus"):
                 self.doPotion()
                 time.sleep(0.5)
@@ -1528,14 +1494,14 @@ if __name__ == "__main__":
                 with dpg.tab(label="Movement"):
                     dpg.add_spacer(width=75)
 
-                    dpg.add_checkbox(label="Auto W Tap", default_value=sodaClass.config["misc"]["autoWTap"], callback=toggleWTap)
+                    dpg.add_checkbox(label="Auto W Tap", default_value=sodaClass.config["movement"]["autoWTap"], callback=toggleWTap)
                     dpg.add_text(default_value="Automatically W-Taps when you click. \nThis helps with keeping combos by stopping you from going into the players reach circle.")
-                    dpg.add_slider_int(label="W Tap Value", default_value=sodaClass.config["misc"]["wTapValue"], min_value=1, max_value=100, callback=setWTapValue)
-                    dpg.add_combo(label="W Tap Mode", items=["chance", "delay"], default_value=sodaClass.config["misc"]["wTapMode"], callback=setWTapMode)
+                    dpg.add_slider_int(label="W Tap Value", default_value=sodaClass.config["movement"]["wTapValue"], min_value=1, max_value=100, callback=setWTapValue)
+                    dpg.add_combo(label="W Tap Mode", items=["chance", "delay"], default_value=sodaClass.config["movement"]["wTapMode"], callback=setWTapMode)
                     dpg.add_spacer(width=75)
                     dpg.add_separator()
                     dpg.add_spacer(width=75)
-                    dpg.add_checkbox(label="Auto Sprint", default_value=sodaClass.config["misc"]["autoSprint"], callback=toggleAutoSprint)
+                    dpg.add_checkbox(label="Auto Sprint", default_value=sodaClass.config["movement"]["autoSprint"], callback=toggleAutoSprint)
                     dpg.add_text(default_value="Automatically sprints when moving")
                     dpg.add_spacer(width=75)
                     dpg.add_separator()

@@ -75,7 +75,7 @@
     "movement": {
         "autoWTap": false,
         "wTapMode": "chance",
-        "wTapChance": 30,
+        "wTapValue": 30,
         "autoSprint": false
     },
     "filename": "maxed",
