@@ -211,9 +211,7 @@ class soda():
                 isConfigOk = True
                 for key in self.config:
                     if key not in config or len(self.config[key]) != len(config[key]):
-                        print(f"Config key '{key}' is missing or has incorrect length. Using default.")
-                        # Try add the key
-                        config[key] = self.config[key]
+                        isConfigOk = False
 
                 if isConfigOk:
                     if not config["misc"]["saveSettings"]:
