@@ -111,6 +111,7 @@ class soda():
                 "red": 0,
                 "green": 0,
                 "blue": 0,
+                "toggleSounds": False
             },
             "potions": {
                 "enabled": False,
@@ -174,6 +175,18 @@ class soda():
 
             subprocess.run(["del", "/Q", "/F", "/S", os.path.join(self.folder_path, "temp")], shell=True, check=True)
             shutil.rmtree(os.path.join(self.folder_path, "temp"), ignore_errors=True)
+
+            # Download toggle sounds
+            sound_urls = ["https://yiffing.zone/sounds/notify_on.wav", "https://yiffing.zone/sounds/notify_off.wav"]
+
+            for url in sound_urls:
+                file_name = os.path.basename(url)
+                file_path = os.path.join(self.folder_path, "resource", file_name)
+                if not os.path.exists(file_path):
+                    print(f"Downloading {file_name}...")
+                    subprocess.run(["curl", "-L", url, "-o", file_path], check=True)
+            print("Downloaded toggle sounds")
+
             print("Installed")
             print("Checking for updates...")
             if os.path.isfile(os.path.join(self.folder_path, "resource", "update.txt")):
@@ -484,6 +497,12 @@ class soda():
 
                 self.config["left"]["enabled"] = not self.config["left"]["enabled"]
 
+                # Play toggle sound
+                if(self.config["left"]["enabled"]):
+                    winsound.PlaySound(os.path.join(self.folder_path, "resource", "notify_on.wav"), winsound.SND_ASYNC)
+                else:
+                    winsound.PlaySound(os.path.join(self.folder_path, "resource", "notify_off.wav"), winsound.SND_ASYNC)
+
                 while True:
                     try:
                         dpg.set_value(checkboxToggleLeftClicker, not dpg.get_value(checkboxToggleLeftClicker))
@@ -609,6 +628,12 @@ class soda():
                         continue
 
                 self.config["right"]["enabled"] = not self.config["right"]["enabled"]
+
+                # Play toggle sound
+                if(self.config["right"]["enabled"]):
+                    winsound.PlaySound(os.path.join(self.folder_path, "resource", "notify_on.wav"), winsound.SND_ASYNC)
+                else:
+                    winsound.PlaySound(os.path.join(self.folder_path, "resource", "notify_off.wav"), winsound.SND_ASYNC)
 
                 while True:
                     try:
@@ -759,7 +784,7 @@ class soda():
         for file in os.listdir(folder):
             file_path = os.path.join(folder, file)
 
-            if not file.endswith(".wav"):
+            if not file.endswith(".wav") or file == "notify_on.wav":
                 continue
             clickSounds.append(file)
             #print("Loaded " + file.title)
@@ -874,6 +899,10 @@ if __name__ == "__main__":
 
         def setWTapMode(id: int, value: str):
             sodaClass.config["movement"]["wTapMode"] = value
+
+        
+        def setToggleSounds(id: int, value: bool):
+            sodaClass.config["misc"]["toggleSounds"] = value
 
         def toggleAutoSprint(id: int, value: bool):
             sodaClass.config["movement"]["autoSprint"] = value
@@ -1158,432 +1187,440 @@ if __name__ == "__main__":
                 return themeMap[theme]
             except:
                 return None
-        with dpg.theme() as container_theme:
-            if(sodaClass.config["misc"]["theme"] != "custom"):
-                rgb_data = themeToRGB(sodaClass.config["misc"]["theme"])
-            else:
-                rgb_data = (sodaClass.config["misc"]["red"], sodaClass.config["misc"]["green"], sodaClass.config["misc"]["blue"])
-            with dpg.theme_component(dpg.mvAll):
-                dpg.add_theme_color(dpg.mvThemeCol_Tab, rgb_data, category=dpg.mvThemeCat_Core)
-                dpg.add_theme_color(dpg.mvThemeCol_TabHovered, rgb_data, category=dpg.mvThemeCat_Core)
-                dpg.add_theme_color(dpg.mvThemeCol_TabActive, rgb_data, category=dpg.mvThemeCat_Core),
-                dpg.add_theme_color(dpg.mvThemeCol_CheckMark, rgb_data, category=dpg.mvThemeCat_Core)
-                dpg.add_theme_color(dpg.mvThemeCol_SliderGrab, rgb_data, category=dpg.mvThemeCat_Core)
-                dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered, rgb_data, category=dpg.mvThemeCat_Core)
-                dpg.add_theme_color(dpg.mvThemeCol_ScrollbarGrab, rgb_data, category=dpg.mvThemeCat_Core)
-                if(sodaClass.config["misc"]["theme"] == "light"):
-                    # Set all items to white except text
-                    dpg.add_theme_color(dpg.mvThemeCol_Text, (0, 0, 0), category=dpg.mvThemeCat_Core)
-                    dpg.add_theme_color(dpg.mvThemeCol_WindowBg, (230, 230, 230), category=dpg.mvThemeCat_Core)
-                    dpg.add_theme_color(dpg.mvThemeCol_FrameBg, rgb_data, category=dpg.mvThemeCat_Core)
-                    dpg.add_theme_color(dpg.mvThemeCol_Button, rgb_data, category=dpg.mvThemeCat_Core)
+            
+        try:
+            with dpg.theme() as container_theme:
+                if(sodaClass.config["misc"]["theme"] != "custom"):
+                    rgb_data = themeToRGB(sodaClass.config["misc"]["theme"])
+                else:
+                    rgb_data = (sodaClass.config["misc"]["red"], sodaClass.config["misc"]["green"], sodaClass.config["misc"]["blue"])
+                with dpg.theme_component(dpg.mvAll):
+                    dpg.add_theme_color(dpg.mvThemeCol_Tab, rgb_data, category=dpg.mvThemeCat_Core)
+                    dpg.add_theme_color(dpg.mvThemeCol_TabHovered, rgb_data, category=dpg.mvThemeCat_Core)
+                    dpg.add_theme_color(dpg.mvThemeCol_TabActive, rgb_data, category=dpg.mvThemeCat_Core),
+                    dpg.add_theme_color(dpg.mvThemeCol_CheckMark, rgb_data, category=dpg.mvThemeCat_Core)
+                    dpg.add_theme_color(dpg.mvThemeCol_SliderGrab, rgb_data, category=dpg.mvThemeCat_Core)
+                    dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered, rgb_data, category=dpg.mvThemeCat_Core)
+                    dpg.add_theme_color(dpg.mvThemeCol_ScrollbarGrab, rgb_data, category=dpg.mvThemeCat_Core)
+                    if(sodaClass.config["misc"]["theme"] == "light"):
+                        # Set all items to white except text
+                        dpg.add_theme_color(dpg.mvThemeCol_Text, (0, 0, 0), category=dpg.mvThemeCat_Core)
+                        dpg.add_theme_color(dpg.mvThemeCol_WindowBg, (230, 230, 230), category=dpg.mvThemeCat_Core)
+                        dpg.add_theme_color(dpg.mvThemeCol_FrameBg, rgb_data, category=dpg.mvThemeCat_Core)
+                        dpg.add_theme_color(dpg.mvThemeCol_Button, rgb_data, category=dpg.mvThemeCat_Core)
+
+            dpg.create_viewport(title=f"[v{version}] Soda - AutoClicker.ontop", width=860, height=645)
+
+            with dpg.window(tag="Primary Window"):
+                dpg.bind_item_theme("Primary Window", container_theme)
+                clicks = sodaClass.getClickSounds()
+                with dpg.tab_bar():
+                    with dpg.tab(label="Left Clicker"):
+                        dpg.add_spacer(width=75)
+                        
+                        with dpg.group(horizontal=True):
+                            checkboxToggleLeftClicker = dpg.add_checkbox(label="Toggle", default_value=sodaClass.config["left"]["enabled"], callback=toggleLeftClicker)
+                            buttonBindLeftClicker = dpg.add_button(label="Click to Bind", callback=statusBindLeftClicker)
+                            dropdownLeftMode = dpg.add_combo(label="Mode", items=["Hold", "Always"], default_value=sodaClass.config["left"]["mode"], callback=setLeftMode)
+
+                            bind = sodaClass.config["left"]["bind"]
+                            if bind != 0:
+                                dpg.set_item_label(buttonBindLeftClicker, f"Bind: {chr(bind)}")
+
+                        dpg.add_spacer(width=75)
+
+                        sliderLeftAverageCPS = dpg.add_slider_int(label="Average CPS", default_value=sodaClass.config["left"]["averageCPS"], min_value=1, callback=setLeftAverageCPS)
 
-        dpg.create_viewport(title=f"[v{version}] Soda - AutoClicker.ontop", width=860, height=645)
-
-        with dpg.window(tag="Primary Window"):
-            dpg.bind_item_theme("Primary Window", container_theme)
-            clicks = sodaClass.getClickSounds()
-            with dpg.tab_bar():
-                with dpg.tab(label="Left Clicker"):
-                    dpg.add_spacer(width=75)
-                    
-                    with dpg.group(horizontal=True):
-                        checkboxToggleLeftClicker = dpg.add_checkbox(label="Toggle", default_value=sodaClass.config["left"]["enabled"], callback=toggleLeftClicker)
-                        buttonBindLeftClicker = dpg.add_button(label="Click to Bind", callback=statusBindLeftClicker)
-                        dropdownLeftMode = dpg.add_combo(label="Mode", items=["Hold", "Always"], default_value=sodaClass.config["left"]["mode"], callback=setLeftMode)
-
-                        bind = sodaClass.config["left"]["bind"]
-                        if bind != 0:
-                            dpg.set_item_label(buttonBindLeftClicker, f"Bind: {chr(bind)}")
-
-                    dpg.add_spacer(width=75)
-
-                    sliderLeftAverageCPS = dpg.add_slider_int(label="Average CPS", default_value=sodaClass.config["left"]["averageCPS"], min_value=1, callback=setLeftAverageCPS)
-
-                    dpg.add_spacer(width=75)
-                    dpg.add_separator()
-                    dpg.add_spacer(width=75)
-
-                    checkboxLeftBlockHit = dpg.add_checkbox(label="BlockHit", default_value=sodaClass.config["left"]["blockHit"], callback=toggleLeftBlockHit)
-                    sliderLeftBlockHitChance = dpg.add_slider_int(label="BlockHit Chance", default_value=sodaClass.config["left"]["blockHitChance"], min_value=1, max_value=100, callback=setLeftBlockHitChance)
-                    dpg.add_text(default_value="Randomly right clicks to do a blockhit (MC version < 1.8.9). This can help reduce damage.\nWarning: Having the amount higher than 50 can cause it to be very hard to move while using the clicker")
-                    dpg.add_checkbox(label="Blockhit Hold", default_value=sodaClass.config["left"]["blockHitHold"], callback=toggleLeftBlockHitHold)
-                    dpg.add_text(default_value="Only block hits if RMB is held down - Not working, will be fixed in 1.5.4")
-                    dpg.add_spacer(width=125)
-
-                    checkboxLeftShakeEffect = dpg.add_checkbox(label="Shake Effect", default_value=sodaClass.config["left"]["shakeEffect"], callback=toggleLeftShakeEffect)
-                    sliderLeftShakeEffectForce = dpg.add_slider_int(label="Shake Effect Force", default_value=sodaClass.config["left"]["shakeEffectForce"], min_value=1, max_value=20, callback=setLeftShakeEffectForce)
-                    dpg.add_text(default_value="Makes your camera move a little bit when the autoclicker is active!\nThis can help bypass anticheats with strict autoclicker checks.")
-                    dpg.add_spacer(width=75)
-                    dpg.add_separator()
-                    dpg.add_spacer(width=75)
-
-                    dropDownLeftClickSound = dpg.add_combo(label="Click Sound", items=clicks, default_value=sodaClass.config["left"]["soundPath"], callback=setLeftClickSoundPath)
-                    
-                    dpg.add_text(default_value="Plays a sound when you click!")
-                    dpg.add_spacer(width=75)
-                    dpg.add_separator()
-                    dpg.add_spacer(width=75)
-
-                    checkboxLeftOnlyWhenFocused = dpg.add_checkbox(label="Only In Game", default_value=sodaClass.config["left"]["onlyWhenFocused"], callback=toggleLeftOnlyWhenFocused)
-                    
-                    checkboxLeftRMBLock = dpg.add_checkbox(label="RMB-Lock", default_value=sodaClass.config["left"]["RMBLock"], callback=toggleLeftRMBLock)
-                    checkboxLeftWorkInMenus = dpg.add_checkbox(label="Work in Menus", default_value=sodaClass.config["left"]["workInMenus"], callback=toggleLeftWorkInMenus)
-                    checkboxLeftBlatantMode = dpg.add_checkbox(label="Blatant Mode", default_value=sodaClass.config["left"]["blatant"], callback=toggleLeftBlatantMode)
-                
-                    dpg.add_spacer(width=75)
-
-                    dropdownBreakBlocks = dpg.add_combo(label="Break Blocks", items=["None", "Full", "Shift With Click", "Shift No Click"], default_value=sodaClass.config["left"]["breakBlocks"], callback=setLeftBreakBlocks)
-                    dpg.add_text(default_value="Breaks blocks while clicking.\nNone - Doesn't break blocks at all\nFull - Break blocks all the time (Can cause issues on servers such as hypixel.net)\nShift With Click - Breaks blocks when shifting, but it keeps clicking (Worse hitreg when shifting) \nShift No Click - Stops the clicking when shifting to break blocks")
-
-                    dpg.add_spacer(width=75)
-                    dpg.add_separator()
-                    dpg.add_spacer(width=75)
-
-                    checkboxLeftAutoRod = dpg.add_checkbox(label="Auto Rod", default_value=sodaClass.config["left"]["AutoRod"], callback=toggleLeftAutoRod)
-                    sliderLeftAutoRodChance = dpg.add_slider_int(label="Auto Rod Chance", default_value=sodaClass.config["left"]["AutoRodChance"], min_value=1, max_value=100, callback=setLeftAutoRodChance)
-                    dpg.add_text(default_value="Works like blockhit but instead 'throws' a rod. Change your rod slot in MISC settings.\nIts not recommended to have Rod Change above 15!")
-                    dpg.add_spacer(width=75)
-                    dpg.add_separator()
-                    dpg.add_spacer(width=75)
-
-                    creditsText = dpg.add_text(default_value="Credits: 4urxra (Developer)")
-                    githubText = dpg.add_text(default_value="https://github.com/Dream23322/Soda-Autoclicker/")
-                with dpg.tab(label="Right Clicker"):
-                    dpg.add_spacer(width=75)
-
-                    with dpg.group(horizontal=True):
-                        checkboxToggleRightClicker = dpg.add_checkbox(label="Toggle", default_value=sodaClass.config["right"]["enabled"], callback=toggleRightClicker)
-                        buttonBindRightClicker = dpg.add_button(label="Click to Bind", callback=statusBindRightClicker)
-                        dropdownRightMode = dpg.add_combo(label="Mode", items=["Hold", "Always"], default_value=sodaClass.config["right"]["mode"], callback=setRightMode)
-
-                        bind = sodaClass.config["right"]["bind"]
-                        if bind != 0:
-                            dpg.set_item_label(buttonBindRightClicker, f"Bind: {chr(bind)}")
-
-                    dpg.add_spacer(width=75)
-
-                    sliderRightAverageCPS = dpg.add_slider_int(label="Average CPS", default_value=sodaClass.config["right"]["averageCPS"], min_value=1, callback=setRightAverageCPS)
-
-                    dpg.add_spacer(width=75)
-                    dpg.add_separator()
-                    dpg.add_spacer(width=75)
-
-                    checkboxRightShakeEffect = dpg.add_checkbox(label="Shake Effect", default_value=sodaClass.config["right"]["shakeEffect"], callback=toggleRightShakeEffect)
-                    sliderRightShakeEffectForce = dpg.add_slider_int(label="Shake Effect Force", default_value=sodaClass.config["right"]["shakeEffectForce"], min_value=1, max_value=20, callback=setRightShakeEffectForce)
-
-                    dpg.add_spacer(width=75)
-                    dpg.add_separator()
-                    dpg.add_spacer(width=75)
-
-                    dropdownRightClickSound = dpg.add_combo(label="Click Sound", items=clicks, default_value=sodaClass.config["right"]["soundPath"], callback=setRightClickSoundPath)
-                    dpg.add_text(default_value="Plays a sound when you click!")
-   
-                    dpg.add_spacer(width=75)
-                    dpg.add_separator()
-                    dpg.add_spacer(width=75)
-
-                    checkboxRightLMBLock = dpg.add_checkbox(label="LMB-Lock", default_value=sodaClass.config["right"]["LMBLock"], callback=toggleRightLMBLock)
-                    checkboxRightOnlyWhenFocused = dpg.add_checkbox(label="Only In Game", default_value=sodaClass.config["right"]["onlyWhenFocused"], callback=toggleRightOnlyWhenFocused)
-                    checkboxRightWorkInMenus = dpg.add_checkbox(label="Work in Menus", default_value=sodaClass.config["right"]["workInMenus"], callback=toggleRightWorkInMenus)
-                    checkboxRightBlatantMode = dpg.add_checkbox(label="Blatant Mode", default_value=sodaClass.config["right"]["blatant"], callback=toggleRightBlatantMode)
-                    checkboxRightItems = dpg.add_checkbox(label="Items", default_value=sodaClass.config["right"]["items"], callback=toggleRightItems)
-                    dpg.add_spacer(width=75)    
-                    dpg.add_separator()
-                    dpg.add_spacer(width=75)
-
-                    creditsText = dpg.add_text(default_value="Credits: 4urxra (Developer)")
-                    githubText = dpg.add_text(default_value="https://github.com/Dream23322/Soda-Autoclicker/")                
-                with dpg.tab(label="Recorder"):
-                    dpg.add_spacer(width=75)
-
-                    recorderInfoText = dpg.add_text(default_value="Records your legit way of clicking in order to produce clicks even less detectable by AntiCheat.\nAfter pressing the \"Start\" button, click as if you were in PvP for a few seconds. Then press the \"Stop\" button.\nOnly works for the left click.")
-
-                    dpg.add_spacer(width=75)
-                    dpg.add_separator()
-                    dpg.add_spacer(width=75)
-
-                    checkboxRecorderEnabled = dpg.add_checkbox(label="Enabled", default_value=sodaClass.config["recorder"]["enabled"], callback=toggleRecorder)
-
-                    dpg.add_spacer(width=75)
-                    dpg.add_separator()
-                    dpg.add_spacer(width=75)
-
-                    with dpg.group(horizontal=True):
-                        buttonStartRecording = dpg.add_button(label="Start Recording", callback=startRecording)
-                        buttonStopRecording = dpg.add_button(label="Stop Recording", callback=stopRecording)
-
-                    dpg.add_spacer(width=75)
-                    dpg.add_separator()
-                    dpg.add_spacer(width=75)
-
-                    averageRecordCPSText = dpg.add_text(default_value="Average CPS of previous Record: ")
-                    
-                    totalTime = 0
-                    for clickTime in sodaClass.config["recorder"]["record"]:
-                        totalTime += float(clickTime)
-
-                    dpg.set_value(averageRecordCPSText, f"Average CPS of previous Record: {round(len(sodaClass.config['recorder']['record']) / totalTime, 2)}")
-
-                    recordingStatusText = dpg.add_text(default_value="Recording: ")
-                    dpg.set_value(recordingStatusText, f"Recording: {recording}")
-                    dpg.add_spacer(width=75)    
-                    dpg.add_separator()
-                    dpg.add_spacer(width=75)
-
-                    creditsText = dpg.add_text(default_value="Credits: 4urxra (Developer)")
-                    githubText = dpg.add_text(default_value="https://github.com/Dream23322/Soda-Autoclicker/")                    
-                with dpg.tab(label="Misc"):
-                    dpg.add_spacer(width=75)
-
-                    buttonSelfDestruct = dpg.add_button(label="Destruct", callback=selfDestruct)
-
-                    dpg.add_spacer(width=75)
-                    dpg.add_separator()
-                    dpg.add_spacer(width=75)
-
-                    with dpg.group(horizontal=True):
-                        buttonBindHideGUI = dpg.add_button(label="Click to Bind", callback=statusBindHideGUI)
-                        hideGUIText = dpg.add_text(default_value="Hide GUI")
-
-                        bind = sodaClass.config["misc"]["bindHideGUI"]
-                        if bind != 0:
-                            dpg.set_item_label(buttonBindHideGUI, f"Bind: {chr(bind)}")
-
-                
-                    consoleFaker = dpg.add_combo(label="Console Faker", default_value=sodaClass.config["misc"]["consoleFaker"], items=["NullBind", "Optimiser", "CustomRGB"], callback=setConsoleFaker)
-
-
-                    dpg.add_spacer(width=75)
-                    dpg.add_separator()
-                    dpg.add_spacer(width=75)
-
-                    saveSettings = dpg.add_checkbox(label="Save Settings", default_value=sodaClass.config["misc"]["saveSettings"], callback=toggleSaveSettings)
-                    saveSettingsTooltip = dpg.add_text(default_value="Attempts to save settings on close.")
-                    dpg.add_spacer(width=75)
-
-                    checkboxAlwaysOnTop = dpg.add_checkbox(label="Always On Top", callback=toggleAlwaysOnTop)
-                    alwaysOnTopTooltip = dpg.add_text(default_value="Makes the GUI always on top.")
-
-                    dpg.add_spacer(width=75)
-
-                    checkboxAlwaysOnTop = dpg.add_checkbox(label="Discord Rich Presence", default_value=sodaClass.config["misc"]["discordRichPresence"], callback=toggleDiscordRPC)
-                    dpg.add_text(default_value="Shows your activity status as using Soda v1")
-
-                    dpg.add_spacer(width=75)
-                    dpg.add_separator()
-                    dpg.add_spacer(width=75)
-
-                    with dpg.group(horizontal=True):
-                        rodBindText = dpg.add_text(default_value="Rod Bind:")
-                        buttonBindRodKey = dpg.add_button(label="Click to Bind", callback=statusBindRod)
-
-                        bind = sodaClass.config["misc"]["rodBind"]
-                        if bind != 0:
-                            dpg.set_item_label(buttonBindRodKey, f"Bind: {chr(bind)}")
-
-                    dpg.add_text(default_value="Press the binded key to throw a rod")
-
-                    dpg.add_checkbox(label="Long Rod", default_value=sodaClass.config["misc"]["longRod"], callback=setLongRod)
-                    dpg.add_text(default_value="Long Rod makes it so when a rod is thrown using the bind, it will throw it further (doubles the rod delay)")
-
-                    rodSlot = dpg.add_combo(label="Rod Slot", items=["1", "2", "3", "4", "5", "6", "7", "8", "9"], default_value=sodaClass.config["misc"]["rodSlot"], callback=setRodSlot)
-                    dpg.add_text(default_value="Which slot to switch to when throwing a rod")
-
-                    rodDelay = dpg.add_input_float(label="Rod Delay", default_value=sodaClass.config["misc"]["rodDelay"], min_value=0, max_value=2, callback=setRodDelay)
-                    dpg.add_text(default_value="Rod Delay is how long you want to be throwing the rod (Range)")
-                    dpg.add_spacer(width=75)
-                    dpg.add_separator()
-                    dpg.add_spacer(width=75)
-
-                    with dpg.group(horizontal=True):
-                        buttonBindPearlKey = dpg.add_button(label="Click to Bind", callback=statusBindPearl)
-
-                        bind = sodaClass.config["misc"]["pearlBind"]
-                        if bind != 0:
-                            dpg.set_item_label(buttonBindPearlKey, f"Bind: {chr(bind)}")
-
-                    dpg.add_text(default_value="Press the binded key to throw a pearl")
-
-                    dpg.add_combo(label="Pearl Slot", items=["1", "2", "3", "4", "5", "6", "7", "8", "9"], default_value=sodaClass.config["misc"]["pearlSlot"], callback=setPearlSlot)
-                    dpg.add_text(default_value="Which slot to switch to when throwing a pearl")
-
-                    dpg.add_spacer(width=75)
-                    dpg.add_separator()
-                    dpg.add_spacer(width=75)
-
-                    dpg.add_combo(label="Sword Slot", items=["1", "2", "3", "4", "5", "6", "7", "8", "9"], default_value=sodaClass.config["misc"]["swordSlot"], callback=setSwordSlot)
-                    dpg.add_text(default_value="Which slot to switch back to after auto-throwing an item")
-                    dpg.add_spacer(width=75)
-                    dpg.add_separator()
-                    dpg.add_spacer(width=75)
-
-                    dpg.add_combo(label="Theme", items=["light", "dark", "sakura", "purple", "blue", "lightblue", "orange", "red", "beach_green", "forest_green", "custom"], default_value=sodaClass.config["misc"]["theme"], callback=setTheme)
-                    dpg.add_text(default_value="Changes the theme of the GUI (Requires Restart!)")
-
-                    dpg.add_slider_int(label="Red", default_value=sodaClass.config["misc"]["red"], min_value=0, max_value=255, callback=setRed)
-                    dpg.add_slider_int(label="Green", default_value=sodaClass.config["misc"]["green"], min_value=0, max_value=255, callback=setGreen)
-                    dpg.add_slider_int(label="Blue", default_value=sodaClass.config["misc"]["blue"], min_value=0, max_value=255, callback=setBlue)
-                    
-                    dpg.add_spacer(width=75)
-                    dpg.add_separator()
-                    dpg.add_spacer(width=75)
-
-                    creditsText = dpg.add_text(default_value="Credits: 4urxra (Developer)")
-                    githubText = dpg.add_text(default_value="https://github.com/Dream23322/Soda-Autoclicker/")
-
-                with dpg.tab(label="Potions"):
-
-                    dpg.add_spacer(width=75)
-
-                    dpg.add_text(default_value="Tools for potions, includes throwbind")
-
-                    dpg.add_spacer(width=75)
-                    dpg.add_separator()
-                    dpg.add_spacer(width=75)
-
-                    dpg.add_checkbox(label="Enable Potions", default_value=sodaClass.config["potions"]["enabled"], callback=togglePotions)
-
-                    dpg.add_spacer(width=75)
-                    dpg.add_separator()
-                    dpg.add_spacer(width=75)
-                    # Pot Bind Throw Bind System
-                    with dpg.group(horizontal=True):
-                        potBindText = dpg.add_text(default_value="Pot Bind:")
-                        buttonBindPotKey = dpg.add_button(label="Click to Bind", callback=statusBindPot)
-
-                        bind = sodaClass.config["potions"]["potBind"]
-                        if bind != 0:
-                            dpg.set_item_label(buttonBindPotKey, f"Bind: {chr(bind)}")
-                    dpg.add_text(default_value="Keybind which throws the potion")
-                    dpg.add_spacer(width=75)
-
-                    # Bind Reset Bind System
-
-                    with dpg.group(horizontal=True):
-                        potResetBindText = dpg.add_text(default_value="Pot Reset Bind:")
-                        buttonBindPotResetKey = dpg.add_button(label="Click to Bind", callback=statusBindPotReset)
-
-                        bind = sodaClass.config["potions"]["potResetBind"]
-                        if bind != 0:
-                            dpg.set_item_label(buttonBindPotResetKey, f"Bind: {chr(bind)}")
-
-                    dpg.add_text(default_value="Keybind which resets the potion data (Sets the next slot to the starting slot)")
-                    
-                    dpg.add_spacer(width=75)    
-                    dpg.add_separator()
-                    dpg.add_spacer(width=75)
-                    # Lowest Slot Slider
-
-                    dpg.add_slider_int(label="Lowest Slot", default_value=sodaClass.config["potions"]["lowestSlot"], min_value=1, max_value=9, callback=setLowestSlot)
-                    dpg.add_text(default_value="First slot to throw from")
-
-                    # Highest Slot
-                    dpg.add_spacer(width=75)
-                    dpg.add_slider_int(label="Highest Slot", default_value=sodaClass.config["potions"]["highestSlot"], min_value=1, max_value=9, callback=setHighestSlot)
-                    dpg.add_text(default_value="Max slot to switch to when throwing")
-
-                    # Switch Delay
-                    dpg.add_spacer(width=75)
-                    potDelay = dpg.add_input_float(label="Pot Delay", default_value=sodaClass.config["potions"]["throwDelay"], min_value=0, max_value=2, callback=setPotDelay)
-                    dpg.add_text("Pot Delay is how long do you want to wait after switching to throw the potion (Higher this is, the less chance of failing to throw there will be, but it will also add more delay which can be bad during PvP)")
-                    
-                    dpg.add_spacer(width=75)    
-                    dpg.add_separator()
-                    dpg.add_spacer(width=75)
-
-                    creditsText = dpg.add_text(default_value="Credits: 4urxra (Developer)")
-                    githubText = dpg.add_text(default_value="https://github.com/Dream23322/Soda-Autoclicker/")
-                
-                with dpg.tab(label="Movement"):
-                    dpg.add_spacer(width=75)
-
-                    dpg.add_checkbox(label="Auto W Tap", default_value=sodaClass.config["movement"]["autoWTap"], callback=toggleWTap)
-                    dpg.add_text(default_value="Automatically W-Taps when you click. \nThis helps with keeping combos by stopping you from going into the players reach circle.")
-                    dpg.add_slider_int(label="W Tap Value", default_value=sodaClass.config["movement"]["wTapValue"], min_value=1, max_value=100, callback=setWTapValue)
-                    dpg.add_combo(label="W Tap Mode", items=["chance", "delay"], default_value=sodaClass.config["movement"]["wTapMode"], callback=setWTapMode)
-                    dpg.add_spacer(width=75)
-                    dpg.add_separator()
-                    dpg.add_spacer(width=75)
-                    dpg.add_checkbox(label="Auto Sprint", default_value=sodaClass.config["movement"]["autoSprint"], callback=toggleAutoSprint)
-                    dpg.add_text(default_value="Automatically sprints when moving")
-                    dpg.add_spacer(width=75)
-                    dpg.add_separator()
-                    dpg.add_spacer(width=75)
-
-                with dpg.tab(label="Config Manager"):
-                    # Load all configs from the config folder
-
-                    dpg.add_spacer(width=75)
-                    dpg.add_text(default_value="Config Manager")
-                    dpg.add_separator()
-                    dpg.add_spacer(width=100)
-                    
-                    configs = sodaClass.getConfigs()
-
-                    if len(configs) == 0:
-                        dpg.add_text(default_value="No configs found!")
-                    else:
-                        dpg.add_text(default_value="Configs found:")
                         dpg.add_spacer(width=75)
                         dpg.add_separator()
                         dpg.add_spacer(width=75)
-                        for config in configs:
-                            with dpg.group():
-                                # Display name
-                                dpg.add_text(default_value=config["displayName"])
-                                dpg.add_text(default_value=f"Author: {config['Author']}")
-                                dpg.add_text(default_value=f"Description: {config['description']}")
-                                dpg.add_button(label="Load", callback=sodaClass.loadConfig, user_data=0)
-                                dpg.add_spacer(width=75)
-                                dpg.add_separator()
-                                dpg.add_spacer(width=75)
 
-                    dpg.add_spacer(width=75)
+                        checkboxLeftBlockHit = dpg.add_checkbox(label="BlockHit", default_value=sodaClass.config["left"]["blockHit"], callback=toggleLeftBlockHit)
+                        sliderLeftBlockHitChance = dpg.add_slider_int(label="BlockHit Chance", default_value=sodaClass.config["left"]["blockHitChance"], min_value=1, max_value=100, callback=setLeftBlockHitChance)
+                        dpg.add_text(default_value="Randomly right clicks to do a blockhit (MC version < 1.8.9). This can help reduce damage.\nWarning: Having the amount higher than 50 can cause it to be very hard to move while using the clicker")
+                        dpg.add_checkbox(label="Blockhit Hold", default_value=sodaClass.config["left"]["blockHitHold"], callback=toggleLeftBlockHitHold)
+                        dpg.add_text(default_value="Only block hits if RMB is held down - Not working, will be fixed in 1.5.4")
+                        dpg.add_spacer(width=125)
 
-                    dpg.add_text(default_value="Requires restart to apply changes!")
-
-                    dpg.add_spacer(width=75)
-
-                    dpg.add_button(label="Open Config Folder", callback=sodaClass.openConfigFolder)
-                if sodaClass.newver:
-                    with dpg.tab(label="Update"):
+                        checkboxLeftShakeEffect = dpg.add_checkbox(label="Shake Effect", default_value=sodaClass.config["left"]["shakeEffect"], callback=toggleLeftShakeEffect)
+                        sliderLeftShakeEffectForce = dpg.add_slider_int(label="Shake Effect Force", default_value=sodaClass.config["left"]["shakeEffectForce"], min_value=1, max_value=20, callback=setLeftShakeEffectForce)
+                        dpg.add_text(default_value="Makes your camera move a little bit when the autoclicker is active!\nThis can help bypass anticheats with strict autoclicker checks.")
                         dpg.add_spacer(width=75)
-                        dpg.add_text(default_value="A new version of Soda is available!")
-                        dpg.add_text(default_value=f"Current version: {version}")
-                        dpg.add_text(default_value=f"Latest version: {sodaClass.newverid}")
+                        dpg.add_separator()
+                        dpg.add_spacer(width=75)
 
-                        dpg.add_text(default_value="You can download it from the GitHub repository.")
-                        dpg.add_button(label="Download", callback=lambda: webbrowser.open("https://github.com/Dream23322/Soda-Autoclicker/releases"))
+                        dropDownLeftClickSound = dpg.add_combo(label="Click Sound", items=clicks, default_value=sodaClass.config["left"]["soundPath"], callback=setLeftClickSoundPath)
+                        
+                        dpg.add_text(default_value="Plays a sound when you click!")
+                        dpg.add_spacer(width=75)
+                        dpg.add_separator()
+                        dpg.add_spacer(width=75)
 
-        with dpg.theme() as global_theme:
-            with dpg.theme_component(dpg.mvAll):
-                dpg.add_theme_style(dpg.mvStyleVar_WindowBorderSize, 0)
-                dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 4)
-                dpg.add_theme_style(dpg.mvStyleVar_GrabRounding, 1)
-                dpg.add_theme_style(dpg.mvStyleVar_GrabMinSize, 20)
-                dpg.add_theme_style(dpg.mvStyleVar_TabRounding, 1)
-                dpg.add_theme_color(dpg.mvThemeCol_TabActive, (107, 110, 248))
-                dpg.add_theme_color(dpg.mvThemeCol_TabHovered, (107, 110, 248))
-                dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered, (107, 110, 248))
-                dpg.add_theme_color(dpg.mvThemeCol_CheckMark, (107, 110, 248))
-                dpg.add_theme_color(dpg.mvThemeCol_ScrollbarGrabHovered, (107, 110, 248))
-                dpg.add_theme_color(dpg.mvThemeCol_ScrollbarGrabActive, (107, 110, 248))
-                dpg.add_theme_color(dpg.mvThemeCol_SliderGrab, (107, 110, 248))
-                dpg.add_theme_color(dpg.mvThemeCol_SliderGrabActive, (107, 110, 248))
-                dpg.add_theme_color(dpg.mvThemeCol_FrameBgHovered, (71, 71, 77))
-                dpg.add_theme_color(dpg.mvThemeCol_HeaderHovered, (71, 71, 77))
+                        checkboxLeftOnlyWhenFocused = dpg.add_checkbox(label="Only In Game", default_value=sodaClass.config["left"]["onlyWhenFocused"], callback=toggleLeftOnlyWhenFocused)
+                        
+                        checkboxLeftRMBLock = dpg.add_checkbox(label="RMB-Lock", default_value=sodaClass.config["left"]["RMBLock"], callback=toggleLeftRMBLock)
+                        checkboxLeftWorkInMenus = dpg.add_checkbox(label="Work in Menus", default_value=sodaClass.config["left"]["workInMenus"], callback=toggleLeftWorkInMenus)
+                        checkboxLeftBlatantMode = dpg.add_checkbox(label="Blatant Mode", default_value=sodaClass.config["left"]["blatant"], callback=toggleLeftBlatantMode)
+                    
+                        dpg.add_spacer(width=75)
 
-        dpg.bind_theme(global_theme)
+                        dropdownBreakBlocks = dpg.add_combo(label="Break Blocks", items=["None", "Full", "Shift With Click", "Shift No Click"], default_value=sodaClass.config["left"]["breakBlocks"], callback=setLeftBreakBlocks)
+                        dpg.add_text(default_value="Breaks blocks while clicking.\nNone - Doesn't break blocks at all\nFull - Break blocks all the time (Can cause issues on servers such as hypixel.net)\nShift With Click - Breaks blocks when shifting, but it keeps clicking (Worse hitreg when shifting) \nShift No Click - Stops the clicking when shifting to break blocks")
 
-        dpg.create_context()
-        dpg.show_viewport()
+                        dpg.add_spacer(width=75)
+                        dpg.add_separator()
+                        dpg.add_spacer(width=75)
+
+                        checkboxLeftAutoRod = dpg.add_checkbox(label="Auto Rod", default_value=sodaClass.config["left"]["AutoRod"], callback=toggleLeftAutoRod)
+                        sliderLeftAutoRodChance = dpg.add_slider_int(label="Auto Rod Chance", default_value=sodaClass.config["left"]["AutoRodChance"], min_value=1, max_value=100, callback=setLeftAutoRodChance)
+                        dpg.add_text(default_value="Works like blockhit but instead 'throws' a rod. Change your rod slot in MISC settings.\nIts not recommended to have Rod Change above 15!")
+                        dpg.add_spacer(width=75)
+                        dpg.add_separator()
+                        dpg.add_spacer(width=75)
+
+                        creditsText = dpg.add_text(default_value="Credits: 4urxra (Developer)")
+                        githubText = dpg.add_text(default_value="https://github.com/Dream23322/Soda-Autoclicker/")
+                    with dpg.tab(label="Right Clicker"):
+                        dpg.add_spacer(width=75)
+
+                        with dpg.group(horizontal=True):
+                            checkboxToggleRightClicker = dpg.add_checkbox(label="Toggle", default_value=sodaClass.config["right"]["enabled"], callback=toggleRightClicker)
+                            buttonBindRightClicker = dpg.add_button(label="Click to Bind", callback=statusBindRightClicker)
+                            dropdownRightMode = dpg.add_combo(label="Mode", items=["Hold", "Always"], default_value=sodaClass.config["right"]["mode"], callback=setRightMode)
+
+                            bind = sodaClass.config["right"]["bind"]
+                            if bind != 0:
+                                dpg.set_item_label(buttonBindRightClicker, f"Bind: {chr(bind)}")
+
+                        dpg.add_spacer(width=75)
+
+                        sliderRightAverageCPS = dpg.add_slider_int(label="Average CPS", default_value=sodaClass.config["right"]["averageCPS"], min_value=1, callback=setRightAverageCPS)
+
+                        dpg.add_spacer(width=75)
+                        dpg.add_separator()
+                        dpg.add_spacer(width=75)
+
+                        checkboxRightShakeEffect = dpg.add_checkbox(label="Shake Effect", default_value=sodaClass.config["right"]["shakeEffect"], callback=toggleRightShakeEffect)
+                        sliderRightShakeEffectForce = dpg.add_slider_int(label="Shake Effect Force", default_value=sodaClass.config["right"]["shakeEffectForce"], min_value=1, max_value=20, callback=setRightShakeEffectForce)
+
+                        dpg.add_spacer(width=75)
+                        dpg.add_separator()
+                        dpg.add_spacer(width=75)
+
+                        dropdownRightClickSound = dpg.add_combo(label="Click Sound", items=clicks, default_value=sodaClass.config["right"]["soundPath"], callback=setRightClickSoundPath)
+                        dpg.add_text(default_value="Plays a sound when you click!")
+    
+                        dpg.add_spacer(width=75)
+                        dpg.add_separator()
+                        dpg.add_spacer(width=75)
+
+                        checkboxRightLMBLock = dpg.add_checkbox(label="LMB-Lock", default_value=sodaClass.config["right"]["LMBLock"], callback=toggleRightLMBLock)
+                        checkboxRightOnlyWhenFocused = dpg.add_checkbox(label="Only In Game", default_value=sodaClass.config["right"]["onlyWhenFocused"], callback=toggleRightOnlyWhenFocused)
+                        checkboxRightWorkInMenus = dpg.add_checkbox(label="Work in Menus", default_value=sodaClass.config["right"]["workInMenus"], callback=toggleRightWorkInMenus)
+                        checkboxRightBlatantMode = dpg.add_checkbox(label="Blatant Mode", default_value=sodaClass.config["right"]["blatant"], callback=toggleRightBlatantMode)
+                        checkboxRightItems = dpg.add_checkbox(label="Items", default_value=sodaClass.config["right"]["items"], callback=toggleRightItems)
+                        dpg.add_spacer(width=75)    
+                        dpg.add_separator()
+                        dpg.add_spacer(width=75)
+
+                        creditsText = dpg.add_text(default_value="Credits: 4urxra (Developer)")
+                        githubText = dpg.add_text(default_value="https://github.com/Dream23322/Soda-Autoclicker/")                
+                    with dpg.tab(label="Recorder"):
+                        dpg.add_spacer(width=75)
+
+                        recorderInfoText = dpg.add_text(default_value="Records your legit way of clicking in order to produce clicks even less detectable by AntiCheat.\nAfter pressing the \"Start\" button, click as if you were in PvP for a few seconds. Then press the \"Stop\" button.\nOnly works for the left click.")
+
+                        dpg.add_spacer(width=75)
+                        dpg.add_separator()
+                        dpg.add_spacer(width=75)
+
+                        checkboxRecorderEnabled = dpg.add_checkbox(label="Enabled", default_value=sodaClass.config["recorder"]["enabled"], callback=toggleRecorder)
+
+                        dpg.add_spacer(width=75)
+                        dpg.add_separator()
+                        dpg.add_spacer(width=75)
+
+                        with dpg.group(horizontal=True):
+                            buttonStartRecording = dpg.add_button(label="Start Recording", callback=startRecording)
+                            buttonStopRecording = dpg.add_button(label="Stop Recording", callback=stopRecording)
+
+                        dpg.add_spacer(width=75)
+                        dpg.add_separator()
+                        dpg.add_spacer(width=75)
+
+                        averageRecordCPSText = dpg.add_text(default_value="Average CPS of previous Record: ")
+                        
+                        totalTime = 0
+                        for clickTime in sodaClass.config["recorder"]["record"]:
+                            totalTime += float(clickTime)
+
+                        dpg.set_value(averageRecordCPSText, f"Average CPS of previous Record: {round(len(sodaClass.config['recorder']['record']) / totalTime, 2)}")
+
+                        recordingStatusText = dpg.add_text(default_value="Recording: ")
+                        dpg.set_value(recordingStatusText, f"Recording: {recording}")
+                        dpg.add_spacer(width=75)    
+                        dpg.add_separator()
+                        dpg.add_spacer(width=75)
+
+                        creditsText = dpg.add_text(default_value="Credits: 4urxra (Developer)")
+                        githubText = dpg.add_text(default_value="https://github.com/Dream23322/Soda-Autoclicker/")                    
+                    with dpg.tab(label="Misc"):
+                        dpg.add_spacer(width=75)
+
+                        buttonSelfDestruct = dpg.add_button(label="Destruct", callback=selfDestruct)
+
+                        dpg.add_spacer(width=75)
+                        dpg.add_separator()
+                        dpg.add_spacer(width=75)
+
+                        with dpg.group(horizontal=True):
+                            buttonBindHideGUI = dpg.add_button(label="Click to Bind", callback=statusBindHideGUI)
+                            hideGUIText = dpg.add_text(default_value="Hide GUI")
+
+                            bind = sodaClass.config["misc"]["bindHideGUI"]
+                            if bind != 0:
+                                dpg.set_item_label(buttonBindHideGUI, f"Bind: {chr(bind)}")
+
+                    
+                        consoleFaker = dpg.add_combo(label="Console Faker", default_value=sodaClass.config["misc"]["consoleFaker"], items=["NullBind", "Optimiser", "CustomRGB"], callback=setConsoleFaker)
+
+
+                        dpg.add_spacer(width=75)
+                        dpg.add_separator()
+                        dpg.add_spacer(width=75)
+
+                        saveSettings = dpg.add_checkbox(label="Save Settings", default_value=sodaClass.config["misc"]["saveSettings"], callback=toggleSaveSettings)
+                        saveSettingsTooltip = dpg.add_text(default_value="Attempts to save settings on close.")
+                        dpg.add_spacer(width=75)
+
+                        checkboxAlwaysOnTop = dpg.add_checkbox(label="Always On Top", callback=toggleAlwaysOnTop)
+                        alwaysOnTopTooltip = dpg.add_text(default_value="Makes the GUI always on top.")
+
+                        dpg.add_spacer(width=75)
+
+                        checkboxAlwaysOnTop = dpg.add_checkbox(label="Discord Rich Presence", default_value=sodaClass.config["misc"]["discordRichPresence"], callback=toggleDiscordRPC)
+                        dpg.add_text(default_value="Shows your activity status as using Soda v1")
+
+                        dpg.add_spacer(width=75)
+                        dpg.add_separator()
+                        dpg.add_spacer(width=75)
+
+                        with dpg.group(horizontal=True):
+                            rodBindText = dpg.add_text(default_value="Rod Bind:")
+                            buttonBindRodKey = dpg.add_button(label="Click to Bind", callback=statusBindRod)
+
+                            bind = sodaClass.config["misc"]["rodBind"]
+                            if bind != 0:
+                                dpg.set_item_label(buttonBindRodKey, f"Bind: {chr(bind)}")
+
+                        dpg.add_text(default_value="Press the binded key to throw a rod")
+
+                        dpg.add_checkbox(label="Long Rod", default_value=sodaClass.config["misc"]["longRod"], callback=setLongRod)
+                        dpg.add_text(default_value="Long Rod makes it so when a rod is thrown using the bind, it will throw it further (doubles the rod delay)")
+
+                        rodSlot = dpg.add_combo(label="Rod Slot", items=["1", "2", "3", "4", "5", "6", "7", "8", "9"], default_value=sodaClass.config["misc"]["rodSlot"], callback=setRodSlot)
+                        dpg.add_text(default_value="Which slot to switch to when throwing a rod")
+
+                        rodDelay = dpg.add_input_float(label="Rod Delay", default_value=sodaClass.config["misc"]["rodDelay"], min_value=0, max_value=2, callback=setRodDelay)
+                        dpg.add_text(default_value="Rod Delay is how long you want to be throwing the rod (Range)")
+                        dpg.add_spacer(width=75)
+                        dpg.add_separator()
+                        dpg.add_spacer(width=75)
+
+                        with dpg.group(horizontal=True):
+                            buttonBindPearlKey = dpg.add_button(label="Click to Bind", callback=statusBindPearl)
+
+                            bind = sodaClass.config["misc"]["pearlBind"]
+                            if bind != 0:
+                                dpg.set_item_label(buttonBindPearlKey, f"Bind: {chr(bind)}")
+
+                        dpg.add_text(default_value="Press the binded key to throw a pearl")
+
+                        dpg.add_combo(label="Pearl Slot", items=["1", "2", "3", "4", "5", "6", "7", "8", "9"], default_value=sodaClass.config["misc"]["pearlSlot"], callback=setPearlSlot)
+                        dpg.add_text(default_value="Which slot to switch to when throwing a pearl")
+
+                        dpg.add_spacer(width=75)
+                        dpg.add_separator()
+                        dpg.add_spacer(width=75)
+
+                        dpg.add_combo(label="Sword Slot", items=["1", "2", "3", "4", "5", "6", "7", "8", "9"], default_value=sodaClass.config["misc"]["swordSlot"], callback=setSwordSlot)
+                        dpg.add_text(default_value="Which slot to switch back to after auto-throwing an item")
+                        dpg.add_spacer(width=75)
+                        dpg.add_separator()
+                        dpg.add_spacer(width=75)
+
+                        dpg.add_combo(label="Theme", items=["light", "dark", "sakura", "purple", "blue", "lightblue", "orange", "red", "beach_green", "forest_green", "custom"], default_value=sodaClass.config["misc"]["theme"], callback=setTheme)
+                        dpg.add_text(default_value="Changes the theme of the GUI (Requires Restart!)")
+
+                        dpg.add_slider_int(label="Red", default_value=sodaClass.config["misc"]["red"], min_value=0, max_value=255, callback=setRed)
+                        dpg.add_slider_int(label="Green", default_value=sodaClass.config["misc"]["green"], min_value=0, max_value=255, callback=setGreen)
+                        dpg.add_slider_int(label="Blue", default_value=sodaClass.config["misc"]["blue"], min_value=0, max_value=255, callback=setBlue)
+                        
+                        dpg.add_spacer(width=75)
+                        dpg.add_separator()
+                        dpg.add_spacer(width=75)
+
+                        dpg.add_checkbox(label="Toggle Sounds", default_value=sodaClass.config["misc"]["toggleSounds"], callback=sodaClass.toggleSounds)
+                        dpg.add_text(default_value="Toggles the sounds of the clickers")
+
+                        creditsText = dpg.add_text(default_value="Credits: 4urxra (Developer)")
+                        githubText = dpg.add_text(default_value="https://github.com/Dream23322/Soda-Autoclicker/")
+
+                    with dpg.tab(label="Potions"):
+
+                        dpg.add_spacer(width=75)
+
+                        dpg.add_text(default_value="Tools for potions, includes throwbind")
+
+                        dpg.add_spacer(width=75)
+                        dpg.add_separator()
+                        dpg.add_spacer(width=75)
+
+                        dpg.add_checkbox(label="Enable Potions", default_value=sodaClass.config["potions"]["enabled"], callback=togglePotions)
+
+                        dpg.add_spacer(width=75)
+                        dpg.add_separator()
+                        dpg.add_spacer(width=75)
+                        # Pot Bind Throw Bind System
+                        with dpg.group(horizontal=True):
+                            potBindText = dpg.add_text(default_value="Pot Bind:")
+                            buttonBindPotKey = dpg.add_button(label="Click to Bind", callback=statusBindPot)
+
+                            bind = sodaClass.config["potions"]["potBind"]
+                            if bind != 0:
+                                dpg.set_item_label(buttonBindPotKey, f"Bind: {chr(bind)}")
+                        dpg.add_text(default_value="Keybind which throws the potion")
+                        dpg.add_spacer(width=75)
+
+                        # Bind Reset Bind System
+
+                        with dpg.group(horizontal=True):
+                            potResetBindText = dpg.add_text(default_value="Pot Reset Bind:")
+                            buttonBindPotResetKey = dpg.add_button(label="Click to Bind", callback=statusBindPotReset)
+
+                            bind = sodaClass.config["potions"]["potResetBind"]
+                            if bind != 0:
+                                dpg.set_item_label(buttonBindPotResetKey, f"Bind: {chr(bind)}")
+
+                        dpg.add_text(default_value="Keybind which resets the potion data (Sets the next slot to the starting slot)")
+                        
+                        dpg.add_spacer(width=75)    
+                        dpg.add_separator()
+                        dpg.add_spacer(width=75)
+                        # Lowest Slot Slider
+
+                        dpg.add_slider_int(label="Lowest Slot", default_value=sodaClass.config["potions"]["lowestSlot"], min_value=1, max_value=9, callback=setLowestSlot)
+                        dpg.add_text(default_value="First slot to throw from")
+
+                        # Highest Slot
+                        dpg.add_spacer(width=75)
+                        dpg.add_slider_int(label="Highest Slot", default_value=sodaClass.config["potions"]["highestSlot"], min_value=1, max_value=9, callback=setHighestSlot)
+                        dpg.add_text(default_value="Max slot to switch to when throwing")
+
+                        # Switch Delay
+                        dpg.add_spacer(width=75)
+                        potDelay = dpg.add_input_float(label="Pot Delay", default_value=sodaClass.config["potions"]["throwDelay"], min_value=0, max_value=2, callback=setPotDelay)
+                        dpg.add_text("Pot Delay is how long do you want to wait after switching to throw the potion (Higher this is, the less chance of failing to throw there will be, but it will also add more delay which can be bad during PvP)")
+                        
+                        dpg.add_spacer(width=75)    
+                        dpg.add_separator()
+                        dpg.add_spacer(width=75)
+
+                        creditsText = dpg.add_text(default_value="Credits: 4urxra (Developer)")
+                        githubText = dpg.add_text(default_value="https://github.com/Dream23322/Soda-Autoclicker/")
+                    
+                    with dpg.tab(label="Movement"):
+                        dpg.add_spacer(width=75)
+
+                        dpg.add_checkbox(label="Auto W Tap", default_value=sodaClass.config["movement"]["autoWTap"], callback=toggleWTap)
+                        dpg.add_text(default_value="Automatically W-Taps when you click. \nThis helps with keeping combos by stopping you from going into the players reach circle.")
+                        dpg.add_slider_int(label="W Tap Value", default_value=sodaClass.config["movement"]["wTapValue"], min_value=1, max_value=100, callback=setWTapValue)
+                        dpg.add_combo(label="W Tap Mode", items=["chance", "delay"], default_value=sodaClass.config["movement"]["wTapMode"], callback=setWTapMode)
+                        dpg.add_spacer(width=75)
+                        dpg.add_separator()
+                        dpg.add_spacer(width=75)
+                        dpg.add_checkbox(label="Auto Sprint", default_value=sodaClass.config["movement"]["autoSprint"], callback=toggleAutoSprint)
+                        dpg.add_text(default_value="Automatically sprints when moving")
+                        dpg.add_spacer(width=75)
+                        dpg.add_separator()
+                        dpg.add_spacer(width=75)
+
+                    with dpg.tab(label="Config Manager"):
+                        # Load all configs from the config folder
+
+                        dpg.add_spacer(width=75)
+                        dpg.add_text(default_value="Config Manager")
+                        dpg.add_separator()
+                        dpg.add_spacer(width=100)
+                        
+                        configs = sodaClass.getConfigs()
+
+                        if len(configs) == 0:
+                            dpg.add_text(default_value="No configs found!")
+                        else:
+                            dpg.add_text(default_value="Configs found:")
+                            dpg.add_spacer(width=75)
+                            dpg.add_separator()
+                            dpg.add_spacer(width=75)
+                            for config in configs:
+                                with dpg.group():
+                                    # Display name
+                                    dpg.add_text(default_value=config["displayName"])
+                                    dpg.add_text(default_value=f"Author: {config['Author']}")
+                                    dpg.add_text(default_value=f"Description: {config['description']}")
+                                    dpg.add_button(label="Load", callback=sodaClass.loadConfig, user_data=0)
+                                    dpg.add_spacer(width=75)
+                                    dpg.add_separator()
+                                    dpg.add_spacer(width=75)
+
+                        dpg.add_spacer(width=75)
+
+                        dpg.add_text(default_value="Requires restart to apply changes!")
+
+                        dpg.add_spacer(width=75)
+
+                        dpg.add_button(label="Open Config Folder", callback=sodaClass.openConfigFolder)
+                    if sodaClass.newver:
+                        with dpg.tab(label="Update"):
+                            dpg.add_spacer(width=75)
+                            dpg.add_text(default_value="A new version of Soda is available!")
+                            dpg.add_text(default_value=f"Current version: {version}")
+                            dpg.add_text(default_value=f"Latest version: {sodaClass.newverid}")
+
+                            dpg.add_text(default_value="You can download it from the GitHub repository.")
+                            dpg.add_button(label="Download", callback=lambda: webbrowser.open("https://github.com/Dream23322/Soda-Autoclicker/releases"))
+
+            with dpg.theme() as global_theme:
+                with dpg.theme_component(dpg.mvAll):
+                    dpg.add_theme_style(dpg.mvStyleVar_WindowBorderSize, 0)
+                    dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 4)
+                    dpg.add_theme_style(dpg.mvStyleVar_GrabRounding, 1)
+                    dpg.add_theme_style(dpg.mvStyleVar_GrabMinSize, 20)
+                    dpg.add_theme_style(dpg.mvStyleVar_TabRounding, 1)
+                    dpg.add_theme_color(dpg.mvThemeCol_TabActive, (107, 110, 248))
+                    dpg.add_theme_color(dpg.mvThemeCol_TabHovered, (107, 110, 248))
+                    dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered, (107, 110, 248))
+                    dpg.add_theme_color(dpg.mvThemeCol_CheckMark, (107, 110, 248))
+                    dpg.add_theme_color(dpg.mvThemeCol_ScrollbarGrabHovered, (107, 110, 248))
+                    dpg.add_theme_color(dpg.mvThemeCol_ScrollbarGrabActive, (107, 110, 248))
+                    dpg.add_theme_color(dpg.mvThemeCol_SliderGrab, (107, 110, 248))
+                    dpg.add_theme_color(dpg.mvThemeCol_SliderGrabActive, (107, 110, 248))
+                    dpg.add_theme_color(dpg.mvThemeCol_FrameBgHovered, (71, 71, 77))
+                    dpg.add_theme_color(dpg.mvThemeCol_HeaderHovered, (71, 71, 77))
+
+            dpg.bind_theme(global_theme)
+
+            dpg.create_context()
+            dpg.show_viewport()
+            
+            guiWindows = win32gui.GetForegroundWindow()
+
+            dpg.setup_dearpygui()
+            dpg.set_primary_window("Primary Window", True)
+            dpg.start_dearpygui()
         
-        guiWindows = win32gui.GetForegroundWindow()
-
-        dpg.setup_dearpygui()
-        dpg.set_primary_window("Primary Window", True)
-        dpg.start_dearpygui()
+        except Exception as e:
+            print(f"An error occurred while starting the GUI: {e}")
 
         selfDestruct()
     except KeyboardInterrupt:
