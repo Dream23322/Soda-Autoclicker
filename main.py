@@ -1,4 +1,4 @@
-version = "1.5.3"
+version = "1.5.4"
 
 try:
     import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, re, keyboard, shutil, urllib, tempfile, webbrowser, math, zipfile
