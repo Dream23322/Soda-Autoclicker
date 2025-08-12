@@ -897,13 +897,13 @@ if __name__ == "__main__":
             sodaClass.config["left"]["AutoRodChance"] = value
 
         def toggleWTap(id: int, value: bool):
-            sodaClass.config["misc"]["autoWTap"] = value
+            sodaClass.config["movement"]["autoWTap"] = value
 
         def setWTapValue(id: int, value: int):
-            sodaClass.config["misc"]["wTapValue"] = value
+            sodaClass.config["movement"]["wTapValue"] = value
 
         def setWTapMode(id: int, value: str):
-            sodaClass.config["misc"]["wTapMode"] = value
+            sodaClass.config["movement"]["wTapMode"] = value
 
         def toggleAutoSprint(id: int, value: bool):
             sodaClass.config["movement"]["autoSprint"] = value
