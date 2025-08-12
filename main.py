@@ -1,13 +1,13 @@
 version = "1.5.3"
 
 try:
-    import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, re, keyboard, shutil, urllib, tempfile, webbrowser
+    import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, re, keyboard, shutil, urllib, tempfile, webbrowser, math
     import dearpygui.dearpygui as dpg
     from pypresence import Presence
 except:
     from os import system
     system("pip install -r requirements.txt")
-    import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, re, keyboard, shutil, urllib, tempfile, webbrowser
+    import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, re, keyboard, shutil, urllib, tempfile, webbrowser, math
     import dearpygui.dearpygui as dpg
     from pypresence import Presence
 refresh = False
@@ -106,7 +106,8 @@ class soda():
                 "rodSlot": "2",
                 "pearlBind": 0,
                 "pearlSlot": "8",
-                "movementFix": False,
+                "autoWTap": False,
+                "wTapChance": 30,
                 "swordSlot": "1",
                 "theme": "lightblue",
                 "red": 0,
@@ -218,6 +219,7 @@ class soda():
         threading.Thread(target=self.rightBindListener, daemon=True).start()
         threading.Thread(target=self.hideGUIBindListener, daemon=True).start()
         threading.Thread(target=self.bindListener, daemon=True).start()
+        threading.Thread(target=self.wTapListener, daemon=True).start()
 
         threading.Thread(target=self.leftClicker, daemon=True).start()
         threading.Thread(target=self.rightClicker, daemon=True).start()
@@ -689,6 +691,33 @@ class soda():
 
             time.sleep(0.001)
 
+    def wTapListener(self):
+        lastMouseX = 0
+        lastMouseY = 0
+        while True:
+            time.sleep(0.01)
+            
+            # Check only in game and work in menus and that the player is clicking
+            if not self.isFocused("left", "onlyWhenFocused", "workInMenus") or not win32api.GetAsyncKeyState(0x1) < 0 or not self.config["misc"]["autoWTap"]:
+                time.sleep(0.5)
+                continue
+
+            # Check if strafe keys are pressed and W is pressed
+            validStrafe = (win32api.GetAsyncKeyState(0x41) < 0 or win32api.GetAsyncKeyState(0x44) < 0) and win32api.GetAsyncKeyState(0x57) < 0
+            # Check if the mouse has moved
+            validAim = (win32api.GetCursorPos()[0] != lastMouseX or win32api.GetCursorPos()[1] != lastMouseY)
+            if validStrafe and validAim and random.uniform(0, 1) <= self.config["misc"]["wTapChance"] / 100.0:
+                print(f"Valid W-Tap | Mouse Position: {win32api.GetCursorPos()} - Last Mouse Position: ({lastMouseX}, {lastMouseY}) deltaX = {math.fabs(win32api.GetCursorPos()[0] - lastMouseX)}")
+                # Perform W-Tap
+                win32api.keybd_event(0x57, 0, win32con.KEYEVENTF_KEYUP, 0)  # Release W
+                time.sleep(0.05)  # Adjust the delay as needed
+                win32api.keybd_event(0x57, 0, 0, 0)  # Press W
+                
+                
+
+            lastMouseX, lastMouseY = win32api.GetCursorPos()
+                
+
     def getConfigs(self):
         configs = []
         folder = os.path.join(os.environ['USERPROFILE'], 'soda', 'resource')
@@ -853,8 +882,11 @@ if __name__ == "__main__":
         def setLeftAutoRodChance(id: int, value: int):
             sodaClass.config["left"]["AutoRodChance"] = value
 
-        def toggleMovementFix(id: int, value: bool):
-            sodaClass.config["misc"]["movementFix"] = value
+        def toggleWTap(id: int, value: bool):
+            sodaClass.config["misc"]["autoWTap"] = value
+
+        def setWTapChance(id: int, value: int):
+            sodaClass.config["misc"]["wTapChance"] = value
         waitingForKeyRight = False
         def statusBindRightClicker(id: int):
             global waitingForKeyRight
@@ -1395,7 +1427,9 @@ if __name__ == "__main__":
                     dpg.add_spacer(width=75)
                     dpg.add_separator()
                     dpg.add_spacer(width=75)
-                    dpg.add_checkbox(label="Movement Fix (NOT WORKING)", default_value=sodaClass.config["misc"]["movementFix"], callback=toggleMovementFix)
+                    dpg.add_checkbox(label="Auto W Tap", default_value=sodaClass.config["misc"]["autoWTap"], callback=toggleWTap)
+                    dpg.add_text(default_value="Automatically W-Taps when you click. \nThis helps with keeping combos by stopping you from going into the players reach circle.")
+                    dpg.add_slider_int(label="W Tap Chance", default_value=sodaClass.config["misc"]["wTapChance"], min_value=1, max_value=100, callback=setWTapChance)
                     
                     dpg.add_spacer(width=75)
                     dpg.add_separator()
