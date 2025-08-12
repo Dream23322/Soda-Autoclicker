@@ -1,13 +1,13 @@
 version = "1.5.3"
 
 try:
-    import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, re, keyboard, shutil, urllib, tempfile, webbrowser, math
+    import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, re, keyboard, shutil, urllib, tempfile, webbrowser, math, zipfile
     import dearpygui.dearpygui as dpg
     from pypresence import Presence
 except:
     from os import system
     system("pip install -r requirements.txt")
-    import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, re, keyboard, shutil, urllib, tempfile, webbrowser, math
+    import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, re, keyboard, shutil, urllib, tempfile, webbrowser, math, zipfile
     import dearpygui.dearpygui as dpg
     from pypresence import Presence
 refresh = False
@@ -148,32 +148,31 @@ class soda():
             print("====================\nInstalling Configs\n====================")
             time.sleep(1)
 
-            print("Cloning from github")
-            if(os.path.exists(os.path.join(self.folder_path, "temp"))):
-                print("Temp folder already exists, deleting it")
-                shutil.rmtree(os.path.join(self.folder_path, "temp"), ignore_errors=True)
-            os.makedirs(os.path.join(self.folder_path, "temp"), exist_ok=True)
-            os.makedirs(os.path.join(self.folder_path, "resource"), exist_ok=True)
+            print("Downloading from GitHub (ZIP snapshot)...")
+            resource_dir = os.path.join(self.folder_path, "resource")
+            os.makedirs(resource_dir, exist_ok=True)
 
-            # Check if git is installed
-            if shutil.which("git") is None:
-                print("Downloading Git for Windows...")
-                installer_path = os.path.join(tempfile.gettempdir(), "git-installer.exe")
-                subprocess.run(["winget", "install", "--id", "Git.Git", "--source", "winget"], check=True)
+            zip_url = "https://github.com/Dream23322/Soda-Autoclicker/archive/refs/heads/main.zip"
+            zip_path = os.path.join(tempfile.gettempdir(), "soda_repo.zip")
 
-                print("Installing Git...")
-                subprocess.run([installer_path, "/VERYSILENT", "/NORESTART"], check=True)
-                print("Git installation finished.")
+            # Use system curl to download ZIP
+            subprocess.run(["curl", "-L", zip_url, "-o", zip_path], check=True)
 
-
-            subprocess.run(["git", "clone", "https://github.com/Dream23322/Soda-Autoclicker.git", os.path.join(self.folder_path, "temp")], check=True)
-            print("Cloned from github")
-
-            print("Moving resource folder")
-            subprocess.run(["copy", "/V", os.path.join(self.folder_path, "temp", "resource", "*"), os.path.join(self.folder_path, "resource")], shell=True, check=True)
+            # Extract only the resource folder from ZIP
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                for member in zip_ref.namelist():
+                    if member.startswith("Soda-Autoclicker-main/resource/"):
+                        rel_path = os.path.relpath(member, "Soda-Autoclicker-main/resource")
+                        if rel_path != ".":
+                            target_path = os.path.join(resource_dir, rel_path)
+                            if member.endswith("/"):
+                                os.makedirs(target_path, exist_ok=True)
+                            else:
+                                os.makedirs(os.path.dirname(target_path), exist_ok=True)
+                                with open(target_path, "wb") as out_file:
+                                    out_file.write(zip_ref.read(member))
             print("Moved resource folder")
 
-            subprocess.run(["del", "/Q", "/F", "/S", os.path.join(self.folder_path, "temp")], shell=True, check=True)
             shutil.rmtree(os.path.join(self.folder_path, "temp"), ignore_errors=True)
 
             # Download toggle sounds
