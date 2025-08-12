@@ -111,7 +111,7 @@ class soda():
                 "red": 0,
                 "green": 0,
                 "blue": 0,
-                "toggleSounds": False
+                "toggleSounds": False,
             },
             "potions": {
                 "enabled": False,
@@ -120,13 +120,13 @@ class soda():
                 "switchBackSlot": "1",
                 "potResetBind": 0,
                 "lowestSlot": 1,
-                "highestSlot": 9
+                "highestSlot": 9,
             },
             "movement": {
                 "autoWTap": False,
                 "wTapMode": "chance",  # "chance" or "delay"
                 "wTapValue": 30,
-                "autoSprint": False
+                "autoSprint": False,
             }
         }
         self.current_pot_slot = 0 
@@ -213,6 +213,8 @@ class soda():
                     if key not in config or len(self.config[key]) != len(config[key]):
                         isConfigOk = False
 
+                        break
+
                 if isConfigOk:
                     if not config["misc"]["saveSettings"]:
                         self.config["misc"]["saveSettings"] = False
@@ -220,6 +222,7 @@ class soda():
                         self.config = config
             except Exception as e:
                 print("Error loading config:", e)
+                print("Using default config")
 
         configs = []
         clickSounds = []
@@ -289,6 +292,13 @@ class soda():
 
     def click(self):
         winsound.PlaySound(os.path.join(self.folder_path, self.config["left"]["soundPath"]), winsound.SND_ASYNC)
+
+    def toggleSound(self, key):
+        if self.config["misc"]["toggleSounds"]:
+            if self.config[key]["enabled"]:
+                winsound.PlaySound(os.path.join(self.folder_path, "resource", "notify_on.wav"), winsound.SND_ASYNC)
+            else:
+                winsound.PlaySound(os.path.join(self.folder_path, "resource", "notify_off.wav"), winsound.SND_ASYNC)
 
     def leftClicker(self):
         while True:
@@ -486,20 +496,13 @@ class soda():
     def leftBindListener(self):
         while True:
             if win32api.GetAsyncKeyState(self.config["left"]["bind"]) != 0:
-                if "java" in self.focusedProcess or "AZ-Launcher" in self.focusedProcess:
-                    cursorInfo = win32gui.GetCursorInfo()[1]
-                    if cursorInfo > 50000 and cursorInfo < 100000:
-                        time.sleep(0.001)
-
-                        continue
+                if not self.isFocused("left", "onlyWhenFocused", "workInMenus"):
+                    time.sleep(0.001)
+                    continue
 
                 self.config["left"]["enabled"] = not self.config["left"]["enabled"]
 
-                # Play toggle sound
-                if(self.config["left"]["enabled"]):
-                    winsound.PlaySound(os.path.join(self.folder_path, "resource", "notify_on.wav"), winsound.SND_ASYNC)
-                else:
-                    winsound.PlaySound(os.path.join(self.folder_path, "resource", "notify_off.wav"), winsound.SND_ASYNC)
+                self.toggleSound('left')
 
                 while True:
                     try:
@@ -618,20 +621,12 @@ class soda():
     def rightBindListener(self):
         while True:
             if win32api.GetAsyncKeyState(self.config["right"]["bind"]) != 0:
-                if "java" in self.focusedProcess or "AZ-Launcher" in self.focusedProcess:
-                    cursorInfo = win32gui.GetCursorInfo()[1]
-                    if cursorInfo > 50000 and cursorInfo < 100000:
-                        time.sleep(0.001)
-
-                        continue
+                if not self.isFocused("right", "onlyWhenFocused", "workInMenus"):
+                    time.sleep(0.001)
 
                 self.config["right"]["enabled"] = not self.config["right"]["enabled"]
 
-                # Play toggle sound
-                if(self.config["right"]["enabled"]):
-                    winsound.PlaySound(os.path.join(self.folder_path, "resource", "notify_on.wav"), winsound.SND_ASYNC)
-                else:
-                    winsound.PlaySound(os.path.join(self.folder_path, "resource", "notify_off.wav"), winsound.SND_ASYNC)
+                self.toggleSound('right')
 
                 while True:
                     try:
@@ -1458,8 +1453,12 @@ if __name__ == "__main__":
                         dpg.add_separator()
                         dpg.add_spacer(width=75)
 
-                        dpg.add_checkbox(label="Toggle Sounds", default_value=sodaClass.config["misc"]["toggleSounds"], callback=sodaClass.toggleSounds)
-                        dpg.add_text(default_value="Toggles the sounds of the clickers")
+                        dpg.add_checkbox(label="Toggle Sounds", default_value=sodaClass.config["misc"]["toggleSounds"], callback=setToggleSounds)
+                        dpg.add_text(default_value="Plays a sound when you toggle the clicker on or off")
+
+                        dpg.add_spacer(width=75)
+                        dpg.add_separator()
+                        dpg.add_spacer(width=75)
 
                         creditsText = dpg.add_text(default_value="Credits: 4urxra (Developer)")
                         githubText = dpg.add_text(default_value="https://github.com/Dream23322/Soda-Autoclicker/")
@@ -1617,8 +1616,14 @@ if __name__ == "__main__":
             dpg.set_primary_window("Primary Window", True)
             dpg.start_dearpygui()
         
-        except Exception as e:
-            print(f"An error occurred while starting the GUI: {e}")
+        except AttributeError as e:
+            print(f"Error with current config: {e}")
+            print(f"{os.path.join(sodaClass.folder_path, 'config.json')} is not a valid config file.")
+            # delete config.json from resource folder
+            if os.path.exists(os.path.join(sodaClass.folder_path, "config.json")):
+                print("Deleting config.json...")
+                os.remove(os.path.join(sodaClass.folder_path, "config.json"))
+            print("Removed current config, please restart the program to generate a new one.")
 
         selfDestruct()
     except KeyboardInterrupt:
