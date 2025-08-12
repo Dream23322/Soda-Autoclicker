@@ -57,8 +57,6 @@
         "rodSlot": "2",
         "pearlBind": 0,
         "pearlSlot": "8",
-        "autoWTap": false,
-        "wTapChance": 30,
         "swordSlot": "1",
         "theme": "beach_green",
         "red": 0,
@@ -74,6 +72,12 @@
         "lowestSlot": 1,
         "highestSlot": 9
     },
+    "movement": {
+        "autoWTap": false,
+        "wTapMode": "chance",
+        "wTapChance": 30,
+        "autoSprint": false
+    },    
     "filename": "mmc",
     "displayName": "Minemen Club",
     "description": "Config for mmc - V1.5",

@@ -106,8 +106,6 @@ class soda():
                 "rodSlot": "2",
                 "pearlBind": 0,
                 "pearlSlot": "8",
-                "autoWTap": False,
-                "wTapChance": 30,
                 "swordSlot": "1",
                 "theme": "lightblue",
                 "red": 0,
@@ -122,6 +120,12 @@ class soda():
                 "potResetBind": 0,
                 "lowestSlot": 1,
                 "highestSlot": 9
+            },
+            "movement": {
+                "autoWTap": False,
+                "wTapMode": "chance",  # "chance" or "delay"
+                "wTapValue": 30,
+                "autoSprint": False
             }
         }
         self.current_pot_slot = 0 
@@ -219,7 +223,9 @@ class soda():
         threading.Thread(target=self.rightBindListener, daemon=True).start()
         threading.Thread(target=self.hideGUIBindListener, daemon=True).start()
         threading.Thread(target=self.bindListener, daemon=True).start()
+
         threading.Thread(target=self.wTapListener, daemon=True).start()
+        threading.Thread(target=self.autoSprint, daemon=True).start()
 
         threading.Thread(target=self.leftClicker, daemon=True).start()
         threading.Thread(target=self.rightClicker, daemon=True).start()
@@ -697,26 +703,34 @@ class soda():
         while True:
             time.sleep(0.01)
             
-            # Check only in game and work in menus and that the player is clicking
-            if not self.isFocused("left", "onlyWhenFocused", "workInMenus") or not win32api.GetAsyncKeyState(0x1) < 0 or not self.config["misc"]["autoWTap"]:
+            if not self.isFocused("left", "onlyWhenFocused", "workInMenus") or not win32api.GetAsyncKeyState(0x1) < 0 or not self.config["movement"]["autoWTap"]:
                 time.sleep(0.5)
                 continue
 
-            # Check if strafe keys are pressed and W is pressed
             validStrafe = (win32api.GetAsyncKeyState(0x41) < 0 or win32api.GetAsyncKeyState(0x44) < 0) and win32api.GetAsyncKeyState(0x57) < 0
-            # Check if the mouse has moved
             validAim = (win32api.GetCursorPos()[0] != lastMouseX or win32api.GetCursorPos()[1] != lastMouseY)
-            if validStrafe and validAim and random.uniform(0, 1) <= self.config["misc"]["wTapChance"] / 100.0:
-                print(f"Valid W-Tap | Mouse Position: {win32api.GetCursorPos()} - Last Mouse Position: ({lastMouseX}, {lastMouseY}) deltaX = {math.fabs(win32api.GetCursorPos()[0] - lastMouseX)}")
-                # Perform W-Tap
-                win32api.keybd_event(0x57, 0, win32con.KEYEVENTF_KEYUP, 0)  # Release W
-                time.sleep(0.05)  # Adjust the delay as needed
-                win32api.keybd_event(0x57, 0, 0, 0)  # Press W
+
+            if validStrafe and validAim and (random.uniform(0, 1) <= self.config["movement"]["wTapValue"] / 100.0 and self.config["movement"]["wTapMode"] == "chance" or self.config["movement"]["wTapMode"] == "delay"):
+                win32api.keybd_event(0x57, 0, win32con.KEYEVENTF_KEYUP, 0)
+                time.sleep(0.05)
+                win32api.keybd_event(0x57, 0, 0, 0)
+                if(self.config["mmovement"]["wTapMode"] == "delay"):
+                    time.sleep(self.config["movement"]["wTapValue"] / 100.0)
                 
                 
 
             lastMouseX, lastMouseY = win32api.GetCursorPos()
                 
+    def autoSprint(self):
+        while True:
+            # Sprint using left ctrl key
+            if self.config["movement"]["autoSprint"] and (win32api.GetAsyncKeyState(0x57) < 0 or win32api.GetAsyncKeyState(0x41) < 0 or win32api.GetAsyncKeyState(0x44) < 0) and self.isFocused("left", "onlyWhenFocused", "workInMenus"):
+                if not win32api.GetAsyncKeyState(0x11) < 0:  # Check if left ctrl is not pressed
+                    win32api.keybd_event(0x11, 0, 0, 0)  # Press left ctrl
+            else:
+                if win32api.GetAsyncKeyState(0x11) < 0:  # Check if left ctrl is pressed
+                    win32api.keybd_event(0x11, 0, win32con.KEYEVENTF_KEYUP, 0)  # Release left ctrl
+
 
     def getConfigs(self):
         configs = []
@@ -885,8 +899,14 @@ if __name__ == "__main__":
         def toggleWTap(id: int, value: bool):
             sodaClass.config["misc"]["autoWTap"] = value
 
-        def setWTapChance(id: int, value: int):
-            sodaClass.config["misc"]["wTapChance"] = value
+        def setWTapValue(id: int, value: int):
+            sodaClass.config["misc"]["wTapValue"] = value
+
+        def setWTapMode(id: int, value: str):
+            sodaClass.config["misc"]["wTapMode"] = value
+
+        def toggleAutoSprint(id: int, value: bool):
+            sodaClass.config["movement"]["autoSprint"] = value
         waitingForKeyRight = False
         def statusBindRightClicker(id: int):
             global waitingForKeyRight
@@ -1427,13 +1447,6 @@ if __name__ == "__main__":
                     dpg.add_spacer(width=75)
                     dpg.add_separator()
                     dpg.add_spacer(width=75)
-                    dpg.add_checkbox(label="Auto W Tap", default_value=sodaClass.config["misc"]["autoWTap"], callback=toggleWTap)
-                    dpg.add_text(default_value="Automatically W-Taps when you click. \nThis helps with keeping combos by stopping you from going into the players reach circle.")
-                    dpg.add_slider_int(label="W Tap Chance", default_value=sodaClass.config["misc"]["wTapChance"], min_value=1, max_value=100, callback=setWTapChance)
-                    
-                    dpg.add_spacer(width=75)
-                    dpg.add_separator()
-                    dpg.add_spacer(width=75)
 
                     dpg.add_combo(label="Theme", items=["light", "dark", "sakura", "purple", "blue", "lightblue", "orange", "red", "beach_green", "forest_green", "custom"], default_value=sodaClass.config["misc"]["theme"], callback=setTheme)
                     dpg.add_text(default_value="Changes the theme of the GUI (Requires Restart!)")
@@ -1511,6 +1524,22 @@ if __name__ == "__main__":
 
                     creditsText = dpg.add_text(default_value="Credits: 4urxra (Developer)")
                     githubText = dpg.add_text(default_value="https://github.com/Dream23322/Soda-Autoclicker/")
+                
+                with dpg.tab(label="Movement"):
+                    dpg.add_spacer(width=75)
+
+                    dpg.add_checkbox(label="Auto W Tap", default_value=sodaClass.config["misc"]["autoWTap"], callback=toggleWTap)
+                    dpg.add_text(default_value="Automatically W-Taps when you click. \nThis helps with keeping combos by stopping you from going into the players reach circle.")
+                    dpg.add_slider_int(label="W Tap Value", default_value=sodaClass.config["misc"]["wTapValue"], min_value=1, max_value=100, callback=setWTapValue)
+                    dpg.add_combo(label="W Tap Mode", items=["chance", "delay"], default_value=sodaClass.config["misc"]["wTapMode"], callback=setWTapMode)
+                    dpg.add_spacer(width=75)
+                    dpg.add_separator()
+                    dpg.add_spacer(width=75)
+                    dpg.add_checkbox(label="Auto Sprint", default_value=sodaClass.config["misc"]["autoSprint"], callback=toggleAutoSprint)
+                    dpg.add_text(default_value="Automatically sprints when moving")
+                    dpg.add_spacer(width=75)
+                    dpg.add_separator()
+                    dpg.add_spacer(width=75)
 
                 with dpg.tab(label="Config Manager"):
                     # Load all configs from the config folder
