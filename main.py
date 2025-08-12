@@ -680,7 +680,7 @@ class soda():
                 win32api.keybd_event(0x57, 0, win32con.KEYEVENTF_KEYUP, 0)
                 time.sleep(0.05)
                 win32api.keybd_event(0x57, 0, 0, 0)
-                if(self.config["mmovement"]["wTapMode"] == "delay"):
+                if(self.config["movement"]["wTapMode"] == "delay"):
                     time.sleep(self.config["movement"]["wTapValue"] / 100.0)
                 
                 
@@ -689,6 +689,10 @@ class soda():
                 
     def autoSprint(self):
         while True:
+            if not self.isFocused("left", "onlyWhenFocused", "workInMenus") or not self.config["movement"]["autoSprint"]:
+                time.sleep(0.5)
+                continue
+            time.sleep(0.01)
             # Sprint using left ctrl key
             if self.config["movement"]["autoSprint"] and (win32api.GetAsyncKeyState(0x57) < 0 or win32api.GetAsyncKeyState(0x41) < 0 or win32api.GetAsyncKeyState(0x44) < 0) and self.isFocused("left", "onlyWhenFocused", "workInMenus"):
                 if not win32api.GetAsyncKeyState(0x11) < 0:  # Check if left ctrl is not pressed
@@ -722,10 +726,10 @@ class soda():
         return configs
     
     def loadConfig(self, configID: int):
-        print("Config Amount", len(self.configs))
+        print("Config Amount", len(self.configs), "\nConfig ID", configID)
         cid = 0
-        if configID != 240:
-            cid = int((configID - 240) / 8)
+        if configID != 255:
+            cid = int((configID - 255) / 8)
         print("Config ID", cid)
         config = self.configs[cid]
         print(f"Applying Config: {config['filename']}")
