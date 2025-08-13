@@ -5,8 +5,8 @@
         "bind": 82,
         "averageCPS": 18,
         "onlyWhenFocused": true,
-        "breakBlocks": "None",
-        "RMBLock": false,        
+        "breakBlocks": "Shift With Click",
+        "RMBLock": false,
         "blockHit": true,
         "blockHitChance": 5,
         "blockHitHold": false,
@@ -19,7 +19,7 @@
         "AutoRodChance": 3
     },
     "right": {
-        "enabled": false,
+        "enabled": true,
         "mode": "Hold",
         "bind": 89,
         "averageCPS": 30,
@@ -62,7 +62,7 @@
         "red": 0,
         "green": 0,
         "blue": 0,
-        "toggleSounds": false
+        "toggleSounds": true
     },
     "potions": {
         "enabled": false,
@@ -76,11 +76,11 @@
     "movement": {
         "autoWTap": true,
         "wTapMode": "delay",
-        "wTapValue": 11,
+        "wTapValue": 10,
         "autoSprint": true
     },
-    "filename": "hypixeldules",
-    "displayName": "Hypixel - Duels (Classic)",
-    "description": "Config for Classic Duels on Hypixel - V1.5.4",
+    "filename": "hypixelskywars",
+    "displayName": "Hypixel - Skywars",
+    "description": "Config for Skywarss on Hypixel - V1.5.4",
     "Author": "4urxra"
 }
