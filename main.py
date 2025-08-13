@@ -777,7 +777,7 @@ class soda():
         for file in os.listdir(folder):
             file_path = os.path.join(folder, file)
 
-            if not file.endswith(".wav") or file == "notify_on.wav":
+            if not file.endswith(".wav") or file == "notify_on.wav" or file == "notify_off.wav":
                 continue
             clickSounds.append(file)
             #print("Loaded " + file.title)
