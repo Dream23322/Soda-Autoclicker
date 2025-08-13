@@ -74,13 +74,13 @@
         "highestSlot": 9
     },
     "movement": {
-        "autoWTap": false,
-        "wTapMode": "chance",
-        "wTapValue": 17,
-        "autoSprint": false
+        "autoWTap": true,
+        "wTapMode": "delay",
+        "wTapValue": 11,
+        "autoSprint": true
     },
     "filename": "hypixeldules",
-    "displayName": "Hypixel - Duels",
+    "displayName": "Hypixel - Duels (Classic)",
     "description": "Config for Classic Duels on Hypixel - V1.5",
     "Author": "4urxra"
 }

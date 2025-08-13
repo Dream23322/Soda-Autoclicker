@@ -77,7 +77,7 @@
         "autoWTap": false,
         "wTapMode": "chance",
         "wTapValue": 30,
-        "autoSprint": false
+        "autoSprint": true
     },
     "filename": "maxed",
     "displayName": "Max",
