@@ -301,7 +301,7 @@ class soda():
 
     def betterInput(self):
         while True:
-            if(not self.config["misc"]["betterInput"]):
+            if(not self.config["movement"]["betterInput"]):
                 time.sleep(0.1)
                 continue
             # Read current key states
@@ -785,7 +785,7 @@ class soda():
                 configs.append(config)
                 print("Loaded config:", file)
             except Exception as e:
-                print(f"⚠️ Failed to load {file}: {e}")
+                print(f"[!] Failed to load {file}: {e}")
         self.configs = configs
         return configs
     
@@ -796,7 +796,7 @@ class soda():
             cid = int((configID - 255) / 8)
         print("Config ID", cid)
         config = self.configs[cid]
-        print(f"Applying Config: {config['filename']}")
+        print(f"[!] Applying Config: {config['filename']}")
         file_path = os.path.join(os.environ['USERPROFILE'], 'soda', 'resource', f"{config['filename']}.json")
         if os.path.isfile(file_path):
             try:
@@ -839,7 +839,7 @@ class soda():
             except Exception as e:
                 print(f"Failed to open config folder: {e}")
         else:
-            print("Config folder does not exist:", folder_path)
+            print("[!] Config folder does not exist:", folder_path)
 
 if __name__ == "__main__":
     try:
@@ -1597,7 +1597,7 @@ if __name__ == "__main__":
                         dpg.add_checkbox(label="Better Input", default_value=sodaClass.config["movement"]["betterInput"], callback=toggleBetterInput)
                         dpg.add_text(default_value="Better Input acts like a NullBind script (Razar snaptap) It isn't as good as them, because key presses with python are weird.")
                         dpg.add_text(default_value="It's goal is to allow for perfect strafing");
-                        
+
                         dpg.add_spacer(width=75)
                         dpg.add_separator()
                         dpg.add_spacer(width=75)
