@@ -1,4 +1,4 @@
-version = "1.5.4"
+version = "1.5.5"
 
 try:
     import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, re, keyboard, shutil, urllib, tempfile, webbrowser, math, zipfile
@@ -277,7 +277,8 @@ class soda():
                 ":3",
                 "Soda Pop <3",
                 "Download today!",
-                "discord.gg/4ZqBfDFMG4"
+                "discord.gg/4ZqBfDFMG4",
+                "ヅ"
             ]
 
             while True:
@@ -1244,7 +1245,7 @@ if __name__ == "__main__":
                         dpg.add_theme_color(dpg.mvThemeCol_FrameBg, rgb_data, category=dpg.mvThemeCat_Core)
                         dpg.add_theme_color(dpg.mvThemeCol_Button, rgb_data, category=dpg.mvThemeCat_Core)
 
-            dpg.create_viewport(title=f"[v{version}] Soda - AutoClicker.ontop", width=860, height=645)
+            dpg.create_viewport(title=f"[v{version}] Soda :P", width=860, height=645)
 
             with dpg.window(tag="Primary Window"):
                 dpg.bind_item_theme("Primary Window", container_theme)

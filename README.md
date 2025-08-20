@@ -2,27 +2,18 @@
 
 The best autoclicker for minecraft 1.8.9 pvp
 
+Discord:
+https://discord.gg/4ZqBfDFMG4
 
-#
 
-This Autoclicker was based off sharp autoclicker, all credits to the dev of sharp
 
-Sharp Autoclicker Github: github.com/B4mb0u/Sharp
 
-#
-# Sorry if there aren't many updates
-
-I have been busy with school and other projects, but trust me I will keep updating Soda-Autoclicker, just give me time.
 
 #
 
 ### Features:
 
-- Random Clicks
-
-- Fast Autoclicker
-
-- Block break
+- Block breaking
 
 - Mouse Lock
 
@@ -33,6 +24,14 @@ I have been busy with school and other projects, but trust me I will keep updati
 - Auto Rod
 
 - Destruct
+
+- Movement Improvements
+
+- Toggle Sounds
+
+- Auto Sprint
+
+- Config Manager
 
 
 # If you want to make it an exe yourself
@@ -46,3 +45,9 @@ Start by running this command in terminal
 then open the new directory and run these commands
 ```pip install pyinstaller```
 ```pyinstaller --onefile main.py```
+
+#
+
+This Autoclicker was based off sharp autoclicker, credits to B4mb0u for the base :D
+
+Sharp Autoclicker Github: github.com/B4mb0u/Sharp
