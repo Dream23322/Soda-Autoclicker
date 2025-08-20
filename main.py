@@ -302,25 +302,14 @@ class soda():
     def betterInput(self):
         while True:
             # Check enabled and the game is focused
-            if(not self.config["movement"]["betterInput"] or not self.isFocused("left", "onlyWhenFocused", "workInMenus")):
+            if(not self.config["movement"]["betterInput"]):
                 time.sleep(0.1)
                 continue
-            # Read current key states
-            w_down = win32api.GetAsyncKeyState(0x57) < 0
+
             a_down = win32api.GetAsyncKeyState(0x41) < 0
-            s_down = win32api.GetAsyncKeyState(0x53) < 0
             d_down = win32api.GetAsyncKeyState(0x44) < 0
 
-            # Resolve forward/backward conflict
-            if self.inputData["w"] and s_down:
-                win32api.keybd_event(0x57, 0, win32con.KEYEVENTF_KEYUP, 0)
-                w_down = False  # update local state
-
-            elif self.inputData["s"] and w_down:
-                win32api.keybd_event(0x53, 0, win32con.KEYEVENTF_KEYUP, 0)
-                s_down = False
-
-            # Resolve left/right conflict
+ 
             if self.inputData["a"] and d_down:
                 win32api.keybd_event(0x41, 0, win32con.KEYEVENTF_KEYUP, 0)
                 a_down = False
@@ -329,10 +318,7 @@ class soda():
                 win32api.keybd_event(0x44, 0, win32con.KEYEVENTF_KEYUP, 0)
                 d_down = False
 
-            # Update inputData
-            self.inputData["w"] = w_down
             self.inputData["a"] = a_down
-            self.inputData["s"] = s_down
             self.inputData["d"] = d_down
 
 
@@ -948,7 +934,8 @@ if __name__ == "__main__":
             sodaClass.config["movement"]["autoSprint"] = value
 
         def toggleBetterInput(id: int, value: bool):
-            sodaClass.config["misc"]["betterInput"] = value
+            sodaClass.config["movement"]["betterInput"] = value
+
         waitingForKeyRight = False
         def statusBindRightClicker(id: int):
             global waitingForKeyRight
