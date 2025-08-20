@@ -301,7 +301,8 @@ class soda():
 
     def betterInput(self):
         while True:
-            if(not self.config["movement"]["betterInput"]):
+            # Check enabled and the game is focused
+            if(not self.config["movement"]["betterInput"] or not self.isFocused("left", "onlyWhenFocused", "workInMenus")):
                 time.sleep(0.1)
                 continue
             # Read current key states
@@ -793,7 +794,7 @@ class soda():
         print("Config Amount", len(self.configs), "\nConfig ID", configID)
         cid = 0
         if configID != 255:
-            cid = int((configID - 255) / 8)
+            cid = int((configID - 255) / 8) - 1
         print("Config ID", cid)
         config = self.configs[cid]
         print(f"[!] Applying Config: {config['filename']}")
