@@ -224,6 +224,10 @@ class soda():
                 print("Error loading config:", e)
                 print("Using default config")
 
+        print("====================\nSoda Autoclicker - 4urxra\n====================")
+        print("Version:", version)
+        print("Discord: https://discord.gg/4ZqBfDFMG4 \n====================")
+
         configs = []
         clickSounds = []
         self.config = configListener(self.config)
@@ -272,7 +276,8 @@ class soda():
                 "Click click click",
                 ":3",
                 "Soda Pop <3",
-                "Download today!"
+                "Download today!",
+                "discord.gg/4ZqBfDFMG4"
             ]
 
             while True:
@@ -1395,6 +1400,12 @@ if __name__ == "__main__":
                         creditsText = dpg.add_text(default_value="Credits: 4urxra (Developer)")
                         githubText = dpg.add_text(default_value="https://github.com/Dream23322/Soda-Autoclicker/")                    
                     with dpg.tab(label="Misc"):
+
+                        dpg.add_spacer(width=75)
+                        dpg.add_button(label="Discord", callback=lambda: webbrowser.open_new_tab("https://discord.gg/4ZqBfDFMG4"))
+
+                        dpg.add_spacer(width=75)
+                        dpg.add_separator()
                         dpg.add_spacer(width=75)
 
                         buttonSelfDestruct = dpg.add_button(label="Destruct", callback=selfDestruct)
