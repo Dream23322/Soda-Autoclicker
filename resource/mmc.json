@@ -77,7 +77,8 @@
         "autoWTap": false,
         "wTapMode": "chance",
         "wTapValue": 30,
-        "autoSprint": false
+        "autoSprint": false,
+        "betterInput": false
     },    
     "filename": "mmc",
     "displayName": "Minemen Club",

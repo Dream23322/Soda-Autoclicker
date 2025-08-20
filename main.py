@@ -124,9 +124,10 @@ class soda():
             },
             "movement": {
                 "autoWTap": False,
-                "wTapMode": "chance",  # "chance" or "delay"
+                "wTapMode": "chance",
                 "wTapValue": 30,
                 "autoSprint": False,
+                "betterInput": False
             }
         }
         self.current_pot_slot = 0 
@@ -227,6 +228,13 @@ class soda():
         clickSounds = []
         self.config = configListener(self.config)
 
+        self.inputData = {
+            "w": False,
+            "a": False,
+            "s": False,
+            "d": False
+        }
+
         self.record = itertools.cycle(self.config["recorder"]["record"])
 
         threading.Thread(target=self.discordRichPresence, daemon=True).start()
@@ -239,9 +247,11 @@ class soda():
 
         threading.Thread(target=self.wTapListener, daemon=True).start()
         threading.Thread(target=self.autoSprint, daemon=True).start()
+        threading.Thread(target=self.betterInput, daemon=True).start()
 
         threading.Thread(target=self.leftClicker, daemon=True).start()
         threading.Thread(target=self.rightClicker, daemon=True).start()
+
 
     def discordRichPresence(self):
         asyncio.set_event_loop(asyncio.new_event_loop())
@@ -288,6 +298,42 @@ class soda():
                 self.focusedProcess = ""
 
             time.sleep(0.5)
+
+    def betterInput(self):
+        while True:
+            if(not self.config["misc"]["betterInput"]):
+                time.sleep(0.1)
+                continue
+            # Read current key states
+            w_down = win32api.GetAsyncKeyState(0x57) < 0
+            a_down = win32api.GetAsyncKeyState(0x41) < 0
+            s_down = win32api.GetAsyncKeyState(0x53) < 0
+            d_down = win32api.GetAsyncKeyState(0x44) < 0
+
+            # Resolve forward/backward conflict
+            if self.inputData["w"] and s_down:
+                win32api.keybd_event(0x57, 0, win32con.KEYEVENTF_KEYUP, 0)
+                w_down = False  # update local state
+
+            elif self.inputData["s"] and w_down:
+                win32api.keybd_event(0x53, 0, win32con.KEYEVENTF_KEYUP, 0)
+                s_down = False
+
+            # Resolve left/right conflict
+            if self.inputData["a"] and d_down:
+                win32api.keybd_event(0x41, 0, win32con.KEYEVENTF_KEYUP, 0)
+                a_down = False
+
+            elif self.inputData["d"] and a_down:
+                win32api.keybd_event(0x44, 0, win32con.KEYEVENTF_KEYUP, 0)
+                d_down = False
+
+            # Update inputData
+            self.inputData["w"] = w_down
+            self.inputData["a"] = a_down
+            self.inputData["s"] = s_down
+            self.inputData["d"] = d_down
+
 
     def click(self):
         winsound.PlaySound(os.path.join(self.folder_path, self.config["left"]["soundPath"]), winsound.SND_ASYNC)
@@ -899,6 +945,9 @@ if __name__ == "__main__":
 
         def toggleAutoSprint(id: int, value: bool):
             sodaClass.config["movement"]["autoSprint"] = value
+
+        def toggleBetterInput(id: int, value: bool):
+            sodaClass.config["misc"]["betterInput"] = value
         waitingForKeyRight = False
         def statusBindRightClicker(id: int):
             global waitingForKeyRight
@@ -1533,15 +1582,25 @@ if __name__ == "__main__":
                         dpg.add_text(default_value="Automatically W-Taps when you click. \nThis helps with keeping combos by stopping you from going into the players reach circle.")
                         dpg.add_slider_int(label="W Tap Value", default_value=sodaClass.config["movement"]["wTapValue"], min_value=1, max_value=100, callback=setWTapValue)
                         dpg.add_combo(label="W Tap Mode", items=["chance", "delay"], default_value=sodaClass.config["movement"]["wTapMode"], callback=setWTapMode)
-                        dpg.add_spacer(width=75)
-                        dpg.add_separator()
-                        dpg.add_spacer(width=75)
-                        dpg.add_checkbox(label="Auto Sprint", default_value=sodaClass.config["movement"]["autoSprint"], callback=toggleAutoSprint)
-                        dpg.add_text(default_value="Automatically sprints when moving")
+                        
                         dpg.add_spacer(width=75)
                         dpg.add_separator()
                         dpg.add_spacer(width=75)
 
+                        dpg.add_checkbox(label="Auto Sprint", default_value=sodaClass.config["movement"]["autoSprint"], callback=toggleAutoSprint)
+                        dpg.add_text(default_value="Automatically sprints when moving")
+
+                        dpg.add_spacer(width=75)
+                        dpg.add_separator()
+                        dpg.add_spacer(width=75)
+
+                        dpg.add_checkbox(label="Better Input", default_value=sodaClass.config["movement"]["betterInput"], callback=toggleBetterInput)
+                        dpg.add_text(default_value="Better Input acts like a NullBind script (Razar snaptap) It isn't as good as them, because key presses with python are weird.")
+                        dpg.add_text(default_value="It's goal is to allow for perfect strafing");
+                        
+                        dpg.add_spacer(width=75)
+                        dpg.add_separator()
+                        dpg.add_spacer(width=75)
                     with dpg.tab(label="Config Manager"):
                         # Load all configs from the config folder
 

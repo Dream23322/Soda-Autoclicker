@@ -77,7 +77,8 @@
         "autoWTap": true,
         "wTapMode": "delay",
         "wTapValue": 10,
-        "autoSprint": true
+        "autoSprint": true,
+        "betterInput": false
     },
     "filename": "hypixelskywars",
     "displayName": "Hypixel - Skywars",

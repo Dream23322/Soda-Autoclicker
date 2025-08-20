@@ -77,7 +77,8 @@
         "autoWTap": true,
         "wTapMode": "delay",
         "wTapValue": 11,
-        "autoSprint": true
+        "autoSprint": true,
+        "betterInput": false
     },
     "filename": "hypixeldules",
     "displayName": "Hypixel - Duels (Classic)",
