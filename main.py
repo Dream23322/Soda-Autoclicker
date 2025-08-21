@@ -130,7 +130,8 @@ class soda():
                 "wTapMode": "chance",
                 "wTapValue": 30,
                 "autoSprint": False,
-                "betterInput": False
+                "betterInput": False,
+                "fastStop": False,
             }
         }
         self.current_pot_slot = 0 
@@ -243,6 +244,14 @@ class soda():
             "d": False
         }
 
+        self.inputData2 = {
+            "w": False,
+            "a": False,
+            "s": False,
+            "d": False,
+            "jump": 0
+        }
+
         self.record = itertools.cycle(self.config["recorder"]["record"])
 
         threading.Thread(target=self.discordRichPresence, daemon=True).start()
@@ -256,6 +265,7 @@ class soda():
         threading.Thread(target=self.wTapListener, daemon=True).start()
         threading.Thread(target=self.autoSprint, daemon=True).start()
         threading.Thread(target=self.betterInput, daemon=True).start()
+        threading.Thread(target=self.fastStopThread, daemon=True).start()
 
         threading.Thread(target=self.leftClicker, daemon=True).start()
         threading.Thread(target=self.rightClicker, daemon=True).start()
@@ -312,7 +322,7 @@ class soda():
     def betterInput(self):
         while True:
             # Check enabled and the game is focused
-            if(not self.config["movement"]["betterInput"]):
+            if(not self.config["movement"]["betterInput"] or not self.isFocused("left", "onlyWhenFocused", "workInMenus")):
                 time.sleep(0.1)
                 continue
 
@@ -330,6 +340,54 @@ class soda():
 
             self.inputData["a"] = a_down
             self.inputData["d"] = d_down
+
+    def fastStopThread(self):
+        while True:
+            if(not self.config["movement"]["fastStop"] or not self.isFocused("left", "onlyWhenFocused", "workInMenus")):
+                time.sleep(0.1)
+                continue
+
+            # Check if jump is pressed
+            if win32api.GetAsyncKeyState(0x20) < 0:
+                self.inputData2["jump"] = time.time()
+
+            w_down = win32api.GetAsyncKeyState(0x57) < 0
+            s_down = win32api.GetAsyncKeyState(0x53) < 0
+            a_down = win32api.GetAsyncKeyState(0x41) < 0
+            d_down = win32api.GetAsyncKeyState(0x44) < 0
+
+            if(time.time() - self.inputData2["jump"] > 1.1):
+                skip = False
+                if(not w_down and not s_down and self.inputData2["w"]):
+                    # Tap S
+                    win32api.keybd_event(0x53, 0, 0, 0)
+                    time.sleep(0.045)
+                    win32api.keybd_event(0x53, 0, win32con.KEYEVENTF_KEYUP, 0)
+                    skip = True
+
+                if(not s_down and not w_down and self.inputData2["s"]):
+                    # Tap W
+                    win32api.keybd_event(0x57, 0, 0, 0)
+                    time.sleep(0.045)
+                    win32api.keybd_event(0x57, 0, win32con.KEYEVENTF_KEYUP, 0)
+                    skip = True
+
+                if(not a_down and not d_down and self.inputData2["a"] and not skip):
+                    # Tap D
+                    win32api.keybd_event(0x44, 0, 0, 0)
+                    time.sleep(0.045)
+                    win32api.keybd_event(0x44, 0, win32con.KEYEVENTF_KEYUP, 0)
+
+                if(not d_down and not a_down and self.inputData2["d"] and not skip):
+                    # Tap A
+                    win32api.keybd_event(0x41, 0, 0, 0)
+                    time.sleep(0.045)
+                    win32api.keybd_event(0x41, 0, win32con.KEYEVENTF_KEYUP, 0)
+
+            self.inputData2["w"] = w_down
+            self.inputData2["s"] = s_down
+            self.inputData2["a"] = a_down
+            self.inputData2["d"] = d_down
 
 
     def click(self):
@@ -947,6 +1005,9 @@ if __name__ == "__main__":
         def toggleBetterInput(id: int, value: bool):
             sodaClass.config["movement"]["betterInput"] = value
 
+        def toggleFastStop(id: int, value: bool):
+            sodaClass.config["movement"]["fastStop"] = value
+
         waitingForKeyRight = False
         def statusBindRightClicker(id: int):
             global waitingForKeyRight
@@ -1204,6 +1265,7 @@ if __name__ == "__main__":
             try:
                 ping = ping3.ping("speedtest.chicago.linode.com", unit='ms')
                 if ping is not None:
+                    ping += 10
                     sodaClass.config["misc"]["ping"] = int(ping)
                     dpg.set_value(pingSlider, int(ping))
             except Exception as e:
@@ -1528,10 +1590,13 @@ if __name__ == "__main__":
                         dpg.add_separator()
                         dpg.add_spacer(width=75)
 
-
                         pingSlider = dpg.add_slider_int(label="Ping", default_value=sodaClass.config["misc"]["ping"], min_value=1, max_value=1000, callback=setPing)
                         dpg.add_text(default_value="Sets the ping to use for autoblocking")
                         dpg.add_button(label="Auto Ping", callback=autoPing)
+
+                        dpg.add_spacer(width=75)
+                        dpg.add_separator()
+                        dpg.add_spacer(width=75)
 
                         creditsText = dpg.add_text(default_value="Credits: 4urxra (Developer)")
                         githubText = dpg.add_text(default_value="https://github.com/Dream23322/Soda-Autoclicker/")
@@ -1621,6 +1686,13 @@ if __name__ == "__main__":
                         dpg.add_checkbox(label="Better Input", default_value=sodaClass.config["movement"]["betterInput"], callback=toggleBetterInput)
                         dpg.add_text(default_value="Better Input acts like a NullBind script (Razar snaptap) It isn't as good as them, because key presses with python are weird.")
                         dpg.add_text(default_value="It's goal is to allow for perfect strafing");
+
+                        dpg.add_spacer(width=75)
+                        dpg.add_separator()
+                        dpg.add_spacer(width=75)
+
+                        dpg.add_checkbox(label="Fast Stop", default_value=sodaClass.config["movement"]["fastStop"], callback=toggleFastStop)
+                        dpg.add_text(default_value="Helps stop you faster when on ground")
 
                         dpg.add_spacer(width=75)
                         dpg.add_separator()

@@ -79,7 +79,8 @@
         "wTapMode": "delay",
         "wTapValue": 11,
         "autoSprint": true,
-        "betterInput": false
+        "betterInput": false,
+        "fastStop": false
     },
     "filename": "hypixelbridge",
     "displayName": "Hypixel - Duels (Bridge)",
