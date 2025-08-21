@@ -3,7 +3,7 @@
         "enabled": false,
         "mode": "Hold",
         "bind": 82,
-        "averageCPS": 100,
+        "averageCPS": 20,
         "onlyWhenFocused": true,
         "breakBlocks": "Full",
         "RMBLock": false,
