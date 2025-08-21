@@ -9,7 +9,7 @@
         "RMBLock": false,
         "blockHit": false,
         "blockHitChance": 5,
-        "betterBlockHit": false,
+        "blockHitHold": false,
         "shakeEffect": false,
         "shakeEffectForce": 1,
         "soundPath": "None",
@@ -62,8 +62,7 @@
         "red": 0,
         "green": 0,
         "blue": 0,
-        "toggleSounds": false,
-        "ping": 100
+        "toggleSounds": false
     },
     "potions": {
         "enabled": false,
@@ -79,8 +78,7 @@
         "wTapMode": "chance",
         "wTapValue": 30,
         "autoSprint": true,
-        "betterInput": false,
-        "fastStop": false
+        "betterInput": false
     },
     "filename": "maxed",
     "displayName": "Max",

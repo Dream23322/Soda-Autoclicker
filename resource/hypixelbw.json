@@ -8,8 +8,8 @@
         "breakBlocks": "Shift With Click",
         "RMBLock": false,        
         "blockHit": true,
-        "blockHitChance": 40,
-        "betterBlockHit": true,
+        "blockHitChance": 6,
+        "blockHitHold": false,
         "shakeEffect": false,
         "shakeEffectForce": 5,
         "soundPath": "None",
@@ -62,8 +62,7 @@
         "red": 0,
         "green": 0,
         "blue": 0,
-        "toggleSounds": true,
-        "ping": 100
+        "toggleSounds": false
     },
     "potions": {
         "enabled": false,
@@ -79,8 +78,7 @@
         "wTapMode": "chance",
         "wTapValue": 30,
         "autoSprint": false,
-        "betterInput": false,
-        "fastStop": false
+        "betterInput": false
     },
     "filename": "hypixelbw",
     "displayName": "Hypixel - Bedwars",
