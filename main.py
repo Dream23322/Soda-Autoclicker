@@ -868,7 +868,7 @@ class soda():
         print("Config Amount", len(self.configs), "\nConfig ID", configID)
         cid = 0
         if configID != 255:
-            cid = int((configID - 255) / 8) - 2
+            cid = int((configID - 255) / 8) - 3
         print("Config ID", cid)
         config = self.configs[cid]
         print(f"[!] Applying Config: {config['filename']}")
