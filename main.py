@@ -4,12 +4,14 @@ try:
     import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, re, keyboard, shutil, urllib, tempfile, webbrowser, math, zipfile
     import dearpygui.dearpygui as dpg
     from pypresence import Presence
+    import ping3
 except:
     from os import system
     system("pip install -r requirements.txt")
     import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, re, keyboard, shutil, urllib, tempfile, webbrowser, math, zipfile
     import dearpygui.dearpygui as dpg
     from pypresence import Presence
+    import ping3
 refresh = False
 class configListener(dict): # Detecting changes to config
     def __init__(self, initialDict):
@@ -60,7 +62,7 @@ class soda():
                 "RMBLock": False,
                 "blockHit": False,
                 "blockHitChance": 20,
-                "blockHitHold": False,
+                "betterBlockHit": False,
                 "shakeEffect": False,
                 "shakeEffectForce": 5,
                 "soundPath": "None",
@@ -111,7 +113,8 @@ class soda():
                 "red": 0,
                 "green": 0,
                 "blue": 0,
-                "toggleSounds": False,
+                "toggleSounds": True,
+                "ping": 230
             },
             "potions": {
                 "enabled": False,
@@ -231,6 +234,7 @@ class soda():
         configs = []
         clickSounds = []
         self.config = configListener(self.config)
+        self.lastBlockHit = 0
 
         self.inputData = {
             "w": False,
@@ -478,30 +482,31 @@ class soda():
         win32api.SendMessage(self.window, win32con.WM_LBUTTONUP, 0, 0)
 
     def blockHit(self):
-        if self.config["left"]["blockHit"] and win32api.GetAsyncKeyState(0x01) < 0:
-            # If blockHitHold is enabled, only blockhit while RMB is held down
-            if self.config["left"]["blockHitHold"]:
-                blockHitCondition = win32api.GetAsyncKeyState(0x02) < 0
-            else:
-                blockHitCondition = not win32api.GetAsyncKeyState(0x02) < 0
+        if self.config["left"]["blockHit"] and win32api.GetAsyncKeyState(0x01) < 0 and random.uniform(0, 1) <= self.config["left"]["blockHitChance"] / 100.0:
+            if self.config["left"]["betterBlockHit"] :
+                # Always blockhit every ~ping ms
+                ping_ms = self.config["left"].get("ping", 230)  # default 230ms
+                interval = ping_ms / 1000.0  # seconds
 
-            if blockHitCondition:
-                if random.uniform(0, 1) <= self.config["left"]["blockHitChance"] / 100.0:
+                now = time.time()
+                if now - self.lastBlockHit >= interval:
+                    self.lastBlockHit = now
+
                     win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTDOWN, 0, 0)
                     time.sleep(0.02)
-                    if(not self.config["left"]["blockHitHold"]):
-                        win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTUP, 0, 0)
+                    win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTUP, 0, 0)
+
+            else:
+                # Chance-based blockhit (old behavior)
+
+                win32api.SendMessage(self.window, win32con.WM_RBUTTONDOWN, 0, 0)
+                time.sleep(0.02)
+                win32api.SendMessage(self.window, win32con.WM_RBUTTONUP, 0, 0)
 
     def leftClick(self, focused):
         if focused != None:
             self.clickLeft()
             self.blockHit()
-            # if self.config["left"]["blockHit"] or (self.config["left"]["blockHit"] and self.config["right"]["enabled"] and self.config["right"]["LMBLock"] and not win32api.GetAsyncKeyState(0x02) < 0):
-            #     if random.uniform(0, 1) <= self.config["left"]["blockHitChance"] / 100.0:
-            #         win32api.SendMessage(self.window, win32con.WM_RBUTTONDOWN, 0, 0)
-            #         time.sleep(0.02)
-            #         win32api.SendMessage(self.window, win32con.WM_RBUTTONUP, 0, 0)     
-
             if self.config["left"]["AutoRod"] or (self.config["left"]["AutoRod"] and self.config["right"]["enabled"] and self.config["right"]["RMBLock"] and not win32api.GetAsyncKeyState(0x01) < 0):
                 if random.uniform(0, 1) <= self.config["left"]["AutoRodChance"] / 100.0:
                     self.doRod(False)
@@ -786,7 +791,7 @@ class soda():
         print("Config Amount", len(self.configs), "\nConfig ID", configID)
         cid = 0
         if configID != 255:
-            cid = int((configID - 255) / 8) - 1
+            cid = int((configID - 255) / 8) - 2
         print("Config ID", cid)
         config = self.configs[cid]
         print(f"[!] Applying Config: {config['filename']}")
@@ -897,7 +902,7 @@ if __name__ == "__main__":
             sodaClass.config["left"]["blockHitChance"] = value
 
         def toggleLeftBlockHitHold(id: int, value: bool):
-            sodaClass.config["left"]["blockHitHold"] = value
+            sodaClass.config["left"]["betterBlockHit"] = value
 
         def toggleLeftShakeEffect(id: int, value: bool):
             sodaClass.config["left"]["shakeEffect"] = value
@@ -1191,6 +1196,20 @@ if __name__ == "__main__":
                 waitingForKeyHideGUI = False
 
 
+        def setPing(id: int, value: int):
+            sodaClass.config["misc"]["ping"] = value
+        
+        def autoPing(id: int):
+            # get ping to hypixel (speedtest.chicago.linode.com is used bc hypixel uses proxy servers)
+            try:
+                ping = ping3.ping("speedtest.chicago.linode.com", unit='ms')
+                if ping is not None:
+                    sodaClass.config["misc"]["ping"] = int(ping)
+                    dpg.set_value(pingSlider, int(ping))
+            except Exception as e:
+                print(f"[!] Failed to ping: {e}")
+                sodaClass.config["misc"]["ping"] = 100
+
         def toggleSaveSettings(id: int, value: bool):
             sodaClass.config["misc"]["saveSettings"] = value
 
@@ -1274,8 +1293,8 @@ if __name__ == "__main__":
                         checkboxLeftBlockHit = dpg.add_checkbox(label="BlockHit", default_value=sodaClass.config["left"]["blockHit"], callback=toggleLeftBlockHit)
                         sliderLeftBlockHitChance = dpg.add_slider_int(label="BlockHit Chance", default_value=sodaClass.config["left"]["blockHitChance"], min_value=1, max_value=100, callback=setLeftBlockHitChance)
                         dpg.add_text(default_value="Randomly right clicks to do a blockhit (MC version < 1.8.9). This can help reduce damage.\nWarning: Having the amount higher than 50 can cause it to be very hard to move while using the clicker")
-                        dpg.add_checkbox(label="Blockhit Hold", default_value=sodaClass.config["left"]["blockHitHold"], callback=toggleLeftBlockHitHold)
-                        dpg.add_text(default_value="Only block hits if RMB is held down - Not working, will be fixed in 1.5.4")
+                        dpg.add_checkbox(label="Better BlockHit", default_value=sodaClass.config["left"]["betterBlockHit"], callback=toggleLeftBlockHitHold)
+                        dpg.add_text(default_value="Times ur block hit with your ping (set in misc tab)")
                         dpg.add_spacer(width=125)
 
                         checkboxLeftShakeEffect = dpg.add_checkbox(label="Shake Effect", default_value=sodaClass.config["left"]["shakeEffect"], callback=toggleLeftShakeEffect)
@@ -1508,6 +1527,11 @@ if __name__ == "__main__":
                         dpg.add_spacer(width=75)
                         dpg.add_separator()
                         dpg.add_spacer(width=75)
+
+
+                        pingSlider = dpg.add_slider_int(label="Ping", default_value=sodaClass.config["misc"]["ping"], min_value=1, max_value=1000, callback=setPing)
+                        dpg.add_text(default_value="Sets the ping to use for autoblocking")
+                        dpg.add_button(label="Auto Ping", callback=autoPing)
 
                         creditsText = dpg.add_text(default_value="Credits: 4urxra (Developer)")
                         githubText = dpg.add_text(default_value="https://github.com/Dream23322/Soda-Autoclicker/")
