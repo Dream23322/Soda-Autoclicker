@@ -1,0 +1,89 @@
+{
+    "left": {
+        "enabled": false,
+        "mode": "Hold",
+        "bind": 82,
+        "averageCPS": 18,
+        "onlyWhenFocused": true,
+        "breakBlocks": "None",
+        "RMBLock": false,        
+        "blockHit": true,
+        "blockHitChance": 43,
+        "betterBlockHit": true,
+        "shakeEffect": false,
+        "shakeEffectForce": 5,
+        "soundPath": "None",
+        "workInMenus": false,
+        "blatant": false,
+        "AutoRod": false,
+        "AutoRodChance": 3
+    },
+    "right": {
+        "enabled": false,
+        "mode": "Hold",
+        "bind": 89,
+        "averageCPS": 30,
+        "onlyWhenFocused": true,
+        "LMBLock": false,
+        "shakeEffect": false,
+        "shakeEffectForce": false,
+        "soundPath": "None",
+        "workInMenus": false,
+        "blatant": false,
+        "items": true
+    },
+    "recorder": {
+        "enabled": false,
+        "record": [
+            0.08
+        ]
+    },
+    "overlay": {
+        "enabled": false,
+        "onlyWhenFocused": true,
+        "x": 0,
+        "y": 0
+    },
+    "misc": {
+        "saveSettings": true,
+        "guiHidden": false,
+        "bindHideGUI": 0,
+        "consoleFaker": "NullBind",
+        "discordRichPresence": true,
+        "switchDelay": 0.05,
+        "rodBind": 88,
+        "longRod": true,
+        "rodDelay": 0.2,
+        "rodSlot": "2",
+        "pearlBind": 0,
+        "pearlSlot": "8",
+        "swordSlot": "1",
+        "theme": "sakura",
+        "red": 0,
+        "green": 0,
+        "blue": 0,
+        "toggleSounds": false,
+        "ping": 100
+    },
+    "potions": {
+        "enabled": false,
+        "potBind": 0,
+        "throwDelay": 0.7,
+        "switchBackSlot": "1",
+        "potResetBind": 0,
+        "lowestSlot": 1,
+        "highestSlot": 9
+    },
+    "movement": {
+        "autoWTap": true,
+        "wTapMode": "delay",
+        "wTapValue": 11,
+        "autoSprint": true,
+        "betterInput": false,
+        "fastStop": false
+    },
+    "filename": "hypixeldules",
+    "displayName": "Hypixel - Duels (Classic)",
+    "description": "Config for Classic Duels on Hypixel - V1.5.4",
+    "Author": "4urxra"
+}

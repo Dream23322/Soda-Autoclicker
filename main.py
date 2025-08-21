@@ -1,4 +1,5 @@
 version = "1.5.5"
+configType = "dev"
 
 try:
     import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, re, keyboard, shutil, urllib, tempfile, webbrowser, math, zipfile
@@ -154,28 +155,43 @@ class soda():
             time.sleep(1)
 
             print("Downloading from GitHub (ZIP snapshot)...")
+
             resource_dir = os.path.join(self.folder_path, "resource")
             os.makedirs(resource_dir, exist_ok=True)
 
-            zip_url = "https://github.com/Dream23322/Soda-Autoclicker/archive/refs/heads/main.zip"
-            zip_path = os.path.join(tempfile.gettempdir(), "soda_repo.zip")
-
-            # Use system curl to download ZIP
-            subprocess.run(["curl", "-L", zip_url, "-o", zip_path], check=True)
-
-            # Extract only the resource folder from ZIP
-            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                for member in zip_ref.namelist():
-                    if member.startswith("Soda-Autoclicker-main/resource/"):
-                        rel_path = os.path.relpath(member, "Soda-Autoclicker-main/resource")
-                        if rel_path != ".":
-                            target_path = os.path.join(resource_dir, rel_path)
-                            if member.endswith("/"):
-                                os.makedirs(target_path, exist_ok=True)
-                            else:
-                                os.makedirs(os.path.dirname(target_path), exist_ok=True)
-                                with open(target_path, "wb") as out_file:
-                                    out_file.write(zip_ref.read(member))
+            # Choose which folder to extract based on configType
+            if configType == "dev":
+                zip_url = "https://github.com/Dream23322/Soda-Autoclicker/archive/refs/heads/main.zip"
+                zip_path = os.path.join(tempfile.gettempdir(), "soda_repo.zip")
+                subprocess.run(["curl", "-L", zip_url, "-o", zip_path], check=True)
+                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                    for member in zip_ref.namelist():
+                        if member.startswith("Soda-Autoclicker-main/dev/"):
+                            rel_path = os.path.relpath(member, "Soda-Autoclicker-main/dev")
+                            if rel_path != ".":
+                                target_path = os.path.join(resource_dir, rel_path)
+                                if member.endswith("/"):
+                                    os.makedirs(target_path, exist_ok=True)
+                                else:
+                                    os.makedirs(os.path.dirname(target_path), exist_ok=True)
+                                    with open(target_path, "wb") as out_file:
+                                        out_file.write(zip_ref.read(member))
+            else:
+                zip_url = "https://github.com/Dream23322/Soda-Autoclicker/archive/refs/heads/main.zip"
+                zip_path = os.path.join(tempfile.gettempdir(), "soda_repo.zip")
+                subprocess.run(["curl", "-L", zip_url, "-o", zip_path], check=True)
+                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                    for member in zip_ref.namelist():
+                        if member.startswith("Soda-Autoclicker-main/resource/"):
+                            rel_path = os.path.relpath(member, "Soda-Autoclicker-main/resource")
+                            if rel_path != ".":
+                                target_path = os.path.join(resource_dir, rel_path)
+                                if member.endswith("/"):
+                                    os.makedirs(target_path, exist_ok=True)
+                                else:
+                                    os.makedirs(os.path.dirname(target_path), exist_ok=True)
+                                    with open(target_path, "wb") as out_file:
+                                        out_file.write(zip_ref.read(member))
             print("Moved resource folder")
 
             shutil.rmtree(os.path.join(self.folder_path, "temp"), ignore_errors=True)
@@ -265,6 +281,7 @@ class soda():
         threading.Thread(target=self.wTapListener, daemon=True).start()
         threading.Thread(target=self.autoSprint, daemon=True).start()
         threading.Thread(target=self.betterInput, daemon=True).start()
+        self.bIDate = 0
         threading.Thread(target=self.fastStopThread, daemon=True).start()
 
         threading.Thread(target=self.leftClicker, daemon=True).start()
@@ -333,10 +350,12 @@ class soda():
             if self.inputData["a"] and d_down:
                 win32api.keybd_event(0x41, 0, win32con.KEYEVENTF_KEYUP, 0)
                 a_down = False
+                self.bIDate = time.time()
 
             elif self.inputData["d"] and a_down:
                 win32api.keybd_event(0x44, 0, win32con.KEYEVENTF_KEYUP, 0)
                 d_down = False
+                self.bIDate = time.time()
 
             self.inputData["a"] = a_down
             self.inputData["d"] = d_down
@@ -356,7 +375,7 @@ class soda():
             a_down = win32api.GetAsyncKeyState(0x41) < 0
             d_down = win32api.GetAsyncKeyState(0x44) < 0
 
-            if(time.time() - self.inputData2["jump"] > 1.1):
+            if(time.time() - self.inputData2["jump"] > 0.7 and time.time() - self.bIDate > 0.7):
                 skip = False
                 if(not w_down and not s_down and self.inputData2["w"]):
                     # Tap S
@@ -1692,7 +1711,7 @@ if __name__ == "__main__":
                         dpg.add_spacer(width=75)
 
                         dpg.add_checkbox(label="Fast Stop", default_value=sodaClass.config["movement"]["fastStop"], callback=toggleFastStop)
-                        dpg.add_text(default_value="Helps stop you faster when on ground")
+                        dpg.add_text(default_value="Helps stop you faster when on ground (Weird if used with Better Input)")
 
                         dpg.add_spacer(width=75)
                         dpg.add_separator()
