@@ -3,7 +3,7 @@
         "enabled": true,
         "mode": "Hold",
         "bind": 82,
-        "averageCPS": 18,
+        "averageCPS": 14,
         "onlyWhenFocused": true,
         "breakBlocks": "Shift With Click",
         "RMBLock": false,
@@ -62,8 +62,8 @@
         "red": 0,
         "green": 0,
         "blue": 0,
-        "toggleSounds": false,
-        "ping": 100
+        "toggleSounds": true,
+        "ping": 220
     },
     "potions": {
         "enabled": false,
