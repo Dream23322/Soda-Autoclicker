@@ -1,5 +1,5 @@
-version = "1.5.5"
-configType = "dev"
+version = "1.5.6"
+configType = "main"
 
 try:
     import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, re, keyboard, shutil, urllib, tempfile, webbrowser, math, zipfile
@@ -161,6 +161,7 @@ class soda():
 
             # Choose which folder to extract based on configType
             if configType == "dev":
+                print("[!] Using dev resource folder")
                 zip_url = "https://github.com/Dream23322/Soda-Autoclicker/archive/refs/heads/main.zip"
                 zip_path = os.path.join(tempfile.gettempdir(), "soda_repo.zip")
                 subprocess.run(["curl", "-L", zip_url, "-o", zip_path], check=True)
@@ -177,6 +178,7 @@ class soda():
                                     with open(target_path, "wb") as out_file:
                                         out_file.write(zip_ref.read(member))
             else:
+                print("[!] Using release resource folder")
                 zip_url = "https://github.com/Dream23322/Soda-Autoclicker/archive/refs/heads/main.zip"
                 zip_path = os.path.join(tempfile.gettempdir(), "soda_repo.zip")
                 subprocess.run(["curl", "-L", zip_url, "-o", zip_path], check=True)
@@ -307,9 +309,7 @@ class soda():
                 "Click click click",
                 ":3",
                 "Soda Pop <3",
-                "Download today!",
-                "discord.gg/4ZqBfDFMG4",
-                "ヅ"
+                "Download today!"
             ]
 
             while True:
@@ -546,17 +546,18 @@ class soda():
         if self.config["left"]["breakBlocks"] == "Shift With Click" and win32api.GetAsyncKeyState(0x10) < 0:
             win32api.SendMessage(self.window, win32con.WM_LBUTTONDOWN, 0, 0)
             time.sleep(0.02)
-            return;
+            return False
         if self.config["left"]["breakBlocks"] == "Shift No Click" and win32api.GetAsyncKeyState(0x10) < 0:
 
-            return;
+            return False
         if self.config["left"]["breakBlocks"] == "Full":
             win32api.SendMessage(self.window, win32con.WM_LBUTTONDOWN, 0, 0)
             time.sleep(0.02)
-            return;
+            return False
         win32api.SendMessage(self.window, win32con.WM_LBUTTONDOWN, 0, 0)
         time.sleep(0.02)
         win32api.SendMessage(self.window, win32con.WM_LBUTTONUP, 0, 0)
+        return True
 
     def blockHit(self):
         if self.config["left"]["blockHit"] and win32api.GetAsyncKeyState(0x01) < 0 and random.uniform(0, 1) <= self.config["left"]["blockHitChance"] / 100.0:
@@ -582,19 +583,18 @@ class soda():
 
     def leftClick(self, focused):
         if focused != None:
-            self.clickLeft()
-            self.blockHit()
-            if self.config["left"]["AutoRod"] or (self.config["left"]["AutoRod"] and self.config["right"]["enabled"] and self.config["right"]["RMBLock"] and not win32api.GetAsyncKeyState(0x01) < 0):
-                if random.uniform(0, 1) <= self.config["left"]["AutoRodChance"] / 100.0:
-                    self.doRod(False)
+            if(self.clickLeft()):
+                self.blockHit()
+                if self.config["left"]["AutoRod"] or (self.config["left"]["AutoRod"] and self.config["right"]["enabled"] and self.config["right"]["RMBLock"] and not win32api.GetAsyncKeyState(0x01) < 0):
+                    if random.uniform(0, 1) <= self.config["left"]["AutoRodChance"] / 100.0:
+                        self.doRod(False)
         else:
-            self.clickLeft()
+            if(self.clickLeft()):
+                self.blockhit()
 
-            self.blockhit()
-
-            if self.config["left"]["AutoRod"] or (self.config["left"]["AutoRod"] and self.config["right"]["enabled"] and self.config["right"]["RMBLock"] and not win32api.GetAsyncKeyState(0x01) < 0):
-                if random.uniform(0, 1) <= self.config["left"]["AutoRodChance"] / 100.0:
-                    self.doRod(False)
+                if self.config["left"]["AutoRod"] or (self.config["left"]["AutoRod"] and self.config["right"]["enabled"] and self.config["right"]["RMBLock"] and not win32api.GetAsyncKeyState(0x01) < 0):
+                    if random.uniform(0, 1) <= self.config["left"]["AutoRodChance"] / 100.0:
+                        self.doRod(False)
 
         if self.config["left"]["soundPath"] != "" and os.path.isfile(os.path.join(self.folder_path, self.config["left"]["soundPath"])):
             threading.Thread(target=self.click, args=(), daemon=True).start()
@@ -832,13 +832,12 @@ class soda():
                 time.sleep(0.5)
                 continue
             time.sleep(0.01)
-            # Sprint using left ctrl key
             if self.config["movement"]["autoSprint"] and (win32api.GetAsyncKeyState(0x57) < 0 or win32api.GetAsyncKeyState(0x41) < 0 or win32api.GetAsyncKeyState(0x44) < 0) and self.isFocused("left", "onlyWhenFocused", "workInMenus"):
-                if not win32api.GetAsyncKeyState(0x11) < 0:  # Check if left ctrl is not pressed
-                    win32api.keybd_event(0x11, 0, 0, 0)  # Press left ctrl
+                if not win32api.GetAsyncKeyState(0x11) < 0: 
+                    win32api.keybd_event(0x11, 0, 0, 0) 
             else:
-                if win32api.GetAsyncKeyState(0x11) < 0:  # Check if left ctrl is pressed
-                    win32api.keybd_event(0x11, 0, win32con.KEYEVENTF_KEYUP, 0)  # Release left ctrl
+                if win32api.GetAsyncKeyState(0x11) < 0: 
+                    win32api.keybd_event(0x11, 0, win32con.KEYEVENTF_KEYUP, 0)
 
 
     def getConfigs(self):
@@ -856,7 +855,7 @@ class soda():
             try:
                 with open(file_path, encoding="utf-8") as f:
                     config = json.load(f)
-                config["filename"] = os.path.splitext(file)[0]  # add filename for loading
+                config["filename"] = os.path.splitext(file)[0] 
                 configs.append(config)
                 print("Loaded config:", file)
             except Exception as e:
