@@ -8,8 +8,8 @@
         "breakBlocks": "Shift With Click",
         "RMBLock": false,
         "blockHit": true,
-        "blockHitChance": 5,
-        "blockHitHold": false,
+        "blockHitChance": 43,
+        "betterBlockHit": true,
         "shakeEffect": false,
         "shakeEffectForce": 5,
         "soundPath": "None",
@@ -62,7 +62,8 @@
         "red": 0,
         "green": 0,
         "blue": 0,
-        "toggleSounds": true
+        "toggleSounds": false,
+        "ping": 100
     },
     "potions": {
         "enabled": false,
@@ -78,7 +79,8 @@
         "wTapMode": "delay",
         "wTapValue": 10,
         "autoSprint": true,
-        "betterInput": false
+        "betterInput": false,
+        "fastStop": false
     },
     "filename": "hypixelskywars",
     "displayName": "Hypixel - Skywars",
