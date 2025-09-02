@@ -1,5 +1,5 @@
 version = "1.5.6"
-configType = "main"
+configType = "dev"
 
 try:
     import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, re, keyboard, shutil, urllib, tempfile, webbrowser, math, zipfile
