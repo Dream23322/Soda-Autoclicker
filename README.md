@@ -37,3 +37,6 @@ GPL‑3.0 (see [LICENSE.md](LICENSE.md))
 
 ## Community & Support
 Discord: https://discord.gg/4ZqBfDFMG4
+
+
+Made by 4urxra
