@@ -9,7 +9,9 @@ https://discord.gg/4ZqBfDFMG4
 
 
 
-#
+# Why use Soda?
+
+It actually bypasses anticheat's, unlike more traditional autoclickers like OP Autoclicker. It's also open source, giving you piece of mind that the program is safe.
 
 ### Features:
 
