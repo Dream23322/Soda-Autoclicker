@@ -1,6 +1,6 @@
 # Soda Autoclicker
 
-The best autoclicker for minecraft 1.8.9 pvp
+Soda Autoclicker is the best autoclicker for Minecraft Java Edition 1.8.9 PvP. With advanced features it gives a competative advantage against other autoclickers and players.
 
 Discord:
 https://discord.gg/4ZqBfDFMG4
