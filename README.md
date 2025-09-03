@@ -1,55 +1,39 @@
-# Soda Autoclicker
+# Soda‑Autoclicker — Free Minecraft Java 1.8.9 PvP Auto Clicker
 
-Soda Autoclicker is the best autoclicker for Minecraft Java Edition 1.8.9 PvP. With advanced features it gives a competative advantage against other autoclickers and players.
+Soda‑Autoclicker is a free, open-source auto-clicker specially designed for **Minecraft Java Edition 1.8.9 PvP**.  
+With powerful features like anticheat bypass, auto-rod, jitter simulation, and more—it's your competitive edge.
 
-Discord:
-https://discord.gg/4ZqBfDFMG4
-
-
-
-
-
-# Why use Soda?
-
-It actually bypasses anticheat's, unlike more traditional autoclickers like OP Autoclicker. It's also open source, giving you piece of mind that the program is safe.
-
-### Features:
-
-- Block breaking
-
-- Mouse Lock
-
+## Features
+- Bypass anticheats on servers like Hypixel
+- Auto‑Rod
 - Jitter Simulation
-
-- Block Hit
-
-- Auto Rod
-
-- Destruct
-
-- Movement Improvements
-
-- Toggle Sounds
-
-- Auto Sprint
-
+- Block Breaking, Block Hit, Movement Improvements, Auto-Sprint
+- Mouse Lock, Toggle Sounds, Auto Sprint
 - Config Manager
 
+## Download & Usage
+- **How to install**: Clone & run
+- **Make it an executable**: install PyInstaller + `pyinstaller --onefile main.py`
 
-# If you want to make it an exe yourself
+## Supported Platforms
+- Working for windows
+- Has a dumbed down version for mac support (1.5.1)
 
-If you wish to make this autoclicker an exe, you can do this using pyinstaller.
+## Why Choose Soda?
+- Free & open‑source
+- Lightweight and configurable
+- Bypasses anticheat systems unlike OP Auto Clicker
 
-Start by running this command in terminal
+## FAQ
+**Q: Is it safe?**  
+A: Yes, it's open source and GPL‑3.0 licensed.
 
-```clone https://github.com/Dream23322/Soda_Autoclicker```
+**Q: Can I use this on Hypixel?**  
+A: It’s designed for 1.8.9 PvP servers, including Hypixel (It's recommended to keep left clicker cps under 20).
+B: Can it bypass minemen? It's not been tested too much on mmc, but from what I haven't gotten a ban on there before.
 
-then open the new directory and run these commands
-```pip install pyinstaller```
-```pyinstaller --onefile main.py```
+## License
+GPL‑3.0 (see [LICENSE.md](LICENSE.md))
 
-#
-
-This Autoclicker was based off sharp autoclicker, credits to B4mb0u for the base :D
-
-Sharp Autoclicker Github: github.com/B4mb0u/Sharp
+## Community & Support
+Discord: https://discord.gg/4ZqBfDFMG4
