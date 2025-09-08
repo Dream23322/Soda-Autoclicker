@@ -563,7 +563,7 @@ class soda():
 
     def blockHit(self):
         if self.config["left"]["blockHit"] and win32api.GetAsyncKeyState(0x01) < 0 and random.uniform(0, 1) <= self.config["left"]["blockHitChance"] / 100.0:
-            if self.config["left"]["betterBlockHit"] == "V2" or self.config["left"]["bhType"] == "V3":
+            if self.config["left"]["bhType"] == "V2" or self.config["left"]["bhType"] == "V3":
                 # Always blockhit every ~ping ms
                 ping_ms = self.config["left"].get("ping", 230)
                 interval = ping_ms / 1000.0  # seconds
