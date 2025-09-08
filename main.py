@@ -570,12 +570,12 @@ class soda():
 
                 now = time.time()
 
-                interval = random.randint(570, 730) / 1000.0 if self.config["left"]["bhType"] == "V3" else interval
+                interval = random.randint(450, 550) / 1000.0 if self.config["left"]["bhType"] == "V3" else interval
                 if now - self.lastBlockHit >= interval:
                     self.lastBlockHit = now
                     win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTDOWN, 0, 0)
                     delay = 0.02 if self.config["left"]["bhType"] == "V2" else 0.173
-                    time.sleep(0.194)
+                    time.sleep(delay)
                     win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTUP, 0, 0)
 
             else:
