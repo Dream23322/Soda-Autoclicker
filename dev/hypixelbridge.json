@@ -9,7 +9,7 @@
         "RMBLock": false,
         "blockHit": true,
         "blockHitChance": 8,
-        "betterBlockHit": false,
+        "bhType": "V2",
         "shakeEffect": false,
         "shakeEffectForce": 5,
         "soundPath": "None",

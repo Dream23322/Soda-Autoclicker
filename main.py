@@ -63,7 +63,7 @@ class soda():
                 "RMBLock": False,
                 "blockHit": False,
                 "blockHitChance": 20,
-                "betterBlockHit": False,
+                "bhType": "V2",
                 "shakeEffect": False,
                 "shakeEffectForce": 5,
                 "soundPath": "None",
@@ -254,6 +254,8 @@ class soda():
         clickSounds = []
         self.config = configListener(self.config)
         self.lastBlockHit = 0
+
+        self.lastRClick = 0
 
         self.inputData = {
             "w": False,
@@ -561,17 +563,19 @@ class soda():
 
     def blockHit(self):
         if self.config["left"]["blockHit"] and win32api.GetAsyncKeyState(0x01) < 0 and random.uniform(0, 1) <= self.config["left"]["blockHitChance"] / 100.0:
-            if self.config["left"]["betterBlockHit"] :
+            if self.config["left"]["betterBlockHit"] == "V2" or self.config["left"]["bhType"] == "V3":
                 # Always blockhit every ~ping ms
-                ping_ms = self.config["left"].get("ping", 230)  # default 230ms
+                ping_ms = self.config["left"].get("ping", 230)
                 interval = ping_ms / 1000.0  # seconds
 
                 now = time.time()
+
+                interval = random.randint(570, 730) / 1000.0 if self.config["left"]["bhType"] == "V3" else interval
                 if now - self.lastBlockHit >= interval:
                     self.lastBlockHit = now
-
                     win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTDOWN, 0, 0)
-                    time.sleep(0.02)
+                    delay = 0.02 if self.config["left"]["bhType"] == "V2" else 0.173
+                    time.sleep(0.194)
                     win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTUP, 0, 0)
 
             else:
@@ -977,8 +981,8 @@ if __name__ == "__main__":
         def setLeftBlockHitChance(id: int, value: int):
             sodaClass.config["left"]["blockHitChance"] = value
 
-        def toggleLeftBlockHitHold(id: int, value: bool):
-            sodaClass.config["left"]["betterBlockHit"] = value
+        def toggleLeftBlockHitHold(id: int, value: str):
+            sodaClass.config["left"]["bhType"] = value
 
         def toggleLeftShakeEffect(id: int, value: bool):
             sodaClass.config["left"]["shakeEffect"] = value
@@ -1373,8 +1377,9 @@ if __name__ == "__main__":
                         checkboxLeftBlockHit = dpg.add_checkbox(label="BlockHit", default_value=sodaClass.config["left"]["blockHit"], callback=toggleLeftBlockHit)
                         sliderLeftBlockHitChance = dpg.add_slider_int(label="BlockHit Chance", default_value=sodaClass.config["left"]["blockHitChance"], min_value=1, max_value=100, callback=setLeftBlockHitChance)
                         dpg.add_text(default_value="Randomly right clicks to do a blockhit (MC version < 1.8.9). This can help reduce damage.\nWarning: Having the amount higher than 50 can cause it to be very hard to move while using the clicker")
-                        dpg.add_checkbox(label="Better BlockHit", default_value=sodaClass.config["left"]["betterBlockHit"], callback=toggleLeftBlockHitHold)
-                        dpg.add_text(default_value="Times ur block hit with your ping (set in misc tab)")
+
+                        dpg.add_combo(label="BlockHit Type", items=["V1", "V2", "V3"], default_value=sodaClass.config["left"]["bhType"], callback=toggleLeftBlockHitHold)
+                        dpg.add_text(default_value="V1 - Normal BlockHit\nV2 - Better BlockHit (Ping based)\nV3 - Hold BlockHit (Timer)")
                         dpg.add_spacer(width=125)
 
                         checkboxLeftShakeEffect = dpg.add_checkbox(label="Shake Effect", default_value=sodaClass.config["left"]["shakeEffect"], callback=toggleLeftShakeEffect)

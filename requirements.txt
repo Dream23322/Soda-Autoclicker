@@ -4,7 +4,5 @@ dearpygui
 psutil
 asyncio
 pyMeow
-win32api
 keyboard
-webbrowser
 ping3
