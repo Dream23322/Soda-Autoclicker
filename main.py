@@ -594,7 +594,7 @@ class soda():
                         self.doRod(False)
         else:
             if(self.clickLeft()):
-                self.blockhit()
+                self.blockHit()
 
                 if self.config["left"]["AutoRod"] or (self.config["left"]["AutoRod"] and self.config["right"]["enabled"] and self.config["right"]["RMBLock"] and not win32api.GetAsyncKeyState(0x01) < 0):
                     if random.uniform(0, 1) <= self.config["left"]["AutoRodChance"] / 100.0:
