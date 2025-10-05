@@ -10,6 +10,8 @@
         "blockHit": false,
         "blockHitChance": 5,
         "bhType": "V2",
+        "smartBH": 0,
+        "smartBH": 0,
         "shakeEffect": false,
         "shakeEffectForce": 1,
         "soundPath": "None",
