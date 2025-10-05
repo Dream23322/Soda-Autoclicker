@@ -9,6 +9,7 @@
         "RMBLock": false,
         "blockHit": true,
         "bhType": "V2",
+        "smartBH": 0,
         "blockHitChance": 7,
         "shakeEffect": false,
         "shakeEffectForce": 5,

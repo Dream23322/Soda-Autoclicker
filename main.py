@@ -8,7 +8,10 @@ try:
     import ping3
 except:
     from os import system
-    system("pip install -r requirements.txt")
+    try:
+        system("pip install -r requirements.txt")
+    except:
+        system("py -m pip install -r requirements.txt")
     import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, re, keyboard, shutil, urllib, tempfile, webbrowser, math, zipfile
     import dearpygui.dearpygui as dpg
     from pypresence import Presence
@@ -434,7 +437,7 @@ class soda():
                 delay = float(next(self.record))
 
             if self.config["left"]["enabled"]:
-                if self.config["left"]["mode"] == "Hold" and not win32api.GetAsyncKeyState(0x01) < 0:
+                if self.config["left"]["mode"] == "Hold" and not win32api.GetAsyncKeyState(0x01) < 0 or (win32api.GetAsyncKeyState(self.config["left"]["smartBH"]) != 0):
                     time.sleep(delay)
 
                     continue
@@ -588,16 +591,18 @@ class soda():
                 win32api.SendMessage(self.window, win32con.WM_RBUTTONUP, 0, 0)
 
     def leftClick(self, focused):
+        print("hmmm")
         if focused != None:
             if(self.clickLeft()):
+                print(" one")
                 self.blockHit()
                 if self.config["left"]["AutoRod"] or (self.config["left"]["AutoRod"] and self.config["right"]["enabled"] and self.config["right"]["RMBLock"] and not win32api.GetAsyncKeyState(0x01) < 0):
-                    if random.uniform(0, 1) <= self.config["left"]["AutoRodChance"] / 100.0:
+                    if random.uniform(0, 1) <= self.config["left"]["AutoRodChance"] / 100.0 and not win32api.GetAsyncKeyState(self.config["left"]["smartBH"]) != 0:
                         self.doRod(False)
         else:
             if(self.clickLeft()):
                 self.blockHit()
-
+                print(" two")
                 if self.config["left"]["AutoRod"] or (self.config["left"]["AutoRod"] and self.config["right"]["enabled"] and self.config["right"]["RMBLock"] and not win32api.GetAsyncKeyState(0x01) < 0):
                     if random.uniform(0, 1) <= self.config["left"]["AutoRodChance"] / 100.0:
                         self.doRod(False)
@@ -653,7 +658,8 @@ class soda():
                 delay = random.random() % (2 / self.config["right"]["averageCPS"])
 
             if self.config["right"]["enabled"]:
-                if self.config["right"]["mode"] == "Hold" and not win32api.GetAsyncKeyState(0x02) < 0:
+                # Make sure smartBH's bind is not held
+                if self.config["right"]["mode"] == "Hold" and not win32api.GetAsyncKeyState(0x02) < 0 or (win32api.GetAsyncKeyState(self.config["left"]["smartBH"]) != 0):
                     time.sleep(delay)
 
                     continue
