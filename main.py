@@ -64,6 +64,7 @@ class soda():
                 "blockHit": False,
                 "blockHitChance": 20,
                 "bhType": "V2",
+                "smartBH": 0,
                 "shakeEffect": False,
                 "shakeEffectForce": 5,
                 "soundPath": "None",
@@ -286,11 +287,12 @@ class soda():
         threading.Thread(target=self.autoSprint, daemon=True).start()
         threading.Thread(target=self.betterInput, daemon=True).start()
         self.bIDate = 0
-        threading.Thread(target=self.fastStopThread, daemon=True).start()
+        threading.Thread(target=self.fastStopThread, daemon=True).start()   
 
         threading.Thread(target=self.leftClicker, daemon=True).start()
         threading.Thread(target=self.rightClicker, daemon=True).start()
 
+        threading.Thread(target=self.smartBH, daemon=True).start()
 
     def discordRichPresence(self):
         asyncio.set_event_loop(asyncio.new_event_loop())
@@ -768,6 +770,23 @@ class soda():
 
             time.sleep(0.001)
 
+    def smartBH(self):
+        while True:
+            if(not win32api.GetAsyncKeyState(self.config["left"]["smartBH"]) != 0 or not self.isFocused("left", "onlyWhenFocused", "workInMenus")):
+                time.sleep(0.1)
+                continue
+
+            # left click
+            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0)
+            time.sleep(0.02)
+            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0)
+            
+            win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTDOWN, 0, 0)
+            time.sleep(0.5)
+            win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTUP, 0, 0)
+            time.sleep(0.1)
+
+
                 
     def isFocused(self, config1: str, config2: str, config3: str):
         return ("java" in self.focusedProcess or "AZ-Launcher" in self.focusedProcess or not self.config[config1][config2]) and (self.config[config1][config3] or win32gui.GetCursorInfo()[1] > 200000)
@@ -958,6 +977,27 @@ if __name__ == "__main__":
                 sodaClass.config["left"]["bind"] = virtual_key
                 dpg.set_item_label(buttonBindLeftClicker, f"Bind: {key.upper()}")
                 dpg.delete_item("Left Bind Handler")
+                waitingForKeyLeft = False
+
+        def statusBindSmartBH(id: int):
+            global waitingForKeyLeft
+
+            if not waitingForKeyLeft:
+                with dpg.handler_registry(tag="Smart BH Bind Handler"):
+                    dpg.add_key_press_handler(callback=setBindSmartBH)
+
+                dpg.set_item_label(buttonBindSmartBH, "...")
+
+                waitingForKeyLeft = True
+
+        def setBindSmartBH(id: int, value: str):
+            global waitingForKeyLeft
+            if waitingForKeyLeft:
+                key = keyboard.read_event(suppress=True).name  # Get actual key name
+                virtual_key = ord(key.upper())  # Convert to virtual key code
+                sodaClass.config["left"]["smartBH"] = virtual_key
+                dpg.set_item_label(buttonBindSmartBH, f"Bind: {key.upper()}")
+                dpg.delete_item("Smart BH Bind Handler")
                 waitingForKeyLeft = False
 
         def setLeftMode(id: int, value: str):
@@ -1380,6 +1420,12 @@ if __name__ == "__main__":
 
                         dpg.add_combo(label="BlockHit Type", items=["V1", "V2", "V3"], default_value=sodaClass.config["left"]["bhType"], callback=toggleLeftBlockHitHold)
                         dpg.add_text(default_value="V1 - Normal BlockHit\nV2 - Better BlockHit (Ping based)\nV3 - Hold BlockHit (Timer)")
+
+                        buttonBindSmartBH = dpg.add_button(label="Smart BH Bind", callback=statusBindSmartBH)
+                        bind = sodaClass.config["left"]["smartBH"]
+                        if bind != 0:
+                            dpg.set_item_label(buttonBindSmartBH, f"Bind: {chr(bind)}")
+
                         dpg.add_spacer(width=125)
 
                         checkboxLeftShakeEffect = dpg.add_checkbox(label="Shake Effect", default_value=sodaClass.config["left"]["shakeEffect"], callback=toggleLeftShakeEffect)
