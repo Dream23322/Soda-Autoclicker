@@ -8,7 +8,10 @@ try:
     import ping3
 except:
     from os import system
-    system("pip install -r requirements.txt")
+    try:
+        system("pip install -r requirements.txt")
+    except:
+        system("py -m pip install -r requirements.txt")
     import win32api, win32con, win32gui, win32process, psutil, time, threading, random, winsound, os, json, subprocess, sys, asyncio, itertools, re, keyboard, shutil, urllib, tempfile, webbrowser, math, zipfile
     import dearpygui.dearpygui as dpg
     from pypresence import Presence
@@ -63,7 +66,8 @@ class soda():
                 "RMBLock": False,
                 "blockHit": False,
                 "blockHitChance": 20,
-                "betterBlockHit": False,
+                "bhType": "V2",
+                "smartBH": 0,
                 "shakeEffect": False,
                 "shakeEffectForce": 5,
                 "soundPath": "None",
@@ -255,6 +259,8 @@ class soda():
         self.config = configListener(self.config)
         self.lastBlockHit = 0
 
+        self.lastRClick = 0
+
         self.inputData = {
             "w": False,
             "a": False,
@@ -285,11 +291,13 @@ class soda():
         threading.Thread(target=self.wTapListener, daemon=True).start()
         threading.Thread(target=self.autoSprint, daemon=True).start()
         threading.Thread(target=self.betterInput, daemon=True).start()
-        threading.Thread(target=self.fastStopThread, daemon=True).start()
+        self.bIDate = 0
+        threading.Thread(target=self.fastStopThread, daemon=True).start()   
 
         threading.Thread(target=self.leftClicker, daemon=True).start()
         threading.Thread(target=self.rightClicker, daemon=True).start()
 
+        threading.Thread(target=self.smartBH, daemon=True).start()
 
     def discordRichPresence(self):
         asyncio.set_event_loop(asyncio.new_event_loop())
@@ -431,7 +439,7 @@ class soda():
                 delay = float(next(self.record))
 
             if self.config["left"]["enabled"]:
-                if self.config["left"]["mode"] == "Hold" and not win32api.GetAsyncKeyState(0x01) < 0:
+                if self.config["left"]["mode"] == "Hold" and not win32api.GetAsyncKeyState(0x01) < 0 or (win32api.GetAsyncKeyState(self.config["left"]["smartBH"]) != 0):
                     time.sleep(delay)
 
                     continue
@@ -562,17 +570,19 @@ class soda():
 
     def blockHit(self):
         if self.config["left"]["blockHit"] and win32api.GetAsyncKeyState(0x01) < 0 and random.uniform(0, 1) <= self.config["left"]["blockHitChance"] / 100.0:
-            if self.config["left"]["betterBlockHit"] :
+            if self.config["left"]["bhType"] == "V2" or self.config["left"]["bhType"] == "V3":
                 # Always blockhit every ~ping ms
-                ping_ms = self.config["left"].get("ping", 230)  # default 230ms
+                ping_ms = self.config["left"].get("ping", 230)
                 interval = ping_ms / 1000.0  # seconds
 
                 now = time.time()
+
+                interval = random.randint(450, 550) / 1000.0 if self.config["left"]["bhType"] == "V3" else interval
                 if now - self.lastBlockHit >= interval:
                     self.lastBlockHit = now
-
                     win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTDOWN, 0, 0)
-                    time.sleep(0.02)
+                    delay = 0.02 if self.config["left"]["bhType"] == "V2" else 0.173
+                    time.sleep(delay)
                     win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTUP, 0, 0)
 
             else:
@@ -583,16 +593,18 @@ class soda():
                 win32api.SendMessage(self.window, win32con.WM_RBUTTONUP, 0, 0)
 
     def leftClick(self, focused):
+        print("hmmm")
         if focused != None:
             if(self.clickLeft()):
+                print(" one")
                 self.blockHit()
                 if self.config["left"]["AutoRod"] or (self.config["left"]["AutoRod"] and self.config["right"]["enabled"] and self.config["right"]["RMBLock"] and not win32api.GetAsyncKeyState(0x01) < 0):
-                    if random.uniform(0, 1) <= self.config["left"]["AutoRodChance"] / 100.0:
+                    if random.uniform(0, 1) <= self.config["left"]["AutoRodChance"] / 100.0 and not win32api.GetAsyncKeyState(self.config["left"]["smartBH"]) != 0:
                         self.doRod(False)
         else:
             if(self.clickLeft()):
-                self.blockhit()
-
+                self.blockHit()
+                print(" two")
                 if self.config["left"]["AutoRod"] or (self.config["left"]["AutoRod"] and self.config["right"]["enabled"] and self.config["right"]["RMBLock"] and not win32api.GetAsyncKeyState(0x01) < 0):
                     if random.uniform(0, 1) <= self.config["left"]["AutoRodChance"] / 100.0:
                         self.doRod(False)
@@ -648,7 +660,8 @@ class soda():
                 delay = random.random() % (2 / self.config["right"]["averageCPS"])
 
             if self.config["right"]["enabled"]:
-                if self.config["right"]["mode"] == "Hold" and not win32api.GetAsyncKeyState(0x02) < 0:
+                # Make sure smartBH's bind is not held
+                if self.config["right"]["mode"] == "Hold" and not win32api.GetAsyncKeyState(0x02) < 0 or (win32api.GetAsyncKeyState(self.config["left"]["smartBH"]) != 0):
                     time.sleep(delay)
 
                     continue
@@ -764,6 +777,23 @@ class soda():
                     time.sleep(0.001)
 
             time.sleep(0.001)
+
+    def smartBH(self):
+        while True:
+            if(not win32api.GetAsyncKeyState(self.config["left"]["smartBH"]) != 0 or not self.isFocused("left", "onlyWhenFocused", "workInMenus")):
+                time.sleep(0.1)
+                continue
+
+            # left click
+            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0)
+            time.sleep(0.02)
+            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0)
+            
+            win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTDOWN, 0, 0)
+            time.sleep(0.5)
+            win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTUP, 0, 0)
+            time.sleep(0.1)
+
 
                 
     def isFocused(self, config1: str, config2: str, config3: str):
@@ -956,6 +986,27 @@ if __name__ == "__main__":
                 dpg.delete_item("Left Bind Handler")
                 waitingForKeyLeft = False
 
+        def statusBindSmartBH(id: int):
+            global waitingForKeyLeft
+
+            if not waitingForKeyLeft:
+                with dpg.handler_registry(tag="Smart BH Bind Handler"):
+                    dpg.add_key_press_handler(callback=setBindSmartBH)
+
+                dpg.set_item_label(buttonBindSmartBH, "...")
+
+                waitingForKeyLeft = True
+
+        def setBindSmartBH(id: int, value: str):
+            global waitingForKeyLeft
+            if waitingForKeyLeft:
+                key = keyboard.read_event(suppress=True).name  # Get actual key name
+                virtual_key = ord(key.upper())  # Convert to virtual key code
+                sodaClass.config["left"]["smartBH"] = virtual_key
+                dpg.set_item_label(buttonBindSmartBH, f"Bind: {key.upper()}")
+                dpg.delete_item("Smart BH Bind Handler")
+                waitingForKeyLeft = False
+
         def setLeftMode(id: int, value: str):
             sodaClass.config["left"]["mode"] = value
 
@@ -977,8 +1028,8 @@ if __name__ == "__main__":
         def setLeftBlockHitChance(id: int, value: int):
             sodaClass.config["left"]["blockHitChance"] = value
 
-        def toggleLeftBlockHitHold(id: int, value: bool):
-            sodaClass.config["left"]["betterBlockHit"] = value
+        def toggleLeftBlockHitHold(id: int, value: str):
+            sodaClass.config["left"]["bhType"] = value
 
         def toggleLeftShakeEffect(id: int, value: bool):
             sodaClass.config["left"]["shakeEffect"] = value
@@ -1373,8 +1424,15 @@ if __name__ == "__main__":
                         checkboxLeftBlockHit = dpg.add_checkbox(label="BlockHit", default_value=sodaClass.config["left"]["blockHit"], callback=toggleLeftBlockHit)
                         sliderLeftBlockHitChance = dpg.add_slider_int(label="BlockHit Chance", default_value=sodaClass.config["left"]["blockHitChance"], min_value=1, max_value=100, callback=setLeftBlockHitChance)
                         dpg.add_text(default_value="Randomly right clicks to do a blockhit (MC version < 1.8.9). This can help reduce damage.\nWarning: Having the amount higher than 50 can cause it to be very hard to move while using the clicker")
-                        dpg.add_checkbox(label="Better BlockHit", default_value=sodaClass.config["left"]["betterBlockHit"], callback=toggleLeftBlockHitHold)
-                        dpg.add_text(default_value="Times ur block hit with your ping (set in misc tab)")
+
+                        dpg.add_combo(label="BlockHit Type", items=["V1", "V2", "V3"], default_value=sodaClass.config["left"]["bhType"], callback=toggleLeftBlockHitHold)
+                        dpg.add_text(default_value="V1 - Normal BlockHit\nV2 - Better BlockHit (Ping based)\nV3 - Hold BlockHit (Timer)")
+
+                        buttonBindSmartBH = dpg.add_button(label="Smart BH Bind", callback=statusBindSmartBH)
+                        bind = sodaClass.config["left"]["smartBH"]
+                        if bind != 0:
+                            dpg.set_item_label(buttonBindSmartBH, f"Bind: {chr(bind)}")
+
                         dpg.add_spacer(width=125)
 
                         checkboxLeftShakeEffect = dpg.add_checkbox(label="Shake Effect", default_value=sodaClass.config["left"]["shakeEffect"], callback=toggleLeftShakeEffect)
