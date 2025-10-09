@@ -269,6 +269,8 @@ class soda():
             "d": False,
             "jump": 0
         }
+        
+        self.bIDate = 0
 
         self.record = itertools.cycle(self.config["recorder"]["record"])
 
@@ -283,7 +285,6 @@ class soda():
         threading.Thread(target=self.wTapListener, daemon=True).start()
         threading.Thread(target=self.autoSprint, daemon=True).start()
         threading.Thread(target=self.betterInput, daemon=True).start()
-        self.bIDate = 0
         threading.Thread(target=self.fastStopThread, daemon=True).start()
 
         threading.Thread(target=self.leftClicker, daemon=True).start()
@@ -787,11 +788,11 @@ class soda():
             if win32api.GetAsyncKeyState(self.config["misc"]["bindHideGUI"]) != 0:
                 self.config["misc"]["guiHidden"] = not self.config["misc"]["guiHidden"]
                 if(self.config["misc"]["consoleFaker"] == "NullBind"):
-                    print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nNullBind - Rampage 1.0.4 Beta\n\n\n\n\n\n")
+                    print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nNullBind - 1.0.4 Beta\n\n\n\n\n\n")
                 elif(self.config["misc"]["consoleFaker"] == "Optimiser"):
-                    print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nEntropy Optimiser - Eagle 1.0.4 Beta\n\n\n\n\n\n")
+                    print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nEntropy Optimiser - 1.0.4 Beta\n\n\n\n\n\n")
                 else:
-                    print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nBetterRGB - Hawk 1.0.4 Beta\n\n\n\n\n\n")
+                    print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nBetterRGB - 1.0.4 Beta\n\n\n\n\n\n")
                 if not self.config["misc"]["guiHidden"]:
                     win32gui.ShowWindow(guiWindows, win32con.SW_SHOW)
                 else:
@@ -838,7 +839,6 @@ class soda():
             else:
                 if win32api.GetAsyncKeyState(0x11) < 0: 
                     win32api.keybd_event(0x11, 0, win32con.KEYEVENTF_KEYUP, 0)
-
 
     def getConfigs(self):
         configs = []
