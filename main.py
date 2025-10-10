@@ -16,6 +16,8 @@ except:
     import dearpygui.dearpygui as dpg
     from pypresence import Presence
     import ping3
+import tkinter as tk
+from tkinter import simpledialog, messagebox
 refresh = False
 class configListener(dict): # Detecting changes to config
     def __init__(self, initialDict):
@@ -137,7 +139,11 @@ class soda():
                 "autoSprint": False,
                 "betterInput": False,
                 "fastStop": False,
-            }
+            },
+            "filename": "config",
+            "displayName": "Default",
+            "description": "Default Config",
+            "Author": "User"
         }
         self.current_pot_slot = 0 
 
@@ -236,9 +242,9 @@ class soda():
                 print("Loaded config from:", file_path)
                 isConfigOk = True
                 for key in self.config:
-                    if key not in config or len(self.config[key]) != len(config[key]):
+                    if key not in config or len(self.config[key]) != len(config[key]) and key not in ["filename", "displayName", "description", "Author"]:
                         isConfigOk = False
-
+                        print("Invalid Config, Reset at " + key + f" len({len(self.config[key])}) != " + f"len({len(config[key])})")
                         break
 
                 if isConfigOk:
@@ -1347,6 +1353,55 @@ if __name__ == "__main__":
         def toggleLeftBreakShift(id: int, value: bool):
             sodaClass.config["left"]["breakShift"] = value
 
+
+        def configEditor(id: int):
+            currentConfig = sodaClass.config
+
+            def save():
+                #savebutton = tk.Button(root, text="Save", command=nope).pack(pady=10)
+                sodaClass.config["displayName"] = name_var.get()
+                sodaClass.config["Author"] = author_var.get()
+                sodaClass.config["description"] = desc_var.get()
+                sodaClass.config["filename"] = filename_var.get()
+                file_path = os.path.join(os.environ['USERPROFILE'], 'soda', 'resource', f"{sodaClass.config['filename']}.json")
+                try:
+                    with open(file_path, "w", encoding="utf-8") as f:
+                        json.dump(sodaClass.config, f, indent=4)
+                    messagebox.showinfo("Config Editor", f"Saved config: {sodaClass.config['filename']}.json")
+                    root.destroy()
+                except Exception as e:
+                    messagebox.showerror("Config Editor", f"Failed to save config: {e}")
+                    time.sleep(3)
+
+                time.sleep(1)
+
+            root = tk.Tk()
+            root.title("Config Editor")
+            root.geometry("400x300")
+            root.resizable(False, False)
+
+            tk.Label(root, text="Config Editor").pack(pady=5)
+
+            tk.Label(root, text="Name").pack()
+            name_var = tk.StringVar(value=currentConfig.get("displayName", ""))
+            tk.Entry(root, textvariable=name_var).pack()
+
+            tk.Label(root, text="Author").pack()
+            author_var = tk.StringVar(value=currentConfig.get("Author", ""))
+            tk.Entry(root, textvariable=author_var).pack()
+
+            tk.Label(root, text="Description").pack()
+            desc_var = tk.StringVar(value=currentConfig.get("description", ""))
+            tk.Entry(root, textvariable=desc_var).pack()
+
+            tk.Label(root, text="Filename").pack()
+            filename_var = tk.StringVar(value=currentConfig.get("filename", ""))
+            tk.Entry(root, textvariable=filename_var).pack()
+
+            savebutton = tk.Button(root, text="Save", command=save, ).pack(pady=10)
+
+            root.mainloop()
+
         def toggleAlwaysOnTop(id: int, value: bool):
             if value:
                 win32gui.SetWindowPos(guiWindows, win32con.HWND_TOPMOST, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
@@ -1780,6 +1835,8 @@ if __name__ == "__main__":
                         dpg.add_text(default_value="Config Manager")
                         dpg.add_separator()
                         dpg.add_spacer(width=100)
+
+                        dpg.add_text(default_value="Current Config: " + sodaClass.config["displayName"])
                         
                         configs = sodaClass.getConfigs()
 
@@ -1808,6 +1865,7 @@ if __name__ == "__main__":
                         dpg.add_spacer(width=75)
 
                         dpg.add_button(label="Open Config Folder", callback=sodaClass.openConfigFolder)
+                        dpg.add_button(label="Save Config", callback=configEditor)
                     if sodaClass.newver:
                         with dpg.tab(label="Update"):
                             dpg.add_spacer(width=75)
