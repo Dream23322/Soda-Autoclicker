@@ -777,20 +777,53 @@ class soda():
             time.sleep(0.001)
 
     def smartBH(self):
+        nums = [{0.21, 0.23, 0.24}, {0.05, 0.06}]
+        lastClick = 0
+        lastRClick = 0
+        clickingL = False
+        clickingR = False
         while True:
             if(not win32api.GetAsyncKeyState(self.config["left"]["smartBH"]) != 0 or not self.isFocused("left", "onlyWhenFocused", "workInMenus")):
                 time.sleep(0.1)
                 continue
 
-            # left click
+            # # # left click
             win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0)
             time.sleep(0.02)
             win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0)
-            
-            win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTDOWN, 0, 0)
-            time.sleep(0.5)
-            win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTUP, 0, 0)
+
             time.sleep(0.1)
+
+            win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTDOWN, 0, 0)
+            time.sleep(0.15)
+
+            if(win32api.GetAsyncKeyState(self.config["left"]["smartBH"]) != 0):
+                time.sleep(0.1)
+                #time.sleep(random.choice(list(nums[0])))
+                win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTUP, 0, 0)
+                time.sleep(random.choice(list(nums[1])))
+            else:
+                win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTUP, 0, 0)
+                time.sleep(0.1)
+
+            # Temp, find hit timing
+            # if(win32api.GetAsyncKeyState(0x01) < 0 and clickingL == False):
+            #     clickingL = True
+
+            # if(not win32api.GetAsyncKeyState(0x01) != 0 and clickingL == True):
+            #     print("L : ", time.time() - lastClick)
+            #     lastClick = time.time()
+            #     clickingL = False
+            
+            # if(win32api.GetAsyncKeyState(0x02) < 0 and clickingR == False):
+            #     clickingR = True
+            #     print("Diff : ", time.time() - lastClick)
+
+            # if(not win32api.GetAsyncKeyState(0x02) != 0 and clickingR == True):
+            #     print("R : ", time.time() - lastRClick)
+            #     lastRClick = time.time()
+            #     clickingR = False
+            
 
 
                 
