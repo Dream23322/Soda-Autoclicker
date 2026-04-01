@@ -180,6 +180,7 @@ def _build_default_config() -> dict:
         "recorder": {
             "enabled": False,
             "record": [0.08],
+            "recordMultiplier": 1.1
         },
         "overlay": {
             "enabled": False,
@@ -1657,7 +1658,7 @@ def _build_gui(soda: Soda) -> None:
             soda.config["recorder"]["record"] = recorded
             soda.record_cycle = itertools.cycle(recorded)
             total = sum(float(t) for t in recorded) or 1
-            avg_cps = round(len(recorded) / total, 2)
+            avg_cps = round((len(recorded) / total) * soda.config["recorder"]["recordMultiplier"], 2)
             dpg.set_value(
                 gui_refs["recording_avg"],
                 f"Average CPS of previous Record: {avg_cps}",
@@ -2211,6 +2212,17 @@ def _build_gui(soda: Soda) -> None:
                     ]["enabled"],
                     callback=make_setter(
                         "recorder", "enabled"
+                    ),
+                )
+                dpg.add_slider_float(
+                    label="Multiplier",
+                    default_value=soda.config[
+                        "recorder"
+                    ]["recordMultiplier"],
+                    min_value=0.5,
+                    max_value=2.5,
+                    callback=make_setter(
+                        "recorder", "recordMultiplier"
                     ),
                 )
                 dpg.add_spacer(width=75)

@@ -5,3 +5,5 @@ main.spec
 mac.py
 mac.spec
 test.py
+.venv
+.vscode
