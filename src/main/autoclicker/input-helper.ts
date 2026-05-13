@@ -15,10 +15,12 @@ export class InputHelper {
     if (this.started) return
 
     const isDev = !app.isPackaged
-    const projectRoot = isDev
-      ? path.join(__dirname, '..', '..')
-      : path.dirname(app.getPath('exe'))
-    const scriptPath = path.join(projectRoot, 'helpers', 'input_helper.py')
+    // In dev, __dirname is out/main so ../../helpers points at the repo root.
+    // In a packaged build the helpers folder is copied next to the app via
+    // electron-builder's extraResources, so it lives in process.resourcesPath.
+    const scriptPath = isDev
+      ? path.join(__dirname, '..', '..', 'helpers', 'input_helper.py')
+      : path.join(process.resourcesPath, 'helpers', 'input_helper.py')
     console.log('InputHelper: scriptPath =', scriptPath, '| dirname =', __dirname)
 
     const pythonExes = process.platform === 'win32'
