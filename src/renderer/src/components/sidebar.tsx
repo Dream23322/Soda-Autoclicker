@@ -42,8 +42,7 @@ function Sidebar() {
   const LabelWrapper = ({ children }: { children: React.ReactNode }) => (
     <span
       className={cn(
-        "whitespace-nowrap transition-opacity duration-200",
-        collapsed ? "opacity-0 overflow-hidden w-0" : "opacity-100 w-auto"
+        collapsed ? "hidden" : "whitespace-nowrap"
       )}
     >
       {children}
