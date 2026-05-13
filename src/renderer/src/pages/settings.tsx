@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -14,14 +14,35 @@ interface Props {
   updateConfig?: (path: string[], value: unknown) => void
 }
 
-function Settings({ config, updateConfig }: Props) {
-  const [currentColor, setCurrentColor] = useState<string>("lime")
+function rgbToHex(r: number, g: number, b: number): string {
+  const c = (n: number) => Math.max(0, Math.min(255, n | 0)).toString(16).padStart(2, '0')
+  return `#${c(r)}${c(g)}${c(b)}`
+}
 
+function Settings({ config, updateConfig }: Props) {
+  const [currentColor, setCurrentColor] = useState<string>("white")
+  const restored = useRef(false)
+
+  // Restore the saved theme once config is available. If the saved choice was
+  // "custom", rebuild the hex from the persisted RGB and reapply it so the
+  // custom theme actually survives across reloads.
   useEffect(() => {
-    const savedColor = localStorage.getItem("colorPreset") || "white"
-    setCurrentColor(savedColor)
-    applyColorPreset(savedColor as keyof typeof COLOR_PRESETS)
-  }, [])
+    if (restored.current) return
+    const saved = localStorage.getItem("colorPreset") || "white"
+
+    if (saved === "custom") {
+      if (!config?.misc) return
+      restored.current = true
+      const hex = rgbToHex(config.misc.red ?? 0, config.misc.green ?? 0, config.misc.blue ?? 0)
+      applyCustomColor(hex)
+      setCurrentColor("custom")
+      return
+    }
+
+    restored.current = true
+    setCurrentColor(saved)
+    applyColorPreset(saved as keyof typeof COLOR_PRESETS)
+  }, [config])
 
   const setConfig = (path: string[], value: unknown) => {
     if (updateConfig) updateConfig(path, value)
@@ -32,7 +53,26 @@ function Settings({ config, updateConfig }: Props) {
     applyColorPreset(colorName as keyof typeof COLOR_PRESETS)
   }
 
+  const handleCustomSelect = () => {
+    if (!m) return
+    const hex = rgbToHex(m.red ?? 0, m.green ?? 0, m.blue ?? 0)
+    applyCustomColor(hex)
+    setCurrentColor("custom")
+  }
+
+  const handleCustomPick = (hex: string) => {
+    const r = parseInt(hex.slice(1, 3), 16)
+    const g = parseInt(hex.slice(3, 5), 16)
+    const b = parseInt(hex.slice(5, 7), 16)
+    setConfig(['misc', 'red'], r)
+    setConfig(['misc', 'green'], g)
+    setConfig(['misc', 'blue'], b)
+    applyCustomColor(hex)
+    setCurrentColor('custom')
+  }
+
   const m = config?.misc
+  const customHex = m ? rgbToHex(m.red ?? 0, m.green ?? 0, m.blue ?? 0) : '#000000'
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
@@ -193,26 +233,33 @@ function Settings({ config, updateConfig }: Props) {
                 {value.label}
               </Button>
             ))}
+            {m && (
+              <Button
+                variant={currentColor === "custom" ? "default" : "outline"}
+                size="sm"
+                onClick={handleCustomSelect}
+                className="text-xs h-7 flex items-center gap-1.5"
+              >
+                <span
+                  className="inline-block w-3 h-3 rounded-sm border border-border"
+                  style= background: customHex 
+                />
+                Custom
+              </Button>
+            )}
           </div>
           {m && (
             <div className="flex items-center gap-3">
-              <Label className="text-xs">custom</Label>
+              <Label className="text-xs">pick</Label>
               <input
                 type="color"
-                value={`#${m.red.toString(16).padStart(2, '0')}${m.green.toString(16).padStart(2, '0')}${m.blue.toString(16).padStart(2, '0')}`}
-                onChange={(e) => {
-                  const hex = e.target.value
-                  const r = parseInt(hex.slice(1, 3), 16)
-                  const g = parseInt(hex.slice(3, 5), 16)
-                  const b = parseInt(hex.slice(5, 7), 16)
-                  setConfig(['misc', 'red'], r)
-                  setConfig(['misc', 'green'], g)
-                  setConfig(['misc', 'blue'], b)
-                  applyCustomColor(hex)
-                  setCurrentColor('custom')
-                }}
+                value={customHex}
+                onChange={(e) => handleCustomPick(e.target.value)}
                 className="w-10 h-10 p-0.5 rounded cursor-pointer border border-border bg-transparent"
               />
+              <span className="text-[10px] text-muted-foreground">
+                {customHex.toUpperCase()}
+              </span>
             </div>
           )}
         </CardContent>
