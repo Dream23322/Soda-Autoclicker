@@ -128,12 +128,8 @@
       "category": "Utility"
     },
     "appImage": {
-      "target": [
-        "AppImage",
-        "deb"
-      ],
-      "maintainer": "4urxra",
-      "category": "Utility"
-    }
+      "artifactName": "${name}-${version}.${ext}"
+    },
+    "npmRebuild": false
   }
 }
