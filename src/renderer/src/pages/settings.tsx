@@ -8,6 +8,7 @@ import { Slider } from "@/components/ui/slider"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { BindButton } from "@/components/bind-button"
 import { COLOR_PRESETS, applyColorPreset, applyCustomColor } from "@/lib/utils"
+import type { CSSProperties } from "react"
 
 interface Props {
   config?: any
@@ -73,6 +74,7 @@ function Settings({ config, updateConfig }: Props) {
 
   const m = config?.misc
   const customHex = m ? rgbToHex(m.red ?? 0, m.green ?? 0, m.blue ?? 0) : '#000000'
+  const swatchStyle: CSSProperties = { background: customHex }
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
@@ -242,7 +244,7 @@ function Settings({ config, updateConfig }: Props) {
               >
                 <span
                   className="inline-block w-3 h-3 rounded-sm border border-border"
-                  style= background: customHex 
+                  style={swatchStyle}
                 />
                 Custom
               </Button>
