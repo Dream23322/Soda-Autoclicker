@@ -39,6 +39,9 @@ function Sidebar() {
         : "border-l-transparent hover:bg-[#141414] hover:text-foreground text-muted-foreground"
     )
 
+  const collapsibleLinkClasses = ({ isActive }: { isActive: boolean }) =>
+    cn(linkClasses({ isActive }), collapsed && "group")
+
   const LabelWrapper = ({ children }: { children: React.ReactNode }) => (
     <span
       className={cn(
@@ -53,7 +56,7 @@ function Sidebar() {
     collapsed ? (
       <span
         className={cn(
-          "pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50",
+          "invisible group-hover:visible pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50",
           "rounded-none bg-[#0d0d0d] border border-[#1a1a1a] text-foreground px-2 py-1 text-xs"
         )}
       >
@@ -76,7 +79,7 @@ function Sidebar() {
 
       <nav className="flex flex-col gap-0.5 p-1">
         {navItems.map(({ to, label, icon }) => (
-          <NavLink key={to} to={to} className={linkClasses} aria-label={collapsed ? label : undefined}>
+          <NavLink key={to} to={to} className={collapsibleLinkClasses} aria-label={collapsed ? label : undefined}>
             <span className="flex items-center justify-center w-4 h-4">{icon}</span>
             <LabelWrapper>{label}</LabelWrapper>
             <Tooltip text={label} />
@@ -86,7 +89,7 @@ function Sidebar() {
 
       <nav className="flex flex-col gap-0.5 p-1 mt-auto border-t border-[#1a1a1a]">
         {footerItems.map(({ to, label, icon }) => (
-          <NavLink key={to} to={to} className={linkClasses} aria-label={collapsed ? label : undefined}>
+          <NavLink key={to} to={to} className={collapsibleLinkClasses} aria-label={collapsed ? label : undefined}>
             <span className="flex items-center justify-center w-4 h-4">{icon}</span>
             <LabelWrapper>{label}</LabelWrapper>
             <Tooltip text={label} />
