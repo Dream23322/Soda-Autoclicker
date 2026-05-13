@@ -8,6 +8,15 @@ import * as logger from '../logger'
 const RESOURCE_FOLDER = path.join(os.homedir(), 'soda', 'resource')
 const LOG_FOLDER = path.join(os.homedir(), 'soda', 'logs')
 
+// Preset filenames are user-controlled and get concatenated into a path. Lock
+// them down to a safe charset so nothing can escape RESOURCE_FOLDER (e.g.
+// `../../etc/passwd`).
+const SAFE_FILENAME = /^[A-Za-z0-9_-]{1,64}$/
+
+function isSafeFilename(name: unknown): name is string {
+  return typeof name === 'string' && SAFE_FILENAME.test(name)
+}
+
 export function registerAutoclickerIPC(engine: AutoclickerEngine): void {
   ipcMain.handle('autoclicker:getConfig', () => {
     return engine.getConfig()
@@ -87,10 +96,13 @@ export function registerAutoclickerIPC(engine: AutoclickerEngine): void {
 
   ipcMain.handle('autoclicker:loadPreset', (_e, filename: string) => {
     try {
+      if (!isSafeFilename(filename)) return false
       const filepath = path.join(RESOURCE_FOLDER, `${filename}.json`)
       if (!fs.existsSync(filepath)) return false
       const data = JSON.parse(fs.readFileSync(filepath, 'utf-8'))
-      Object.assign(engine.config, data)
+      // Deep merge per section so a preset that only customises e.g. `left`
+      // doesn't blow away everything else.
+      engine.applyPreset(data)
       engine.saveConfig()
       return true
     } catch {
@@ -100,6 +112,7 @@ export function registerAutoclickerIPC(engine: AutoclickerEngine): void {
 
   ipcMain.handle('autoclicker:savePreset', (_e, args: { filename: string; displayName: string; Author: string; description: string }) => {
     try {
+      if (!isSafeFilename(args?.filename)) return false
       if (!fs.existsSync(RESOURCE_FOLDER)) fs.mkdirSync(RESOURCE_FOLDER, { recursive: true })
       const cfg = engine.getConfig()
       cfg.filename = args.filename
