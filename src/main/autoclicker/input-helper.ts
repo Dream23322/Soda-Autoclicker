@@ -20,12 +20,42 @@ export class InputHelper {
     const scriptPath = path.join(projectRoot, 'helpers', 'input_helper.py')
     console.log('InputHelper: scriptPath =', scriptPath, '| dirname =', __dirname)
 
-    const pythonExe = 'python'
+    const pythonExes = process.platform === 'win32'
+      ? ['py', 'python', 'python3']
+      : ['python3', 'python']
 
-    this.proc = spawn(pythonExe, ['-u', scriptPath], {
-      stdio: ['pipe', 'pipe', 'pipe'],
-      windowsHide: true,
-    })
+    for (const pythonExe of pythonExes) {
+      try {
+        this.proc = spawn(pythonExe, ['-u', scriptPath], {
+          stdio: ['pipe', 'pipe', 'pipe'],
+          windowsHide: true,
+        })
+        await new Promise<void>((resolve, reject) => {
+          const onError = (err: Error) => { cleanup(); reject(err) }
+          const onExit = (code: number | null) => {
+            if (code !== null) { cleanup(); reject(new Error(`exited with code ${code}`)) }
+          }
+          const cleanup = () => {
+            this.proc?.off('error', onError)
+            this.proc?.off('exit', onExit)
+          }
+          this.proc!.once('error', onError)
+          this.proc!.once('exit', onExit)
+          setTimeout(() => { cleanup(); resolve() }, 300)
+        })
+        break
+      } catch {
+        this.proc?.kill()
+        this.proc = null
+        if (pythonExe === pythonExes[pythonExes.length - 1]) {
+          console.error('InputHelper: all python executables failed')
+        } else {
+          console.log(`InputHelper: ${pythonExe} failed, trying next...`)
+        }
+      }
+    }
+
+    if (!this.proc) return
 
     this.proc.stderr?.on('data', (d: Buffer) => console.error('InputHelper stderr:', d.toString().trim()))
     this.proc.on('error', (err) => console.error('InputHelper: spawn error:', err.message))
