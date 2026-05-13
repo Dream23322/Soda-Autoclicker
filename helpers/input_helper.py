@@ -7,6 +7,11 @@ import win32con
 import win32gui
 import win32process
 
+try:
+    import psutil
+except ImportError:
+    psutil = None
+
 
 def get_mc_hwnd():
     """Try to find Minecraft's LWJGL window, fall back to foreground."""
@@ -24,6 +29,29 @@ def send_click_to_hwnd(hwnd, down_flag, up_flag):
     win32api.SendMessage(hwnd, down_flag, 0, 0)
     time.sleep(0.02)
     win32api.SendMessage(hwnd, up_flag, 0, 0)
+
+
+def key_held(vk):
+    return (win32api.GetAsyncKeyState(vk) & 0x8000) != 0
+
+
+def foreground_process_name():
+    if psutil is None:
+        return ''
+    try:
+        hwnd = win32gui.GetForegroundWindow()
+        pid = win32process.GetWindowThreadProcessId(hwnd)[-1]
+        return psutil.Process(pid).name()
+    except Exception:
+        return ''
+
+
+def cursor_handle():
+    try:
+        info = win32gui.GetCursorInfo()
+        return info[1]
+    except Exception:
+        return 0
 
 
 def handle_command(cmd):
@@ -61,7 +89,11 @@ def handle_command(cmd):
 
     elif action == 'get_key_state':
         vk = cmd.get('vk', 0)
-        result['held'] = (win32api.GetAsyncKeyState(vk) & 0x8000) != 0
+        result['held'] = key_held(vk)
+
+    elif action == 'get_key_states':
+        vks = cmd.get('vks', [])
+        result['held'] = [key_held(v) for v in vks]
 
     elif action == 'get_cursor_pos':
         x, y = win32api.GetCursorPos()
@@ -79,21 +111,15 @@ def handle_command(cmd):
         win32api.SetCursorPos((x + dx, y + dy))
 
     elif action == 'get_foreground_process':
-        try:
-            hwnd = win32gui.GetForegroundWindow()
-            pid = win32process.GetWindowThreadProcessId(hwnd)[-1]
-            import psutil
-            proc = psutil.Process(pid)
-            result['process_name'] = proc.name()
-        except Exception:
-            result['process_name'] = ''
+        result['process_name'] = foreground_process_name()
 
     elif action == 'get_cursor_info':
-        try:
-            info = win32gui.GetCursorInfo()
-            result['cursor_handle'] = info[1]
-        except Exception:
-            result['cursor_handle'] = 0
+        result['cursor_handle'] = cursor_handle()
+
+    elif action == 'get_window_info':
+        # One round-trip for both. Saves a stdio hop every 500ms.
+        result['process_name'] = foreground_process_name()
+        result['cursor_handle'] = cursor_handle()
 
     elif action == 'window_right_click':
         hwnd = get_mc_hwnd()
@@ -115,6 +141,8 @@ def handle_command(cmd):
 
     else:
         result = {'ok': False, 'error': f'Unknown action: {action}'}
+        if cmd_id is not None:
+            result['id'] = cmd_id
 
     return result
 
