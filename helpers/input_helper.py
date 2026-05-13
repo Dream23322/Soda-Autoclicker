@@ -95,6 +95,10 @@ def handle_command(cmd):
         except Exception:
             result['cursor_handle'] = 0
 
+    elif action == 'window_right_click':
+        hwnd = get_mc_hwnd()
+        send_click_to_hwnd(hwnd, win32con.WM_RBUTTONDOWN, win32con.WM_RBUTTONUP)
+
     elif action == 'key_tap':
         vk = cmd.get('vk', 0)
         win32api.keybd_event(vk, 0, 0, 0)

@@ -2,6 +2,7 @@ import { AutoclickerConfig, DEFAULT_CONFIG } from './types'
 import * as path from 'path'
 import * as fs from 'fs'
 import * as os from 'os'
+import { spawn } from 'child_process'
 import { InputHelper } from './input-helper'
 import { app } from 'electron'
 
@@ -101,13 +102,13 @@ export class AutoclickerEngine {
       const inputOk = gameOk && menuOk
 
       const checks: { vk: number; action: () => void }[] = [
-        { vk: this.config.left.bind, action: () => this.toggleLeft() },
-        { vk: this.config.right.bind, action: () => this.toggleRight() },
-        { vk: PANIC_VK, action: () => this.panic() },
+        { vk: inputOk ? this.config.left.bind : 0, action: () => this.toggleLeft() },
+        { vk: inputOk ? this.config.right.bind : 0, action: () => this.toggleRight() },
+        { vk: inputOk ? PANIC_VK : 0, action: () => this.panic() },
         { vk: inputOk ? this.config.misc.rodBind : 0, action: () => this.doRod() },
         { vk: inputOk ? this.config.misc.pearlBind : 0, action: () => this.doPearl() },
         { vk: inputOk ? this.config.potions.potBind : 0, action: () => this.doPotion() },
-        { vk: this.config.potions.potResetBind, action: () => { this.currentPotSlot = this.config.potions.lowestSlot } },
+        { vk: inputOk ? this.config.potions.potResetBind : 0, action: () => { this.currentPotSlot = this.config.potions.lowestSlot } },
       ]
 
       for (const { vk, action } of checks) {
@@ -123,18 +124,26 @@ export class AutoclickerEngine {
   }
 
   private toggleLeft(): void {
-    if (this.config.left.onlyWhenFocused && this.focusedProcess && !this.isGameFocused()) return
-    if (!this.config.left.workInMenus && this.cursorIsInMenu()) return
-    this.config.left.enabled = !this.config.left.enabled
+    const wouldEnable = !this.config.left.enabled
+    if (wouldEnable) {
+      if (this.config.left.onlyWhenFocused && this.focusedProcess && !this.isGameFocused()) return
+      if (!this.config.left.workInMenus && this.cursorIsInMenu()) return
+    }
+    this.config.left.enabled = wouldEnable
     console.log(`[clicker] left ${this.config.left.enabled ? 'ENABLED' : 'DISABLED'}`)
+    this.playToggleSound()
     this.emitUpdate()
   }
 
   private toggleRight(): void {
-    if (this.config.right.onlyWhenFocused && this.focusedProcess && !this.isGameFocused()) return
-    if (!this.config.right.workInMenus && this.cursorIsInMenu()) return
-    this.config.right.enabled = !this.config.right.enabled
+    const wouldEnable = !this.config.right.enabled
+    if (wouldEnable) {
+      if (this.config.right.onlyWhenFocused && this.focusedProcess && !this.isGameFocused()) return
+      if (!this.config.right.workInMenus && this.cursorIsInMenu()) return
+    }
+    this.config.right.enabled = wouldEnable
     console.log(`[clicker] right ${this.config.right.enabled ? 'ENABLED' : 'DISABLED'}`)
+    this.playToggleSound()
     this.emitUpdate()
   }
 
@@ -156,6 +165,7 @@ export class AutoclickerEngine {
   private isFocused(section: string): boolean {
     const cfg = section === 'left' ? this.config.left : this.config.right
     if (cfg.onlyWhenFocused && !this.isGameFocused()) return false
+    if (!cfg.workInMenus && this.cursorIsInMenu()) return false
     return true
   }
 
@@ -205,7 +215,7 @@ export class AutoclickerEngine {
           const lmb = await this.input.isKeyDown(VK_LMB)
           if (lmb && Math.random() <= cfg.blockHitChance / 100 && Date.now() - this.lastBlockHitTime >= 500) {
             this.lastBlockHitTime = Date.now()
-            await this.input.mouseDown(2); await this.sleep(20); await this.input.mouseUp(2)
+            await this.input.windowRightClick()
           }
         }
         if (cfg.AutoRod && Math.random() <= cfg.AutoRodChance / 100) await this.doRod()
@@ -369,7 +379,10 @@ export class AutoclickerEngine {
 
   private async startAutoSprint(): Promise<void> {
     while (this.running) {
-      if (!this.config.movement.autoSprint || !this.isFocused('left')) { await this.sleep(500); continue }
+      if (!this.config.movement.autoSprint || !this.isFocused('left')) {
+        await this.input.keyUp(0x11)
+        await this.sleep(500); continue
+      }
       await this.sleep(50)
       const moving = await this.input.isKeyDown(0x57) || await this.input.isKeyDown(0x41) || await this.input.isKeyDown(0x44)
       const ctrl = await this.input.isKeyDown(0x11)
@@ -438,6 +451,20 @@ export class AutoclickerEngine {
   getConfig(): AutoclickerConfig { return this.config }
 
   private emitUpdate(): void { this.onConfigUpdate?.({ ...this.config }) }
+
+  private playToggleSound(): void {
+    if (!this.config.misc.toggleSounds) return
+    const wavPath = path.join(USER_RESOURCE, 'click.wav')
+    if (!fs.existsSync(wavPath)) return
+    try {
+      const cmd = process.platform === 'win32'
+        ? ['powershell', '-c', `(New-Object Media.SoundPlayer '${wavPath.replace(/'/g, "''")}').PlaySync()`]
+        : process.platform === 'darwin'
+          ? ['afplay', wavPath]
+          : ['paplay', wavPath]
+      spawn(cmd[0], cmd.slice(1), { windowsHide: true }).unref()
+    } catch {}
+  }
 
   private sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms))

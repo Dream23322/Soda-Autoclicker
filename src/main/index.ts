@@ -1,10 +1,11 @@
-import { app, shell, BrowserWindow, ipcMain, screen } from "electron"
+import { app, shell, BrowserWindow, ipcMain, screen, Tray, Menu, nativeImage } from "electron"
 import { join } from "path"
 import { electronApp, optimizer, is } from "@electron-toolkit/utils"
 import { AutoclickerEngine } from "./autoclicker/engine"
 import { registerAutoclickerIPC } from "./autoclicker/ipc"
 
 const autoclickerEngine = new AutoclickerEngine()
+let tray: Tray | null = null
 
 let settingsWindow: BrowserWindow | null = null
 let overlayWindow: BrowserWindow | null = null
@@ -87,11 +88,39 @@ function createOverlayWindow(): void {
 const gotLock: boolean = app.requestSingleInstanceLock()
 if (!gotLock) { app.quit() } else {
 	app.on("second-instance", () => {
-		if (settingsWindow) {
-			if (settingsWindow.isMinimized()) settingsWindow.restore()
-			settingsWindow.focus()
-		}
+		showSettingsWindow()
 	})
+}
+
+function showSettingsWindow(): void {
+	if (settingsWindow) {
+		if (settingsWindow.isMinimized()) settingsWindow.restore()
+		settingsWindow.show()
+		settingsWindow.focus()
+	}
+}
+
+function createTray(): void {
+	try {
+		const size = 16
+		const buf = Buffer.alloc(size * size * 4)
+		for (let i = 0; i < size * size; i++) {
+			const o = i * 4
+			buf[o] = 0x7c; buf[o + 1] = 0x9c; buf[o + 2] = 0xed; buf[o + 3] = 0xff
+		}
+		const icon = nativeImage.createFromBitmap(buf, { width: size, height: size })
+		tray = new Tray(icon)
+		tray.setToolTip('Soda Autoclicker')
+		const ctxMenu = Menu.buildFromTemplate([
+			{ label: 'Show', click: () => showSettingsWindow() },
+			{ type: 'separator' },
+			{ label: 'Quit', click: () => app.quit() },
+		])
+		tray.setContextMenu(ctxMenu)
+		tray.on('double-click', () => showSettingsWindow())
+	} catch (err) {
+		console.error('[tray] failed to create:', err)
+	}
 }
 
 app.whenReady().then(() => {
@@ -106,13 +135,12 @@ app.whenReady().then(() => {
 
 	createSettingsWindow()
 	createOverlayWindow()
+	createTray()
 
 	setTimeout(() => overlayWindow?.showInactive(), 1500)
 
 	app.on("activate", function () {
-		if (BrowserWindow.getAllWindows().length === 0) {
-			createSettingsWindow()
-		}
+		showSettingsWindow()
 	})
 })
 
@@ -128,7 +156,7 @@ ipcMain.on("window-control", (event, action: "minimize" | "maximize" | "close") 
 	const win = BrowserWindow.fromWebContents(event.sender)
 	if (!win) return
 	switch (action) {
-		case "minimize": win.minimize(); break
+		case "minimize": win.hide(); break
 		case "maximize": win.isMaximized() ? win.unmaximize() : win.maximize(); break
 		case "close": win.hide(); break
 	}

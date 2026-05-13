@@ -1,7 +1,7 @@
 import { spawn, ChildProcess } from 'child_process'
 import * as path from 'path'
 import * as readline from 'readline'
-import { app } from 'electron'
+import { app, dialog } from 'electron'
 
 export class InputHelper {
   private proc: ChildProcess | null = null
@@ -9,6 +9,7 @@ export class InputHelper {
   private pendingMap = new Map<number, (value: unknown) => void>()
   private cmdId = 0
   started = false
+  private installGuideShown = false
 
   async start(): Promise<void> {
     if (this.started) return
@@ -49,6 +50,10 @@ export class InputHelper {
         this.proc = null
         if (pythonExe === pythonExes[pythonExes.length - 1]) {
           console.error('InputHelper: all python executables failed')
+          if (!this.installGuideShown) {
+            this.installGuideShown = true
+            this.showInstallGuide()
+          }
         } else {
           console.log(`InputHelper: ${pythonExe} failed, trying next...`)
         }
@@ -96,6 +101,32 @@ export class InputHelper {
     this.started = false
   }
 
+  private showInstallGuide(): void {
+    const isWin = process.platform === 'win32'
+    const steps = isWin
+      ? [
+          '1. Download Python from https://www.python.org/downloads/ (Python 3.x)',
+          '2. Run the installer',
+          '3. CHECK "Add Python to PATH" at the bottom of the installer',
+          '4. Click "Install Now" and wait for it to finish',
+          '5. Restart Soda Autoclicker',
+        ]
+      : [
+          '1. Install Python 3 using your package manager:',
+          '   Ubuntu/Debian: sudo apt install python3',
+          '   Fedora: sudo dnf install python3',
+          '   macOS: brew install python3',
+          '2. Restart Soda Autoclicker',
+        ]
+
+    dialog.showMessageBox({
+      type: 'warning',
+      title: 'Python Not Found',
+      message: 'Soda Autoclicker requires Python 3 to handle mouse and keyboard input.',
+      detail: steps.join('\n'),
+    })
+  }
+
   private async send(cmd: Record<string, unknown>, needsResponse = false): Promise<unknown> {
     if (!this.proc || !this.proc.stdin || !this.started) {
       return { ok: false, error: 'not started' }
@@ -137,6 +168,7 @@ export class InputHelper {
   async keyDown(vk: number) { await this.send({ action: 'key_down', vk }) }
   async keyUp(vk: number) { await this.send({ action: 'key_up', vk }) }
   async cursorShake(force: number) { await this.send({ action: 'cursor_shake', force }) }
+  async windowRightClick() { await this.send({ action: 'window_right_click' }) }
 
   async isKeyDown(vk: number): Promise<boolean> {
     const r = await this.send({ action: 'get_key_state', vk }, true) as any
