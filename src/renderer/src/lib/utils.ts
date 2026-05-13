@@ -183,6 +183,20 @@ export const COLOR_PRESETS = {
   },
 }
 
+export function applyCustomColor(hex: string) {
+  const root = document.documentElement
+  root.style.setProperty('--primary', hex)
+  root.style.setProperty('--primary-foreground', 'oklch(0.9851 0 0)')
+  root.style.setProperty('--chart-1', hex)
+  root.style.setProperty('--sidebar-primary', hex)
+  root.style.setProperty('--sidebar-primary-foreground', 'oklch(0.9851 0 0)')
+  root.style.setProperty('--accent', hex)
+  root.style.setProperty('--accent-foreground', 'oklch(0.4479 0.1083 151.3277)')
+  root.style.setProperty('--ring', hex)
+  root.style.setProperty('--sidebar-ring', hex)
+  localStorage.setItem('colorPreset', 'custom')
+}
+
 export function applyColorPreset(colorName: keyof typeof COLOR_PRESETS) {
   const preset = COLOR_PRESETS[colorName]
   if (!preset) return
