@@ -205,6 +205,14 @@ export class InputHelper {
     return r?.ok ? !!r.held : false
   }
 
+  /** Batched: query several VKs in a single round-trip. Returns parallel boolean array. */
+  async getKeyStates(vks: number[]): Promise<boolean[]> {
+    if (vks.length === 0) return []
+    const r = await this.send({ action: 'get_key_states', vks }, true) as any
+    if (!r?.ok || !Array.isArray(r.held)) return vks.map(() => false)
+    return r.held.map((v: unknown) => !!v)
+  }
+
   async getForegroundProcess(): Promise<string> {
     const r = await this.send({ action: 'get_foreground_process' }, true) as any
     return r?.ok && r.process_name ? r.process_name : ''
@@ -213,5 +221,15 @@ export class InputHelper {
   async getCursorHandle(): Promise<number> {
     const r = await this.send({ action: 'get_cursor_info' }, true) as any
     return r?.ok ? (r.cursor_handle ?? 0) : 0
+  }
+
+  /** Batched: process name + cursor handle in one round-trip. */
+  async getWindowInfo(): Promise<{ processName: string; cursorHandle: number }> {
+    const r = await this.send({ action: 'get_window_info' }, true) as any
+    if (!r?.ok) return { processName: '', cursorHandle: 0 }
+    return {
+      processName: r.process_name ?? '',
+      cursorHandle: r.cursor_handle ?? 0,
+    }
   }
 }
