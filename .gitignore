@@ -8,3 +8,6 @@ out/
 .env.*
 .venv/
 pnpm-lock.yaml
+*.spec
+helpers/*.exe
+build/

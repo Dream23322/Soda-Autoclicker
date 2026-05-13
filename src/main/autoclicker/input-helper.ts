@@ -1,5 +1,6 @@
 import { spawn, ChildProcess } from 'child_process'
 import * as path from 'path'
+import * as fs from 'fs'
 import * as readline from 'readline'
 import { app, dialog } from 'electron'
 
@@ -15,28 +16,17 @@ export class InputHelper {
     if (this.started) return
 
     const isDev = !app.isPackaged
-    // In dev, __dirname is out/main so ../../helpers points at the repo root.
-    // In a packaged build the helpers folder is copied next to the app via
-    // electron-builder's extraResources, so it lives in process.resourcesPath.
-    const scriptPath = isDev
-      ? path.join(__dirname, '..', '..', 'helpers', 'input_helper.py')
-      : path.join(process.resourcesPath, 'helpers', 'input_helper.py')
-    console.log('InputHelper: scriptPath =', scriptPath, '| dirname =', __dirname)
+    const helpersDir = isDev
+      ? path.join(__dirname, '..', '..', 'helpers')
+      : path.join(process.resourcesPath, 'helpers')
+    const exePath = path.join(helpersDir, 'input_helper.exe')
+    const scriptPath = path.join(helpersDir, 'input_helper.py')
 
-    const pythonExes = process.platform === 'win32'
-      ? ['py', 'python', 'python3']
-      : ['python3', 'python']
-
-    const errors: string[] = []
-
-    for (const pythonExe of pythonExes) {
-      let stderrBuf = ''
+    // Try the bundled .exe first, then fall back to running the .py via Python
+    if (fs.existsSync(exePath)) {
+      console.log('InputHelper: spawning bundled exe at', exePath)
       try {
-        this.proc = spawn(pythonExe, ['-u', scriptPath], {
-          stdio: ['pipe', 'pipe', 'pipe'],
-          windowsHide: true,
-        })
-        this.proc.stderr?.on('data', (d: Buffer) => { stderrBuf += d.toString() })
+        this.proc = spawn(exePath, [], { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true })
         await new Promise<void>((resolve, reject) => {
           const onError = (err: Error) => { cleanup(); reject(err) }
           const onExit = (code: number | null) => {
@@ -50,19 +40,56 @@ export class InputHelper {
           this.proc!.once('exit', onExit)
           setTimeout(() => { cleanup(); resolve() }, 300)
         })
-        break
       } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err)
-        const stderr = stderrBuf.trim()
-        const detail = stderr ? `${msg} — stderr: ${stderr}` : msg
-        errors.push(`  ${pythonExe}: ${detail}`)
-        console.error(`InputHelper: ${pythonExe} failed — ${detail}`)
+        console.error(`InputHelper: bundled exe failed — ${err instanceof Error ? err.message : String(err)}`)
         this.proc?.kill()
         this.proc = null
-        if (pythonExe === pythonExes[pythonExes.length - 1]) {
-          if (!this.installGuideShown) {
-            this.installGuideShown = true
-            this.showInstallGuide(errors)
+      }
+    }
+
+    if (!this.proc) {
+      console.log('InputHelper: no bundled exe, trying python at', scriptPath)
+      const pythonExes = process.platform === 'win32'
+        ? ['py', 'python', 'python3']
+        : ['python3', 'python']
+
+      const errors: string[] = []
+
+      for (const pythonExe of pythonExes) {
+        let stderrBuf = ''
+        try {
+          this.proc = spawn(pythonExe, ['-u', scriptPath], {
+            stdio: ['pipe', 'pipe', 'pipe'],
+            windowsHide: true,
+          })
+          this.proc.stderr?.on('data', (d: Buffer) => { stderrBuf += d.toString() })
+          await new Promise<void>((resolve, reject) => {
+            const onError = (err: Error) => { cleanup(); reject(err) }
+            const onExit = (code: number | null) => {
+              if (code !== null) { cleanup(); reject(new Error(`exited with code ${code}`)) }
+            }
+            const cleanup = () => {
+              this.proc?.off('error', onError)
+              this.proc?.off('exit', onExit)
+            }
+            this.proc!.once('error', onError)
+            this.proc!.once('exit', onExit)
+            setTimeout(() => { cleanup(); resolve() }, 300)
+          })
+          break
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err)
+          const stderr = stderrBuf.trim()
+          const detail = stderr ? `${msg} — stderr: ${stderr}` : msg
+          errors.push(`  ${pythonExe}: ${detail}`)
+          console.error(`InputHelper: ${pythonExe} failed — ${detail}`)
+          this.proc?.kill()
+          this.proc = null
+          if (pythonExe === pythonExes[pythonExes.length - 1]) {
+            if (!this.installGuideShown) {
+              this.installGuideShown = true
+              this.showInstallGuide(errors)
+            }
           }
         }
       }
@@ -110,41 +137,22 @@ export class InputHelper {
   }
 
   private showInstallGuide(errors?: string[]): void {
-    const isWin = process.platform === 'win32'
-    const steps = isWin
-      ? [
-          'Soda Autoclicker requires Python 3 to handle mouse and keyboard input.',
-          '',
-          'If Python is already installed, it may not be in your PATH.',
-          'Try running "py" or "python" in a Command Prompt to verify.',
-          '',
-          'To install or fix Python:',
-          '1. Download Python from https://www.python.org/downloads/ (Python 3.x)',
-          '2. Run the installer',
-          '3. CHECK "Add Python to PATH" at the bottom of the installer',
-          '4. Click "Install Now" and wait for it to finish',
-          '5. Restart Soda Autoclicker',
-        ]
-      : [
-          'Soda Autoclicker requires Python 3 to handle mouse and keyboard input.',
-          '',
-          'Install Python 3 using your package manager:',
-          '   Ubuntu/Debian: sudo apt install python3',
-          '   Fedora: sudo dnf install python3',
-          '   macOS: brew install python3',
-          '',
-          'Then restart Soda Autoclicker.',
-        ]
+    let detail = 'The input helper executable could not start.\n'
 
-    let detail = steps.join('\n')
+    if (app.isPackaged) {
+      detail +=
+        'This usually means your antivirus quarantined the file or the installation is corrupted.\n' +
+        'Try reinstalling Soda Autoclicker, and make sure your antivirus allows it.'
+    }
+
     if (errors && errors.length > 0) {
       detail += '\n\n--- Diagnostics ---\n' + errors.join('\n')
     }
 
     dialog.showMessageBox({
       type: 'warning',
-      title: 'Python Not Found',
-      message: 'Soda Autoclicker requires Python 3 to handle mouse and keyboard input.',
+      title: 'Input Helper Failed',
+      message: 'Soda Autoclicker could not start its input helper.',
       detail,
     })
   }
