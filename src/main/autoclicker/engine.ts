@@ -13,14 +13,38 @@ const POLL_INTERVAL = 50
 const VK_LMB = 0x01
 const VK_RMB = 0x02
 
+const UNSAFE_KEYS = new Set(['__proto__', 'prototype', 'constructor'])
+
 export type ConfigUpdateCallback = (config: AutoclickerConfig) => void
+
+// Per-section deep merge so a partial preset / saved file doesn't wipe other
+// sections with `undefined`. Goes one level deep, which matches the actual
+// config shape (top-level sections of plain objects).
+function mergeConfig(defaults: AutoclickerConfig, data: Record<string, unknown>): AutoclickerConfig {
+  const out: Record<string, unknown> = { ...(defaults as unknown as Record<string, unknown>) }
+  for (const k of Object.keys(data)) {
+    if (UNSAFE_KEYS.has(k)) continue
+    const dv = (defaults as unknown as Record<string, unknown>)[k]
+    const v = data[k]
+    const dvIsObj = dv && typeof dv === 'object' && !Array.isArray(dv)
+    const vIsObj = v && typeof v === 'object' && !Array.isArray(v)
+    if (dvIsObj && vIsObj) {
+      out[k] = { ...(dv as object), ...(v as object) }
+    } else {
+      out[k] = v
+    }
+  }
+  return out as unknown as AutoclickerConfig
+}
 
 export class AutoclickerEngine {
   config: AutoclickerConfig = { ...DEFAULT_CONFIG }
   private running = false
   private input = new InputHelper()
 
-  private prevBindStates: Record<number, boolean> = {}
+  // Keyed by action id ("left", "right", "panic", etc.) rather than VK,
+  // so two actions sharing the same key both fire on a fresh press.
+  private prevBindStates: Record<string, boolean> = {}
 
   private lastBlockHitTime = 0
   private betterInputTimestamp = 0
@@ -101,24 +125,37 @@ export class AutoclickerEngine {
       const menuOk = !this.cursorIsInMenu()
       const inputOk = gameOk && menuOk
 
-      const checks: { vk: number; action: () => void }[] = [
-        { vk: inputOk ? this.config.left.bind : 0, action: () => this.toggleLeft() },
-        { vk: inputOk ? this.config.right.bind : 0, action: () => this.toggleRight() },
-        { vk: inputOk ? PANIC_VK : 0, action: () => this.panic() },
-        { vk: inputOk ? this.config.misc.rodBind : 0, action: () => this.doRod() },
-        { vk: inputOk ? this.config.misc.pearlBind : 0, action: () => this.doPearl() },
-        { vk: inputOk ? this.config.potions.potBind : 0, action: () => this.doPotion() },
-        { vk: inputOk ? this.config.potions.potResetBind : 0, action: () => { this.currentPotSlot = this.config.potions.lowestSlot } },
+      // PANIC is always polled, regardless of focus/menu state — the user
+      // needs to be able to kill the clicker even when the game has lost
+      // focus. Everything else still respects inputOk.
+      const checks: { id: string; vk: number; action: () => void; alwaysOn?: boolean }[] = [
+        { id: 'panic', vk: PANIC_VK, action: () => this.panic(), alwaysOn: true },
+        { id: 'left', vk: this.config.left.bind, action: () => this.toggleLeft() },
+        { id: 'right', vk: this.config.right.bind, action: () => this.toggleRight() },
+        { id: 'rod', vk: this.config.misc.rodBind, action: () => this.doRod() },
+        { id: 'pearl', vk: this.config.misc.pearlBind, action: () => this.doPearl() },
+        { id: 'pot', vk: this.config.potions.potBind, action: () => this.doPotion() },
+        { id: 'potReset', vk: this.config.potions.potResetBind, action: () => { this.currentPotSlot = this.config.potions.lowestSlot } },
       ]
 
-      for (const { vk, action } of checks) {
-        if (!vk) continue
-        try {
-          const held = await this.input.isKeyDown(vk)
-          const prev = this.prevBindStates[vk] ?? false
-          this.prevBindStates[vk] = held
-          if (held && !prev) action()
-        } catch {}
+      const active = checks.filter(c => c.vk && (c.alwaysOn || inputOk))
+      if (active.length === 0) return
+
+      // Batched: one stdio round-trip per poll tick instead of up to seven.
+      const uniqueVks = Array.from(new Set(active.map(c => c.vk)))
+      let states: boolean[] = []
+      try { states = await this.input.getKeyStates(uniqueVks) }
+      catch { return }
+      const stateByVk = new Map<number, boolean>()
+      uniqueVks.forEach((vk, i) => stateByVk.set(vk, !!states[i]))
+
+      for (const c of active) {
+        const held = stateByVk.get(c.vk) ?? false
+        const prev = this.prevBindStates[c.id] ?? false
+        this.prevBindStates[c.id] = held
+        if (held && !prev) {
+          try { c.action() } catch (e) { console.error(`[bind:${c.id}] action threw:`, e) }
+        }
       }
     }, POLL_INTERVAL)
   }
@@ -347,12 +384,9 @@ export class AutoclickerEngine {
   private startWindowListener(): void {
     this.windowInterval = setInterval(async () => {
       try {
-        const [proc, cursor] = await Promise.all([
-          this.input.getForegroundProcess(),
-          this.input.getCursorHandle(),
-        ])
-        this.focusedProcess = proc
-        this.cursorHandle = cursor
+        const info = await this.input.getWindowInfo()
+        this.focusedProcess = info.processName
+        this.cursorHandle = info.cursorHandle
       } catch { this.focusedProcess = ''; this.cursorHandle = 0 }
     }, 500)
   }
@@ -374,6 +408,8 @@ export class AutoclickerEngine {
       if (!(a || d) || !w) continue
       if (mv.wTapMode === 'chance' && Math.random() > mv.wTapValue / 100) continue
       await this.input.keyUp(0x57); await this.sleep(50); await this.input.keyDown(0x57)
+      // In `delay` mode wTapValue is the cooldown (ms) between taps.
+      if (mv.wTapMode === 'delay') await this.sleep(Math.max(0, mv.wTapValue))
     }
   }
 
@@ -427,7 +463,7 @@ export class AutoclickerEngine {
     try {
       if (fs.existsSync(CONFIG_PATH)) {
         const data = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'))
-        this.config = { ...DEFAULT_CONFIG, ...data }
+        this.config = mergeConfig(DEFAULT_CONFIG, data)
       }
     } catch {}
   }
@@ -440,7 +476,23 @@ export class AutoclickerEngine {
     } catch (e) { console.error('[config] save failed:', e) }
   }
 
+  /**
+   * Merge a preset (or any partial config) into the live config without
+   * clobbering sub-sections. Used by IPC preset loading.
+   */
+  applyPreset(data: Record<string, unknown>): void {
+    this.config = mergeConfig(this.config, data)
+    this.emitUpdate()
+  }
+
   updateConfig(p: string[], value: unknown): void {
+    // Reject any path segment that could pollute the prototype chain.
+    for (const seg of p) {
+      if (UNSAFE_KEYS.has(seg)) {
+        console.warn('[config] rejected unsafe path segment:', seg)
+        return
+      }
+    }
     let t: Record<string, unknown> = this.config as unknown as Record<string, unknown>
     for (let i = 0; i < p.length - 1; i++) t = t[p[i]] as Record<string, unknown>
     t[p[p.length - 1]] = value
