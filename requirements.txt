@@ -1,8 +1,0 @@
-pywin32
-dearpygui
-psutil
-asyncio
-pyMeow
-keyboard
-ping3
-pypresence

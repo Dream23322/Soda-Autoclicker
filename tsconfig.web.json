@@ -1,0 +1,29 @@
+{
+  "extends": "@electron-toolkit/tsconfig/tsconfig.web.json",
+  "include": [
+    "src/renderer/src/env.d.ts",
+    "src/renderer/src/**/*",
+    "src/preload/*.d.ts",
+    "src/types/**/*",
+    "src/main/**/*",
+    "src/preload/**/*",
+    "src/types/**/*",
+    "src/renderer/src/hooks/**/*",
+    "src/renderer/src/**/*",
+    "src/preload/*.d.ts"
+  ],
+  "compilerOptions": {
+    "composite": true,
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/renderer/src/*"],
+      "@/types/*": ["src/types/*"]
+    },
+    "strict": true,
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  }
+}

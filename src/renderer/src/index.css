@@ -1,0 +1,208 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--primary);
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+  --font-sans: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+  --font-serif: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+  --radius: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+}
+
+:root {
+  --background: #0a0a0a;
+  --foreground: #c8c8c8;
+  --card: #0d0d0d;
+  --card-foreground: #c8c8c8;
+  --popover: #0d0d0d;
+  --popover-foreground: #c8c8c8;
+  --primary: oklch(0.7227 0.192 149.5793);
+  --primary-foreground: #0a0a0a;
+  --secondary: #1a1a1a;
+  --secondary-foreground: #c8c8c8;
+  --muted: #141414;
+  --muted-foreground: #585858;
+  --accent: #1a1a1a;
+  --accent-foreground: var(--primary);
+  --destructive: #ff3355;
+  --destructive-foreground: #0a0a0a;
+  --border: #1a1a1a;
+  --input: #141414;
+  --ring: var(--primary);
+  --sidebar: #0a0a0a;
+  --sidebar-foreground: #585858;
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: #0a0a0a;
+  --sidebar-accent: #141414;
+  --sidebar-accent-foreground: #c8c8c8;
+  --sidebar-border: #1a1a1a;
+  --sidebar-ring: var(--primary);
+  --shadow-2xs: none;
+  --shadow-xs: none;
+  --shadow-sm: none;
+  --shadow: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+  --shadow-xl: none;
+  --shadow-2xl: none;
+}
+
+.dark {
+  --background: #0a0a0a;
+  --foreground: #c8c8c8;
+  --card: #0d0d0d;
+  --card-foreground: #c8c8c8;
+  --popover: #0d0d0d;
+  --popover-foreground: #c8c8c8;
+  --primary: oklch(0.7227 0.192 149.5793);
+  --primary-foreground: #0a0a0a;
+  --secondary: #1a1a1a;
+  --secondary-foreground: #c8c8c8;
+  --muted: #141414;
+  --muted-foreground: #585858;
+  --accent: #1a1a1a;
+  --accent-foreground: var(--primary);
+  --destructive: #ff3355;
+  --destructive-foreground: #0a0a0a;
+  --border: #1a1a1a;
+  --input: #141414;
+  --ring: var(--primary);
+  --sidebar: #0a0a0a;
+  --sidebar-foreground: #585858;
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: #0a0a0a;
+  --sidebar-accent: #141414;
+  --sidebar-accent-foreground: #c8c8c8;
+  --sidebar-border: #1a1a1a;
+  --sidebar-ring: var(--primary);
+}
+
+* {
+  user-select: none;
+  scrollbar-color: #1a1a1a #0a0a0a;
+  scrollbar-width: thin;
+}
+
+.select-text, .select-text * {
+  user-select: text !important;
+}
+
+body {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+  letter-spacing: 0;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #0a0a0a; }
+::-webkit-scrollbar-thumb { background: #1a1a1a; }
+::-webkit-scrollbar-thumb:hover { background: #2a2a2a; }
+
+.prompt::before { content: '$ '; color: var(--primary); }
+.section-header::before { content: '──[ '; color: #585858; }
+.section-header::after { content: ' ]──'; color: #585858; }
+
+input, textarea, select, [data-slot="input"] {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace !important;
+  background: #141414 !important;
+  border-color: #1a1a1a !important;
+  color: #c8c8c8 !important;
+}
+input:focus, textarea:focus, select:focus, [data-slot="input"]:focus {
+  border-color: var(--primary) !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+button, [data-slot="button"] {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace !important;
+  text-transform: lowercase !important;
+}
+
+[data-slot="card"] {
+  border: 1px solid #1a1a1a !important;
+  background: #0d0d0d !important;
+  box-shadow: none !important;
+}
+
+[data-slot="switch"] {
+  border: 1px solid #333 !important;
+}
+[data-slot="switch"][data-state="checked"] {
+  background: var(--primary) !important;
+  border-color: var(--primary) !important;
+}
+[data-slot="switch-thumb"] {
+  background: #0a0a0a !important;
+}
+
+[data-slot="slider-track"] { background: #1a1a1a !important; height: 4px !important; }
+[data-slot="slider-range"] { background: var(--primary) !important; }
+[data-slot="slider-thumb"] {
+  background: #0a0a0a !important;
+  border: 1px solid var(--primary) !important;
+  width: 12px !important;
+  height: 12px !important;
+  box-shadow: none !important;
+}
+[data-slot="slider-thumb"]:hover { box-shadow: none !important; }
+
+[data-slot="select-trigger"] {
+  background: #141414 !important;
+  border-color: #1a1a1a !important;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace !important;
+}
+[data-slot="select-content"] {
+  background: #0d0d0d !important;
+  border: 1px solid #1a1a1a !important;
+}
+[data-slot="select-item"]:hover, [data-slot="select-item"]:focus {
+  background: #1a1a1a !important;
+  color: var(--primary) !important;
+}
+
+[data-slot="tabs-list"] {
+  background: #0d0d0d !important;
+  border: 1px solid #1a1a1a !important;
+}
+[data-slot="tabs-trigger"][data-state="active"] {
+  background: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+}
+
+hr, [data-slot="separator"] { border-color: #1a1a1a !important; }
