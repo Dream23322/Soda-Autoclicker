@@ -3,6 +3,9 @@ import { join } from "path"
 import { electronApp, optimizer, is } from "@electron-toolkit/utils"
 import { AutoclickerEngine } from "./autoclicker/engine"
 import { registerAutoclickerIPC } from "./autoclicker/ipc"
+import { enable as enableLogger } from "./logger"
+
+enableLogger()
 
 const autoclickerEngine = new AutoclickerEngine()
 let tray: Tray | null = null

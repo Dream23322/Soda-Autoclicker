@@ -25,12 +25,16 @@ export class InputHelper {
       ? ['py', 'python', 'python3']
       : ['python3', 'python']
 
+    const errors: string[] = []
+
     for (const pythonExe of pythonExes) {
+      let stderrBuf = ''
       try {
         this.proc = spawn(pythonExe, ['-u', scriptPath], {
           stdio: ['pipe', 'pipe', 'pipe'],
           windowsHide: true,
         })
+        this.proc.stderr?.on('data', (d: Buffer) => { stderrBuf += d.toString() })
         await new Promise<void>((resolve, reject) => {
           const onError = (err: Error) => { cleanup(); reject(err) }
           const onExit = (code: number | null) => {
@@ -45,17 +49,19 @@ export class InputHelper {
           setTimeout(() => { cleanup(); resolve() }, 300)
         })
         break
-      } catch {
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        const stderr = stderrBuf.trim()
+        const detail = stderr ? `${msg} — stderr: ${stderr}` : msg
+        errors.push(`  ${pythonExe}: ${detail}`)
+        console.error(`InputHelper: ${pythonExe} failed — ${detail}`)
         this.proc?.kill()
         this.proc = null
         if (pythonExe === pythonExes[pythonExes.length - 1]) {
-          console.error('InputHelper: all python executables failed')
           if (!this.installGuideShown) {
             this.installGuideShown = true
-            this.showInstallGuide()
+            this.showInstallGuide(errors)
           }
-        } else {
-          console.log(`InputHelper: ${pythonExe} failed, trying next...`)
         }
       }
     }
@@ -101,10 +107,16 @@ export class InputHelper {
     this.started = false
   }
 
-  private showInstallGuide(): void {
+  private showInstallGuide(errors?: string[]): void {
     const isWin = process.platform === 'win32'
     const steps = isWin
       ? [
+          'Soda Autoclicker requires Python 3 to handle mouse and keyboard input.',
+          '',
+          'If Python is already installed, it may not be in your PATH.',
+          'Try running "py" or "python" in a Command Prompt to verify.',
+          '',
+          'To install or fix Python:',
           '1. Download Python from https://www.python.org/downloads/ (Python 3.x)',
           '2. Run the installer',
           '3. CHECK "Add Python to PATH" at the bottom of the installer',
@@ -112,18 +124,26 @@ export class InputHelper {
           '5. Restart Soda Autoclicker',
         ]
       : [
-          '1. Install Python 3 using your package manager:',
+          'Soda Autoclicker requires Python 3 to handle mouse and keyboard input.',
+          '',
+          'Install Python 3 using your package manager:',
           '   Ubuntu/Debian: sudo apt install python3',
           '   Fedora: sudo dnf install python3',
           '   macOS: brew install python3',
-          '2. Restart Soda Autoclicker',
+          '',
+          'Then restart Soda Autoclicker.',
         ]
+
+    let detail = steps.join('\n')
+    if (errors && errors.length > 0) {
+      detail += '\n\n--- Diagnostics ---\n' + errors.join('\n')
+    }
 
     dialog.showMessageBox({
       type: 'warning',
       title: 'Python Not Found',
       message: 'Soda Autoclicker requires Python 3 to handle mouse and keyboard input.',
-      detail: steps.join('\n'),
+      detail,
     })
   }
 

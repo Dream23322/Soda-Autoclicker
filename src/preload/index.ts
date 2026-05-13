@@ -14,9 +14,12 @@ const INVOKE_CHANNELS: Set<string> = new Set([
 	"autoclicker:savePreset",
 	"autoclicker:openResourceFolder",
 	"autoclicker:getStatus",
+	"debug:toggle",
+	"debug:status",
+	"debug:openLogs",
 ])
 
-const SEND_CHANNELS: Set<string> = new Set(["window-control"])
+const SEND_CHANNELS: Set<string> = new Set(["window-control", "debug:log"])
 
 function assertAllowed(set: Set<string>, channel: string): void {
 	if (!set.has(channel)) throw new Error(`Blocked IPC channel: ${channel}`)
@@ -41,6 +44,13 @@ const api = {
 			ipcRenderer.invoke("autoclicker:savePreset", args),
 		openResourceFolder: () => ipcRenderer.invoke("autoclicker:openResourceFolder"),
 		getStatus: () => ipcRenderer.invoke("autoclicker:getStatus"),
+	},
+
+	debug: {
+		toggle: () => ipcRenderer.invoke("debug:toggle"),
+		status: () => ipcRenderer.invoke("debug:status"),
+		log: (level: string, ...args: unknown[]) => ipcRenderer.send("debug:log", level, ...args),
+		openLogs: () => ipcRenderer.invoke("debug:openLogs"),
 	},
 
 	ipc: {

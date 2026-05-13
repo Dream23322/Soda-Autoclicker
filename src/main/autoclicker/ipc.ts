@@ -1,10 +1,12 @@
-import { ipcMain } from 'electron'
+import { ipcMain, shell } from 'electron'
 import { AutoclickerEngine } from './engine'
 import * as path from 'path'
 import * as fs from 'fs'
 import * as os from 'os'
+import * as logger from '../logger'
 
 const RESOURCE_FOLDER = path.join(os.homedir(), 'soda', 'resource')
+const LOG_FOLDER = path.join(os.homedir(), 'soda', 'logs')
 
 export function registerAutoclickerIPC(engine: AutoclickerEngine): void {
   ipcMain.handle('autoclicker:getConfig', () => {
@@ -114,9 +116,24 @@ export function registerAutoclickerIPC(engine: AutoclickerEngine): void {
   ipcMain.handle('autoclicker:openResourceFolder', () => {
     try {
       if (!fs.existsSync(RESOURCE_FOLDER)) fs.mkdirSync(RESOURCE_FOLDER, { recursive: true })
-      const { shell } = require('electron')
       shell.openPath(RESOURCE_FOLDER)
     } catch { /* skip */ }
     return true
+  })
+
+  ipcMain.handle('debug:openLogs', () => {
+    try {
+      if (!fs.existsSync(LOG_FOLDER)) fs.mkdirSync(LOG_FOLDER, { recursive: true })
+      shell.openPath(LOG_FOLDER)
+    } catch { /* skip */ }
+    return true
+  })
+
+  ipcMain.handle('debug:toggle', () => logger.toggleRenderer())
+
+  ipcMain.handle('debug:status', () => logger.isRendererEnabled())
+
+  ipcMain.on('debug:log', (_e, level: string, ...args: unknown[]) => {
+    logger.fromRenderer(level, ...args)
   })
 }
