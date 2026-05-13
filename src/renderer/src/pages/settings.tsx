@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch"
 import { Slider } from "@/components/ui/slider"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { BindButton } from "@/components/bind-button"
-import { COLOR_PRESETS, applyColorPreset } from "@/lib/utils"
+import { COLOR_PRESETS, applyColorPreset, applyCustomColor } from "@/lib/utils"
 
 interface Props {
   config?: any
@@ -195,23 +195,25 @@ function Settings({ config, updateConfig }: Props) {
             ))}
           </div>
           {m && (
-            <>
-              <div className="space-y-1">
-                <Label className="text-xs">red: {m.red}</Label>
-                <Slider min={0} max={255} step={1} value={[m.red]}
-                  onValueChange={([v]) => setConfig(['misc', 'red'], v)} />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">green: {m.green}</Label>
-                <Slider min={0} max={255} step={1} value={[m.green]}
-                  onValueChange={([v]) => setConfig(['misc', 'green'], v)} />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">blue: {m.blue}</Label>
-                <Slider min={0} max={255} step={1} value={[m.blue]}
-                  onValueChange={([v]) => setConfig(['misc', 'blue'], v)} />
-              </div>
-            </>
+            <div className="flex items-center gap-3">
+              <Label className="text-xs">custom</Label>
+              <input
+                type="color"
+                value={`#${m.red.toString(16).padStart(2, '0')}${m.green.toString(16).padStart(2, '0')}${m.blue.toString(16).padStart(2, '0')}`}
+                onChange={(e) => {
+                  const hex = e.target.value
+                  const r = parseInt(hex.slice(1, 3), 16)
+                  const g = parseInt(hex.slice(3, 5), 16)
+                  const b = parseInt(hex.slice(5, 7), 16)
+                  setConfig(['misc', 'red'], r)
+                  setConfig(['misc', 'green'], g)
+                  setConfig(['misc', 'blue'], b)
+                  applyCustomColor(hex)
+                  setCurrentColor('custom')
+                }}
+                className="w-10 h-10 p-0.5 rounded cursor-pointer border border-border bg-transparent"
+              />
+            </div>
           )}
         </CardContent>
       </Card>

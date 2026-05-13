@@ -92,6 +92,9 @@
     "asarUnpack": [
       "resource/**"
     ],
+    "extraResources": [
+      { "from": "helpers", "to": "helpers" }
+    ],
     "win": {
       "executableName": "soda-app",
       "target": [

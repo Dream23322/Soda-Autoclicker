@@ -8,7 +8,7 @@ import { applyColorPreset, COLOR_PRESETS } from "./lib/utils"
 import { ErrorBoundary } from "./components/error-boundary"
 
 // Apply saved color preset on app startup
-const savedColor = localStorage.getItem("colorPreset") || "lime"
+const savedColor = localStorage.getItem("colorPreset") || "white"
 applyColorPreset(savedColor as keyof typeof COLOR_PRESETS)
 
 createRoot(document.getElementById("root")!).render(
