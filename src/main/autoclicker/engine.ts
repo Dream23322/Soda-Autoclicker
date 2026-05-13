@@ -131,7 +131,7 @@ export class AutoclickerEngine {
     }
     this.config.left.enabled = wouldEnable
     console.log(`[clicker] left ${this.config.left.enabled ? 'ENABLED' : 'DISABLED'}`)
-    this.playToggleSound()
+    this.playToggleSound(this.config.left.enabled)
     this.emitUpdate()
   }
 
@@ -143,7 +143,7 @@ export class AutoclickerEngine {
     }
     this.config.right.enabled = wouldEnable
     console.log(`[clicker] right ${this.config.right.enabled ? 'ENABLED' : 'DISABLED'}`)
-    this.playToggleSound()
+    this.playToggleSound(this.config.right.enabled)
     this.emitUpdate()
   }
 
@@ -452,9 +452,10 @@ export class AutoclickerEngine {
 
   private emitUpdate(): void { this.onConfigUpdate?.({ ...this.config }) }
 
-  private playToggleSound(): void {
+  private playToggleSound(enabled: boolean): void {
     if (!this.config.misc.toggleSounds) return
-    const wavPath = path.join(USER_RESOURCE, 'click.wav')
+    const name = enabled ? 'notify_on.wav' : 'notify_off.wav'
+    const wavPath = path.join(USER_RESOURCE, name)
     if (!fs.existsSync(wavPath)) return
     try {
       const cmd = process.platform === 'win32'
