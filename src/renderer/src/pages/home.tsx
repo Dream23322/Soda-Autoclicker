@@ -64,7 +64,20 @@ export default function HomePage({ config: _config }: Props) {
   const [selection, setSelection] = useState<string[]>(loadSelection())
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState<string[]>([])
+  const [updateInfo, setUpdateInfo] = useState<{ version: string; downloadUrl: string; notes: string } | null>(null)
+  const [updating, setUpdating] = useState(false)
   const effectiveConfig = config || _config
+
+  useEffect(() => {
+    const e = (window as any).electron
+    e?.update?.currentVersion().then((v: string) => {
+      const el = document.getElementById('app-version')
+      if (el) el.textContent = 'v' + v
+    }).catch(() => {})
+    e?.update?.check().then((info: any) => {
+      if (info?.version) setUpdateInfo(info)
+    }).catch(() => {})
+  }, [])
 
   useEffect(() => {
     getStatus().then(setStatus)
@@ -125,9 +138,34 @@ export default function HomePage({ config: _config }: Props) {
       {/* Header */}
       <div className="text-center border border-[#1a1a1a] p-3">
         <p className="text-xs text-muted-foreground">
-          <span className="text-primary font-bold">$</span> soda-autoclicker <span className="text-muted-foreground">v2.0.3-beta</span>
+          <span className="text-primary font-bold">$</span> soda-autoclicker <span className="text-muted-foreground" id="app-version">v2.0.3-beta</span>
         </p>
       </div>
+
+      {/* Update banner */}
+      {updateInfo && (
+        <div className="border border-primary/30 bg-primary/5 p-3 flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-xs font-bold text-primary">update available — v{updateInfo.version}</p>
+            {updateInfo.notes && <p className="text-[10px] text-muted-foreground truncate">{updateInfo.notes}</p>}
+          </div>
+          <button
+            onClick={async () => {
+              setUpdating(true)
+              try {
+                const e = (window as any).electron
+                const result = await e.update.downloadAndInstall(updateInfo.downloadUrl)
+                if (!result.ok) console.error('Update failed:', result.error)
+              } catch (e) { console.error('Update failed:', e) }
+              setUpdating(false)
+            }}
+            disabled={updating}
+            className="flex-shrink-0 text-xs bg-primary text-primary-foreground px-3 py-1.5 font-bold cursor-pointer disabled:opacity-50 border-none"
+          >
+            {updating ? 'downloading...' : 'update'}
+          </button>
+        </div>
+      )}
 
       {/* Game + Config row */}
       <div className="flex gap-3">

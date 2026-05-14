@@ -30,6 +30,9 @@ const INVOKE_CHANNELS: Set<string> = new Set([
 	"cloud:downloadAndSave",
 	"cloud:delete",
 	"cloud:syncAll",
+	"update:check",
+	"update:currentVersion",
+	"update:downloadAndInstall",
 	"debug:toggle",
 	"debug:status",
 	"debug:openLogs",
@@ -60,6 +63,12 @@ const api = {
 			ipcRenderer.invoke("autoclicker:savePreset", args),
 		openResourceFolder: () => ipcRenderer.invoke("autoclicker:openResourceFolder"),
 		getStatus: () => ipcRenderer.invoke("autoclicker:getStatus"),
+	},
+
+	update: {
+		check: () => ipcRenderer.invoke("update:check"),
+		currentVersion: () => ipcRenderer.invoke("update:currentVersion"),
+		downloadAndInstall: (downloadUrl: string) => ipcRenderer.invoke("update:downloadAndInstall", downloadUrl),
 	},
 
 	cloud: {

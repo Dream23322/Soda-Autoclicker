@@ -64,10 +64,17 @@ interface AutoclickerApi {
   }>
 }
 
+interface UpdateApi {
+  check: () => Promise<{ version: string | null; downloadUrl: string | null; notes: string | null } | null>
+  currentVersion: () => Promise<string>
+  downloadAndInstall: (downloadUrl: string) => Promise<{ ok: boolean; error?: string }>
+}
+
 export interface SodaPreloadApi extends ElectronAPI {
   windowControl: (action: WindowControlAction) => void
   autoclicker: AutoclickerApi
   cloud: CloudApi
+  update: UpdateApi
   ipc: {
     invoke: (channel: string, data?: any) => Promise<any>
     send: (channel: string, data?: any) => void

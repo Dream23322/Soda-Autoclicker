@@ -1,6 +1,7 @@
 import { ipcMain, shell, BrowserWindow } from 'electron'
 import { AutoclickerEngine } from './engine'
 import * as path from 'path'
+import { checkForUpdate, downloadAndInstall, getCurrentVersion } from '../updater'
 import * as fs from 'fs'
 import * as os from 'os'
 import * as logger from '../logger'
@@ -149,6 +150,25 @@ export function registerAutoclickerIPC(engine: AutoclickerEngine, settingsWindow
       shell.openPath(LOG_FOLDER)
     } catch { /* skip */ }
     return true
+  })
+
+  // ── Update IPC ──
+
+  ipcMain.handle('update:check', async () => {
+    return checkForUpdate()
+  })
+
+  ipcMain.handle('update:currentVersion', () => {
+    return getCurrentVersion()
+  })
+
+  ipcMain.handle('update:downloadAndInstall', async (_e, downloadUrl: string) => {
+    try {
+      await downloadAndInstall(downloadUrl)
+      return { ok: true }
+    } catch (e: any) {
+      return { ok: false, error: e.message }
+    }
   })
 
   ipcMain.handle('debug:toggle', () => logger.toggleRenderer())
