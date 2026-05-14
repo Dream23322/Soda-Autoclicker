@@ -69,12 +69,15 @@ export class AutoclickerEngine {
   // an empty focusedProcess means "genuinely not Minecraft" vs "not checked yet".
   private windowPolledOnce = false
 
+  // Hold-to-hide GUI: press the hideGUI bind for 3 seconds to toggle visibility.
+  private hideGUIPressTime = 0
+  private readonly HIDE_GUI_HOLD_MS = 3000
+
   private windowInterval: ReturnType<typeof setInterval> | null = null
   private bindPollInterval: ReturnType<typeof setInterval> | null = null
 
   onConfigUpdate: ConfigUpdateCallback | null = null
   onHideGUI: (() => void) | null = null
-  onShowGUI: (() => void) | null = null
 
   private bootstrapResources(): void {
     try {
@@ -170,9 +173,9 @@ export class AutoclickerEngine {
       const gameplayOk = gameOk && !this.cursorIsInMenu()
 
       type Gate = 'always' | 'gameplay'
-      const checks: { id: string; vk: number; action: () => void; gate: Gate; edge?: 'rising' | 'both' }[] = [
+      const checks: { id: string; vk: number; action: () => void; gate: Gate }[] = [
         { id: 'panic', vk: PANIC_VK, action: () => this.panic(), gate: 'always' },
-        { id: 'hideGUI', vk: this.config.misc.bindHideGUI, action: () => this.onHideGUI?.(), gate: 'always', edge: this.config.misc.holdToHideGUI ? 'both' : 'rising' },
+        { id: 'hideGUI', vk: this.config.misc.bindHideGUI, action: () => this.onHideGUI?.(), gate: 'always' },
         { id: 'left', vk: this.config.left.bind, action: () => this.toggleLeft(), gate: 'gameplay' },
         { id: 'right', vk: this.config.right.bind, action: () => this.toggleRight(), gate: 'gameplay' },
         { id: 'rod', vk: this.config.misc.rodBind, action: () => this.doRod(), gate: 'gameplay' },
@@ -199,13 +202,22 @@ export class AutoclickerEngine {
         const held = stateByVk.get(c.vk) ?? false
         const prev = this.prevBindStates[c.id] ?? false
         this.prevBindStates[c.id] = held
+
+        // hideGUI uses a 3-second hold instead of instant toggle
+        if (c.id === 'hideGUI') {
+          if (held && !prev) {
+            this.hideGUIPressTime = Date.now()
+          } else if (held && this.hideGUIPressTime && Date.now() - this.hideGUIPressTime >= this.HIDE_GUI_HOLD_MS) {
+            this.hideGUIPressTime = 0
+            try { c.action() } catch (e) { console.error('[bind:hideGUI] action threw:', e) }
+          } else if (!held) {
+            this.hideGUIPressTime = 0
+          }
+          continue
+        }
+
         if (held && !prev) {
           try { c.action() } catch (e) { console.error(`[bind:${c.id}] action threw:`, e) }
-        } else if (!held && prev && c.edge === 'both') {
-          // Falling edge — release callback
-          if (c.id === 'hideGUI') {
-            try { this.onShowGUI?.() } catch {}
-          }
         }
       }
     }, POLL_INTERVAL)

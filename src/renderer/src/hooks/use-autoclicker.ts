@@ -17,7 +17,7 @@ export interface AutoclickerConfig {
   }
   recorder: { enabled: boolean; record: number[]; recordMultiplier: number }
   misc: {
-    saveSettings: boolean; guiHidden: boolean; bindHideGUI: number; holdToHideGUI: boolean; windowName: string
+    saveSettings: boolean; guiHidden: boolean; bindHideGUI: number; windowName: string
     discordRichPresence: boolean; switchDelay: number
     rodBind: number; longRod: boolean; rodDelay: number; rodSlot: string
     pearlBind: number; pearlSlot: string; swordSlot: string; theme: string

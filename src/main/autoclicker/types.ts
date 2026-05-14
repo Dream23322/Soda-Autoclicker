@@ -51,7 +51,6 @@ export interface OverlayConfig {
 export interface MiscConfig {
   saveSettings: boolean
   bindHideGUI: number
-  holdToHideGUI: boolean
   windowName: string
   discordRichPresence: boolean
   switchDelay: number
@@ -246,7 +245,6 @@ export const DEFAULT_CONFIG: AutoclickerConfig = {
   misc: {
     saveSettings: true,
     bindHideGUI: 0,
-    holdToHideGUI: true,
     windowName: 'soda-autoclicker',
     discordRichPresence: false,
     switchDelay: 0.1,

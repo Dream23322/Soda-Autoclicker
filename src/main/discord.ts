@@ -7,6 +7,7 @@ try { DiscordRPC = require('discord-rpc') } catch { DiscordRPC = null }
 let client: any = null
 let connected = false
 let connecting = false
+let loginFailed = false
 let startTimestamp = Date.now()
 let tickInterval: ReturnType<typeof setInterval> | null = null
 let currentProvider: PresenceProvider | null = null
@@ -23,7 +24,7 @@ export type PresenceSnapshot = {
 export type PresenceProvider = () => PresenceSnapshot
 
 function connect(): void {
-  if (!DiscordRPC || !DISCORD_APP_ID || client || connecting) return
+  if (!DiscordRPC || !DISCORD_APP_ID || client || connecting || loginFailed) return
   connecting = true
   try { DiscordRPC.register(DISCORD_APP_ID) } catch { /* ok */ }
   client = new DiscordRPC.Client({ transport: 'ipc' })
@@ -38,6 +39,7 @@ function connect(): void {
 
   client.login({ clientId: DISCORD_APP_ID }).catch((e: unknown) => {
     connecting = false
+    loginFailed = true
     console.warn('[discord] login failed (is Discord running?):', (e as Error)?.message ?? e)
     try { client?.destroy?.() } catch { /* ok */ }
     client = null
@@ -50,6 +52,7 @@ function disconnect(): void {
   client = null
   connected = false
   connecting = false
+  loginFailed = false
 }
 
 function push(p: PresenceSnapshot): void {
@@ -105,9 +108,9 @@ export function startDiscord(getPresence: PresenceProvider): void {
     if (connected) push(p)
   }, 15_000)
 
-  // Don't wait 15s on first launch.
+  // Don't wait 15s on first launch, but give Discord a moment to be ready.
   const p = getPresence()
-  if (p.enabled) connect()
+  if (p.enabled) setTimeout(connect, 10_000)
 }
 
 export function stopDiscord(): void {

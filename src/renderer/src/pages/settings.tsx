@@ -117,13 +117,8 @@ function Settings({ config, updateConfig }: Props) {
             currentBind={m?.bindHideGUI ?? 0}
             configPath={['misc', 'bindHideGUI']}
             onBindChange={setConfig}
-            label="hide_gui"
+            label="hide_gui (hold 3s)"
           />
-
-          <div className="flex items-center justify-between">
-            <Label className="text-xs">hold_to_hide</Label>
-            <Switch checked={m?.holdToHideGUI ?? true} onCheckedChange={(v) => setConfig(['misc', 'holdToHideGUI'], v)} />
-          </div>
 
           <div className="flex items-center gap-2">
             <Label className="text-xs w-24">window_name</Label>

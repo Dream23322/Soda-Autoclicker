@@ -172,8 +172,17 @@ app.whenReady().then(() => {
 	createTray()
 
 	registerAutoclickerIPC(autoclickerEngine, settingsWindow)
-	autoclickerEngine.onHideGUI = () => { settingsWindow?.hide(); overlayWindow?.hide(); tray?.destroy(); tray = null }
-	autoclickerEngine.onShowGUI = () => { showSettingsWindow(); if (!tray) createTray() }
+	autoclickerEngine.onHideGUI = () => {
+		if (settingsWindow?.isVisible()) {
+			settingsWindow?.hide()
+			overlayWindow?.hide()
+			tray?.destroy()
+			tray = null
+		} else {
+			showSettingsWindow()
+			if (!tray) createTray()
+		}
+	}
 
 	startDiscord(() => ({
 		enabled: autoclickerEngine.config.misc.discordRichPresence,

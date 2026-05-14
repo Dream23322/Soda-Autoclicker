@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { NavLink } from "react-router"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { Home, Settings, MousePointer2, MousePointer, Menu, HelpCircle, Play, FlaskConical, Zap, FileEdit, List, Code } from "lucide-react"
+import { Home, Settings, MousePointer2, MousePointer, Menu, HelpCircle, Play, FlaskConical, Zap, FileEdit, List, Code, Cloud } from "lucide-react"
 
 function Sidebar() {
   const [collapsed, setCollapsed] = useState(false)
@@ -29,8 +29,9 @@ function Sidebar() {
   ]
 
   const footerItems = [
+    { to: "/cloud", label: "Cloud", icon: <Cloud size={16} /> },
     { to: "/help", label: "Help", icon: <HelpCircle size={16} /> },
-    { to: "/settings", label: "Settings", icon: <Settings size={16} /> }
+    { to: "/settings", label: "Settings", icon: <Settings size={16} /> },
   ]
 
   const linkClasses = ({ isActive }: { isActive: boolean }) =>

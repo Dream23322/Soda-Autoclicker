@@ -4,6 +4,7 @@ import { Routes, Route } from "react-router"
 import HomePage from "@/pages/home"
 import Settings from "@/pages/settings"
 import MiscPage from "@/pages/misc"
+import { CloudPage } from "@/pages/cloud"
 import HelpPage from "@/pages/help"
 import { LeftClickerPage } from "@/pages/left-clicker"
 import { RightClickerPage } from "@/pages/right-clicker"
@@ -115,6 +116,7 @@ function RoutedApp() {
             <Route path="/macros" element={<MacrosPage config={config} updateConfig={updateConfig} />} />
             <Route path="/config-manager" element={<ConfigManagerPage />} />
             <Route path="/misc" element={<MiscPage config={config} updateConfig={updateConfig} />} />
+            <Route path="/cloud" element={<CloudPage />} />
             <Route path="/help" element={<HelpPage />} />
             <Route path="/settings" element={<Settings config={config} updateConfig={updateConfig} />} />
           </Routes>
