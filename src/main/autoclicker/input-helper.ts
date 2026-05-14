@@ -11,6 +11,11 @@ export class InputHelper {
   private cmdId = 0
   started = false
   private installGuideShown = false
+  // One-shot warning when the bundled helper is older than the engine and
+  // doesn't recognise the batched get_key_states action. We fall back to
+  // per-vk isKeyDown so the user isn't dead in the water, but they should
+  // rebuild the helper to drop the extra round-trips.
+  private warnedStaleBatch = false
 
   async start(): Promise<void> {
     if (this.started) return
@@ -205,12 +210,20 @@ export class InputHelper {
     return r?.ok ? !!r.held : false
   }
 
-  /** Batched: query several VKs in a single round-trip. Returns parallel boolean array. */
+  /**
+   * Batched: query several VKs in a single round-trip. Returns parallel boolean array.
+   * If the helper is too old to recognise the action (stale bundled .exe), falls back
+   * to per-vk isKeyDown so binds keep working until it's rebuilt.
+   */
   async getKeyStates(vks: number[]): Promise<boolean[]> {
     if (vks.length === 0) return []
     const r = await this.send({ action: 'get_key_states', vks }, true) as any
-    if (!r?.ok || !Array.isArray(r.held)) return vks.map(() => false)
-    return r.held.map((v: unknown) => !!v)
+    if (r?.ok && Array.isArray(r.held)) return r.held.map((v: unknown) => !!v)
+    if (!this.warnedStaleBatch) {
+      this.warnedStaleBatch = true
+      console.warn('InputHelper: batched get_key_states unavailable (stale helper exe?). Falling back to per-vk isKeyDown. Rebuild with `npm run build:win` to drop the fallback.')
+    }
+    return Promise.all(vks.map(vk => this.isKeyDown(vk)))
   }
 
   async getForegroundProcess(): Promise<string> {
