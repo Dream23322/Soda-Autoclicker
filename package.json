@@ -12,7 +12,7 @@
     "dev": "electron-vite dev -w ",
     "dev:py": "npm run build:helper:win && npm run dev",
     "build": "npm run typecheck && electron-vite build",
-    "build:helper:win": "py -m PyInstaller --noconfirm --onefile --distpath helpers --workpath build/pyinstaller --specpath build/pyinstaller --name input_helper helpers/input_helper.py",
+    "build:helper:win": "python -m PyInstaller --noconfirm --onefile --distpath helpers --workpath build/pyinstaller --specpath build/pyinstaller --name input_helper helpers/input_helper.py",
     "build:win": "npm run build:helper:win && npm run build && electron-builder --win",
     "build:mac": "electron-vite build && electron-builder --mac",
     "build:linux": "electron-vite build && electron-builder --linux"

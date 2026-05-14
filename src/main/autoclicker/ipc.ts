@@ -4,6 +4,7 @@ import * as path from 'path'
 import * as fs from 'fs'
 import * as os from 'os'
 import * as logger from '../logger'
+import * as cloud from '../cloud-sync'
 
 const RESOURCE_FOLDER = path.join(os.homedir(), 'soda', 'resource')
 const LOG_FOLDER = path.join(os.homedir(), 'soda', 'logs')
@@ -157,11 +158,117 @@ export function registerAutoclickerIPC(engine: AutoclickerEngine, settingsWindow
   ipcMain.on('debug:log', (_e, level: string, ...args: unknown[]) => {
     logger.fromRenderer(level, ...args)
   })
-}
 
-function stripEphemeralFlags(cfg: Record<string, any>): void {
-  if (cfg?.left && typeof cfg.left === 'object') cfg.left.enabled = false
-  if (cfg?.right && typeof cfg.right === 'object') cfg.right.enabled = false
-  if (cfg?.recorder && typeof cfg.recorder === 'object') cfg.recorder.enabled = false
-  if (cfg?.potions && typeof cfg.potions === 'object') cfg.potions.enabled = false
+  // ── Cloud IPC ──
+
+  ipcMain.handle('cloud:getUserId', () => {
+    return cloud.getStoredUserId()
+  })
+
+  ipcMain.handle('cloud:setUserId', (_e, userId: string) => {
+    cloud.setStoredUserId(userId)
+    return true
+  })
+
+  ipcMain.handle('cloud:getServerUrl', () => {
+    return cloud.getServerUrl()
+  })
+
+  ipcMain.handle('cloud:setServerUrl', (_e, url: string) => {
+    cloud.setServerUrl(url)
+    return true
+  })
+
+  ipcMain.handle('cloud:register', async () => {
+    return cloud.registerUser()
+  })
+
+  ipcMain.handle('cloud:sync', async (_e, userId?: string) => {
+    return cloud.syncUser(userId)
+  })
+
+  ipcMain.handle('cloud:listItems', async () => {
+    return cloud.listItems()
+  })
+
+  ipcMain.handle('cloud:getQuota', async () => {
+    return cloud.getQuota()
+  })
+
+  ipcMain.handle('cloud:upload', async (_e, args: { type: 'config' | 'macro'; name: string; description: string; data: any; public?: boolean }) => {
+    return cloud.uploadItem(args.type, args.name, args.description, args.data, args.public)
+  })
+
+  ipcMain.handle('cloud:listPublicItems', async () => {
+    return cloud.listPublicItems()
+  })
+
+  ipcMain.handle('cloud:downloadPublicItem', async (_e, itemId: string) => {
+    return cloud.downloadPublicItem(itemId)
+  })
+
+  ipcMain.handle('cloud:downloadPublicAndSave', async (_e, itemId: string) => {
+    const item = await cloud.downloadPublicItem(itemId)
+    if (item.type === 'config') {
+      const safeName = item.name.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 64)
+      const filepath = path.join(RESOURCE_FOLDER, `${safeName}.json`)
+      const cfg = typeof item.data === 'object' ? item.data : JSON.parse(item.data)
+      cfg.filename = safeName
+      cfg.displayName = item.name
+      cfg.description = item.description || ''
+      fs.writeFileSync(filepath, JSON.stringify(cfg, null, 2), 'utf-8')
+    }
+    return true
+  })
+
+  ipcMain.handle('cloud:download', async (_e, itemId: string) => {
+    return cloud.downloadItem(itemId)
+  })
+
+  ipcMain.handle('cloud:downloadAndSave', async (_e, itemId: string) => {
+    const item = await cloud.downloadItem(itemId)
+    if (item.type === 'config') {
+      const safeName = item.name.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 64)
+      const filepath = path.join(RESOURCE_FOLDER, `${safeName}.json`)
+      const cfg = typeof item.data === 'object' ? item.data : JSON.parse(item.data)
+      cfg.filename = safeName
+      cfg.displayName = item.name
+      cfg.description = item.description || ''
+      cfg.cloudId = item.id
+      fs.writeFileSync(filepath, JSON.stringify(cfg, null, 2), 'utf-8')
+    }
+    return true
+  })
+
+  ipcMain.handle('cloud:delete', async (_e, itemId: string) => {
+    await cloud.deleteItem(itemId)
+    return true
+  })
+
+  ipcMain.handle('cloud:syncAll', async () => {
+    const items = await cloud.syncAll()
+    let imported = 0
+    for (const item of items) {
+      if (item.type === 'config') {
+        const safeName = item.name.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 64)
+        const filepath = path.join(RESOURCE_FOLDER, `${safeName}.json`)
+        const cfg = typeof item.data === 'object' ? item.data : JSON.parse(item.data)
+        cfg.filename = safeName
+        cfg.displayName = item.name
+        cfg.description = item.description || ''
+        cfg.cloudId = item.id
+        fs.writeFileSync(filepath, JSON.stringify(cfg, null, 2), 'utf-8')
+        imported++
+      }
+      // Macros are handled separately — the user can merge them via cloud page UI
+    }
+    return { imported }
+    })
+
+  function stripEphemeralFlags(cfg: Record<string, any>): void {
+    if (cfg?.left && typeof cfg.left === 'object') cfg.left.enabled = false
+    if (cfg?.right && typeof cfg.right === 'object') cfg.right.enabled = false
+    if (cfg?.recorder && typeof cfg.recorder === 'object') cfg.recorder.enabled = false
+    if (cfg?.potions && typeof cfg.potions === 'object') cfg.potions.enabled = false
+  }
 }
