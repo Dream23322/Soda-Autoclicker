@@ -18,10 +18,10 @@ export interface AutoclickerConfig {
   recorder: { enabled: boolean; record: number[]; recordMultiplier: number }
   misc: {
     saveSettings: boolean; guiHidden: boolean; bindHideGUI: number
-    consoleFaker: string; discordRichPresence: boolean; switchDelay: number
+    windowName: string; discordRichPresence: boolean; switchDelay: number
     rodBind: number; longRod: boolean; rodDelay: number; rodSlot: string
     pearlBind: number; pearlSlot: string; swordSlot: string; theme: string
-    red: number; green: number; blue: number; toggleSounds: boolean; ping: number
+    red: number; green: number; blue: number; toggleSounds: boolean; compatibilityMode: boolean; ping: number
   }
   potions: {
     enabled: boolean; potBind: number; throwDelay: number

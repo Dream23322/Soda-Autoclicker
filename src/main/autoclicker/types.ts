@@ -51,7 +51,7 @@ export interface MiscConfig {
   saveSettings: boolean
   guiHidden: boolean
   bindHideGUI: number
-  consoleFaker: string
+  windowName: string
   discordRichPresence: boolean
   switchDelay: number
   rodBind: number
@@ -66,6 +66,7 @@ export interface MiscConfig {
   green: number
   blue: number
   toggleSounds: boolean
+  compatibilityMode: boolean
   ping: number
   overlayPosition: string
   overlayLayout: string
@@ -161,7 +162,7 @@ export const DEFAULT_CONFIG: AutoclickerConfig = {
     saveSettings: true,
     guiHidden: false,
     bindHideGUI: 0,
-    consoleFaker: 'NullBind',
+    windowName: 'soda-autoclicker',
     discordRichPresence: false,
     switchDelay: 0.1,
     rodBind: 0,
@@ -176,6 +177,7 @@ export const DEFAULT_CONFIG: AutoclickerConfig = {
     green: 0,
     blue: 0,
     toggleSounds: true,
+    compatibilityMode: false,
     ping: 230,
     overlayPosition: 'top-right',
     overlayLayout: 'horizontal',

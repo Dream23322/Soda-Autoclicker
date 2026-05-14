@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { NavLink } from "react-router"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { Home, Settings, MousePointer2, MousePointer, Menu, HelpCircle, Play, FlaskConical, Zap, FileEdit } from "lucide-react"
+import { Home, Settings, MousePointer2, MousePointer, Menu, HelpCircle, Play, FlaskConical, Zap, FileEdit, List } from "lucide-react"
 
 function Sidebar() {
   const [collapsed, setCollapsed] = useState(false)
@@ -24,6 +24,7 @@ function Sidebar() {
     { to: "/movement", label: "Movement", icon: <Zap size={16} /> },
     { to: "/potions", label: "Potions", icon: <FlaskConical size={16} /> },
     { to: "/config-manager", label: "Configs", icon: <FileEdit size={16} /> },
+    { to: "/misc", label: "Misc", icon: <List size={16} /> },
   ]
 
   const footerItems = [

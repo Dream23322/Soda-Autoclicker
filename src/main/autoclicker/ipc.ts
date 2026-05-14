@@ -1,4 +1,4 @@
-import { ipcMain, shell } from 'electron'
+import { ipcMain, shell, BrowserWindow } from 'electron'
 import { AutoclickerEngine } from './engine'
 import * as path from 'path'
 import * as fs from 'fs'
@@ -17,7 +17,7 @@ function isSafeFilename(name: unknown): name is string {
   return typeof name === 'string' && SAFE_FILENAME.test(name)
 }
 
-export function registerAutoclickerIPC(engine: AutoclickerEngine): void {
+export function registerAutoclickerIPC(engine: AutoclickerEngine, settingsWindow?: BrowserWindow | null): void {
   ipcMain.handle('autoclicker:getConfig', () => {
     return engine.getConfig()
   })
@@ -46,6 +46,9 @@ export function registerAutoclickerIPC(engine: AutoclickerEngine): void {
 
   ipcMain.handle('autoclicker:updateConfig', (_e, args: { path: string[]; value: unknown }) => {
     engine.updateConfig(args.path, args.value)
+    if (args.path.length === 2 && args.path[0] === 'misc' && args.path[1] === 'windowName') {
+      settingsWindow?.setTitle(String(args.value))
+    }
     return true
   })
 

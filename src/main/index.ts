@@ -33,6 +33,8 @@ function createSettingsWindow(): void {
 		settingsWindow?.show()
 	})
 
+	settingsWindow.setTitle(autoclickerEngine.config.misc.windowName || 'soda-autoclicker')
+
 	// Intercept any real close (Alt+F4, app.quit propagation, etc) and just hide
 	// to the tray, unless the user actually picked Quit.
 	settingsWindow.on("close", (e) => {
@@ -116,8 +118,15 @@ if (!gotLock) { app.quit() } else {
 function showSettingsWindow(): void {
 	if (!settingsWindow || settingsWindow.isDestroyed()) {
 		createSettingsWindow()
-		return
 	}
+	if (!overlayWindow || overlayWindow.isDestroyed()) {
+		createOverlayWindow()
+		setTimeout(() => overlayWindow?.showInactive(), 1500)
+	} else {
+		overlayWindow?.showInactive()
+	}
+	if (!tray) createTray()
+	if (!settingsWindow) return
 	if (settingsWindow.isMinimized()) settingsWindow.restore()
 	settingsWindow.show()
 	settingsWindow.focus()
@@ -157,12 +166,23 @@ app.whenReady().then(() => {
 		optimizer.watchWindowShortcuts(window)
 	})
 
-	registerAutoclickerIPC(autoclickerEngine)
 	autoclickerEngine.start()
 
 	createSettingsWindow()
 	createOverlayWindow()
 	createTray()
+
+	registerAutoclickerIPC(autoclickerEngine, settingsWindow)
+	autoclickerEngine.onHideGUI = () => {
+		if (settingsWindow?.isVisible()) {
+			settingsWindow?.hide()
+			overlayWindow?.hide()
+			tray?.destroy()
+			tray = null
+		} else {
+			showSettingsWindow()
+		}
+	}
 
 	setTimeout(() => overlayWindow?.showInactive(), 1500)
 

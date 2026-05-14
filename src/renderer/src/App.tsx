@@ -3,6 +3,7 @@ import { Routes, Route } from "react-router"
 
 import HomePage from "@/pages/home"
 import Settings from "@/pages/settings"
+import MiscPage from "@/pages/misc"
 import HelpPage from "@/pages/help"
 import { LeftClickerPage } from "@/pages/left-clicker"
 import { RightClickerPage } from "@/pages/right-clicker"
@@ -111,6 +112,7 @@ function RoutedApp() {
             <Route path="/potions" element={<PotionsPage config={config} updateConfig={updateConfig} />} />
             <Route path="/movement" element={<MovementPage config={config} updateConfig={updateConfig} />} />
             <Route path="/config-manager" element={<ConfigManagerPage />} />
+            <Route path="/misc" element={<MiscPage config={config} updateConfig={updateConfig} />} />
             <Route path="/help" element={<HelpPage />} />
             <Route path="/settings" element={<Settings config={config} updateConfig={updateConfig} />} />
           </Routes>

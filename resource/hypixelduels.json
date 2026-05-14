@@ -48,7 +48,7 @@
         "saveSettings": true,
         "guiHidden": false,
         "bindHideGUI": 0,
-        "consoleFaker": "NullBind",
+        "windowName": "soda-autoclicker",
         "discordRichPresence": true,
         "switchDelay": 0.05,
         "rodBind": 88,

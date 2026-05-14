@@ -64,6 +64,7 @@ export class AutoclickerEngine {
   private bindPollInterval: ReturnType<typeof setInterval> | null = null
 
   onConfigUpdate: ConfigUpdateCallback | null = null
+  onHideGUI: (() => void) | null = null
 
   private bootstrapResources(): void {
     try {
@@ -134,6 +135,7 @@ export class AutoclickerEngine {
       // focus. Everything else still respects inputOk.
       const checks: { id: string; vk: number; action: () => void; alwaysOn?: boolean }[] = [
         { id: 'panic', vk: PANIC_VK, action: () => this.panic(), alwaysOn: true },
+        { id: 'hideGUI', vk: this.config.misc.bindHideGUI, action: () => this.onHideGUI?.(), alwaysOn: true },
         { id: 'left', vk: this.config.left.bind, action: () => this.toggleLeft() },
         { id: 'right', vk: this.config.right.bind, action: () => this.toggleRight() },
         { id: 'rod', vk: this.config.misc.rodBind, action: () => this.doRod() },
@@ -199,8 +201,11 @@ export class AutoclickerEngine {
   }
 
   isGameFocused(): boolean {
+    if (this.config.misc.compatibilityMode) return true
     return this.focusedProcess.toLowerCase().includes('java') ||
-           this.focusedProcess.toLowerCase().includes('az-launcher')
+           this.focusedProcess.toLowerCase().includes('az-launcher') ||
+           this.focusedProcess.toLowerCase().includes('badlion') ||
+           this.focusedProcess.toLowerCase().includes('feather')
   }
 
   /** True when MC is focused and the player is in gameplay (no menu/inventory/chat open). */
