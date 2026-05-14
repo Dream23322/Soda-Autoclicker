@@ -9,6 +9,7 @@ enableLogger()
 
 const autoclickerEngine = new AutoclickerEngine()
 let tray: Tray | null = null
+let isQuitting = false
 
 let settingsWindow: BrowserWindow | null = null
 let overlayWindow: BrowserWindow | null = null
@@ -30,6 +31,18 @@ function createSettingsWindow(): void {
 
 	settingsWindow.on("ready-to-show", () => {
 		settingsWindow?.show()
+	})
+
+	// Intercept any real close (Alt+F4, app.quit propagation, etc) and just hide
+	// to the tray, unless the user actually picked Quit.
+	settingsWindow.on("close", (e) => {
+		if (isQuitting) return
+		e.preventDefault()
+		settingsWindow?.hide()
+	})
+
+	settingsWindow.on("closed", () => {
+		settingsWindow = null
 	})
 
 	settingsWindow.webContents.setWindowOpenHandler((details) => {
@@ -75,8 +88,13 @@ function createOverlayWindow(): void {
 	})
 
 	overlayWindow.on("close", (e) => {
+		if (isQuitting) return
 		e.preventDefault()
 		overlayWindow?.hide()
+	})
+
+	overlayWindow.on("closed", () => {
+		overlayWindow = null
 	})
 
 	if (is.dev && process.env["ELECTRON_RENDERER_URL"]) {
@@ -96,11 +114,13 @@ if (!gotLock) { app.quit() } else {
 }
 
 function showSettingsWindow(): void {
-	if (settingsWindow) {
-		if (settingsWindow.isMinimized()) settingsWindow.restore()
-		settingsWindow.show()
-		settingsWindow.focus()
+	if (!settingsWindow || settingsWindow.isDestroyed()) {
+		createSettingsWindow()
+		return
 	}
+	if (settingsWindow.isMinimized()) settingsWindow.restore()
+	settingsWindow.show()
+	settingsWindow.focus()
 }
 
 function createTray(): void {
@@ -117,7 +137,7 @@ function createTray(): void {
 		const ctxMenu = Menu.buildFromTemplate([
 			{ label: 'Show', click: () => showSettingsWindow() },
 			{ type: 'separator' },
-			{ label: 'Quit', click: () => app.quit() },
+			{ label: 'Quit', click: () => { isQuitting = true; app.quit() } },
 		])
 		tray.setContextMenu(ctxMenu)
 		tray.on('double-click', () => showSettingsWindow())
@@ -125,6 +145,10 @@ function createTray(): void {
 		console.error('[tray] failed to create:', err)
 	}
 }
+
+app.on("before-quit", () => {
+	isQuitting = true
+})
 
 app.whenReady().then(() => {
 	electronApp.setAppUserModelId("com.4urxra.soda")
@@ -153,6 +177,8 @@ app.on("window-all-closed", () => {
 
 app.on("will-quit", () => {
 	autoclickerEngine.stop()
+	tray?.destroy()
+	tray = null
 })
 
 ipcMain.on("window-control", (event, action: "minimize" | "maximize" | "close") => {
