@@ -64,7 +64,7 @@ export function RightClickerPage({ config, updateConfig }: Props) {
               </div>
               <Slider min={1} max={60} step={1} value={[r.minCPS]} onValueChange={([v]) => updateConfig(['right', 'minCPS'], v)} />
               {gap < 4 && gap > 0 && (
-                <p className="text-[10px] text-red-500">gap must be at least 4</p>
+                <p className="text-[10px] text-muted-foreground">a gap of at least 4 is recommended</p>
               )}
             </div>
           )}

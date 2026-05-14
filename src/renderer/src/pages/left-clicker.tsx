@@ -64,7 +64,7 @@ export function LeftClickerPage({ config, updateConfig }: Props) {
               </div>
               <Slider min={1} max={60} step={1} value={[l.minCPS]} onValueChange={([v]) => updateConfig(['left', 'minCPS'], v)} />
               {gap < 4 && gap > 0 && (
-                <p className="text-[10px] text-red-500">gap must be at least 4</p>
+                <p className="text-[10px] text-muted-foreground">a gap of at least 4 is recommended</p>
               )}
             </div>
           )}
@@ -81,17 +81,6 @@ export function LeftClickerPage({ config, updateConfig }: Props) {
           <div className="space-y-2">
             <Label>Chance: {l.blockHitChance}%</Label>
             <Slider min={1} max={100} step={1} value={[l.blockHitChance]} onValueChange={([v]) => updateConfig(['left', 'blockHitChance'], v)} />
-          </div>
-          <div className="flex items-center gap-2">
-            <Label>Type</Label>
-            <Select value={l.bhType} onValueChange={(v) => updateConfig(['left', 'bhType'], v)}>
-              <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="V1">V1</SelectItem>
-                <SelectItem value="V2">V2</SelectItem>
-                <SelectItem value="V3">V3</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
           <BindButton currentBind={l.smartBH} configPath={['left', 'smartBH']} onBindChange={updateConfig} label="Smart BH" />
         </CardContent>

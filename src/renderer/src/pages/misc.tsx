@@ -1,8 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { Switch } from "@/components/ui/switch"
-import { Slider } from "@/components/ui/slider"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { BindButton } from "@/components/bind-button"
 
@@ -26,7 +24,6 @@ function MiscPage({ config, updateConfig }: Props) {
         </h1>
       </div>
 
-      {/* ── [ Rod Macro ] ── */}
       <Card>
         <CardContent className="pt-4 space-y-4">
           <h2 className="text-sm section-header font-bold">Rod Macro</h2>
@@ -37,13 +34,6 @@ function MiscPage({ config, updateConfig }: Props) {
             onBindChange={setConfig}
             label="bind"
           />
-          <div className="flex items-center justify-between">
-            <Label className="text-xs">long_rod</Label>
-            <Switch
-              checked={m?.longRod ?? false}
-              onCheckedChange={(v) => setConfig(['misc', 'longRod'], v)}
-            />
-          </div>
           <div className="flex items-center gap-2">
             <Label className="text-xs w-24">slot</Label>
             <Select value={m?.rodSlot ?? '2'} onValueChange={(v) => setConfig(['misc', 'rodSlot'], v)}>
@@ -67,7 +57,6 @@ function MiscPage({ config, updateConfig }: Props) {
         </CardContent>
       </Card>
 
-      {/* ── [ Pearl Macro ] ── */}
       <Card>
         <CardContent className="pt-4 space-y-4">
           <h2 className="text-sm section-header font-bold">Pearl Macro</h2>
@@ -92,7 +81,6 @@ function MiscPage({ config, updateConfig }: Props) {
         </CardContent>
       </Card>
 
-      {/* ── [ Sword Slot ] ── */}
       <Card>
         <CardContent className="pt-4 space-y-4">
           <h2 className="text-sm section-header font-bold">Sword Slot</h2>
@@ -106,18 +94,6 @@ function MiscPage({ config, updateConfig }: Props) {
                 ))}
               </SelectContent>
             </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* ── [ Network ] ── */}
-      <Card>
-        <CardContent className="pt-4 space-y-4">
-          <h2 className="text-sm section-header font-bold">Network</h2>
-          <div className="space-y-1">
-            <Label className="text-xs">ping: {m?.ping ?? 230}ms</Label>
-            <Slider min={1} max={1000} step={1} value={[m?.ping ?? 230]}
-              onValueChange={([v]) => setConfig(['misc', 'ping'], v)} />
           </div>
         </CardContent>
       </Card>
