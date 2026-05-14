@@ -1,9 +1,12 @@
+import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Slider } from '@/components/ui/slider'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { BindButton } from '@/components/bind-button'
+import { Button } from '@/components/ui/button'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 
 interface Props {
   config: any
@@ -13,6 +16,8 @@ interface Props {
 export function RightClickerPage({ config, updateConfig }: Props) {
   if (!config) return null
   const r = config.right
+  const [showRange, setShowRange] = useState(r.minCPS < r.averageCPS)
+  const gap = r.averageCPS - r.minCPS
 
   return (
     <div className="space-y-4">
@@ -39,9 +44,30 @@ export function RightClickerPage({ config, updateConfig }: Props) {
             </div>
           </div>
           <div className="space-y-2">
-            <Label>Average CPS: {r.averageCPS}</Label>
-            <Slider min={1} max={60} step={1} value={[r.averageCPS]} onValueChange={([v]) => updateConfig(['right', 'averageCPS'], v)} />
+            <div className="flex items-center gap-2">
+              <Label>Average CPS: {r.averageCPS}</Label>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-5 w-5"
+                onClick={() => setShowRange(!showRange)}
+              >
+                {showRange ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              </Button>
+            </div>
+            <Slider min={1} max={60} step={1} value={[r.averageCPS]} onValueChange={([v]) => { updateConfig(['right', 'averageCPS'], v); if (!showRange) updateConfig(['right', 'minCPS'], v) }} />
           </div>
+          {showRange && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Label>Min CPS: {r.minCPS}</Label>
+              </div>
+              <Slider min={1} max={60} step={1} value={[r.minCPS]} onValueChange={([v]) => updateConfig(['right', 'minCPS'], v)} />
+              {gap < 4 && gap > 0 && (
+                <p className="text-[10px] text-red-500">gap must be at least 4</p>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 

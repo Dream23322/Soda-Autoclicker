@@ -220,6 +220,13 @@ export class AutoclickerEngine {
     return true
   }
 
+  private randomCPS(cfg: { averageCPS: number; minCPS: number }): number {
+    if (cfg.minCPS < cfg.averageCPS) {
+      return cfg.minCPS + Math.random() * (cfg.averageCPS - cfg.minCPS)
+    }
+    return cfg.averageCPS
+  }
+
   private calculateDelay(cps: number, blatant: boolean): number {
     if (blatant) return 1000 / cps
     return Math.random() * (2000 / cps)
@@ -234,7 +241,7 @@ export class AutoclickerEngine {
         const cfg = this.config.left
         const delay = this.config.recorder.enabled
           ? this.getRecordedDelay()
-          : this.calculateDelay(cfg.averageCPS, cfg.blatant)
+          : this.calculateDelay(this.randomCPS(cfg), cfg.blatant)
 
         if (!cfg.enabled || this.smartBHActive) { await this.sleep(delay); continue }
 
@@ -285,7 +292,7 @@ export class AutoclickerEngine {
       console.log('[R] loop started')
       while (this.running) {
         const cfg = this.config.right
-        const delay = this.calculateDelay(cfg.averageCPS, cfg.blatant)
+        const delay = this.calculateDelay(this.randomCPS(cfg), cfg.blatant)
 
         if (!cfg.enabled || this.smartBHActive) { await this.sleep(delay); continue }
 

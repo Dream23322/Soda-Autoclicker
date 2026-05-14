@@ -3,6 +3,7 @@ export interface LeftClickerConfig {
   mode: 'Hold' | 'Always'
   bind: number
   averageCPS: number
+  minCPS: number
   onlyWhenFocused: boolean
   breakBlocks: 'None' | 'Full' | 'Shift With Click' | 'Shift No Click'
   RMBLock: boolean
@@ -24,6 +25,7 @@ export interface RightClickerConfig {
   mode: 'Hold' | 'Always'
   bind: number
   averageCPS: number
+  minCPS: number
   onlyWhenFocused: boolean
   LMBLock: boolean
   shakeEffect: boolean
@@ -118,6 +120,7 @@ export const DEFAULT_CONFIG: AutoclickerConfig = {
     mode: 'Hold',
     bind: 0,
     averageCPS: 18,
+    minCPS: 18,
     onlyWhenFocused: true,
     breakBlocks: 'None',
     RMBLock: false,
@@ -138,6 +141,7 @@ export const DEFAULT_CONFIG: AutoclickerConfig = {
     mode: 'Hold',
     bind: 0,
     averageCPS: 12,
+    minCPS: 12,
     onlyWhenFocused: true,
     LMBLock: false,
     shakeEffect: false,

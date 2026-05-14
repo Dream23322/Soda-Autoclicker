@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 
 export interface AutoclickerConfig {
   left: {
-    enabled: boolean; mode: string; bind: number; averageCPS: number
+    enabled: boolean; mode: string; bind: number; averageCPS: number; minCPS: number
     onlyWhenFocused: boolean; breakBlocks: string; RMBLock: boolean
     blockHit: boolean; blockHitChance: number; bhType: string
     smartBH: number; shakeEffect: boolean; shakeEffectForce: number
@@ -10,7 +10,7 @@ export interface AutoclickerConfig {
     AutoRod: boolean; AutoRodChance: number
   }
   right: {
-    enabled: boolean; mode: string; bind: number; averageCPS: number
+    enabled: boolean; mode: string; bind: number; averageCPS: number; minCPS: number
     onlyWhenFocused: boolean; LMBLock: boolean; shakeEffect: boolean
     shakeEffectForce: number; soundPath: string; workInMenus: boolean
     blatant: boolean; items: boolean

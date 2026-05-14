@@ -11,4 +11,4 @@ pnpm-lock.yaml
 *.spec
 helpers/*.exe
 build/
-.package-lock.json
+package-lock.json
