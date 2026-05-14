@@ -80,7 +80,7 @@ function Settings({ config, updateConfig }: Props) {
     <div className="space-y-6 max-w-3xl mx-auto">
       <div className="text-center">
         <h1 className="text-xl font-bold">
-          <span className="text-primary">$</span> cat settings
+          <span className="text-primary">$</span> nano settings
         </h1>
       </div>
 
