@@ -125,7 +125,7 @@ export default function HomePage({ config: _config }: Props) {
       {/* Header */}
       <div className="text-center border border-[#1a1a1a] p-3">
         <p className="text-xs text-muted-foreground">
-          <span className="text-primary font-bold">$</span> soda-autoclicker <span className="text-muted-foreground">v2.0.2-beta</span>
+          <span className="text-primary font-bold">$</span> soda-autoclicker <span className="text-muted-foreground">v2.0.3-beta</span>
         </p>
       </div>
 
