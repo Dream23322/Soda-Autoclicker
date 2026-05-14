@@ -399,7 +399,7 @@ export class AutoclickerEngine {
     while (this.running) {
       await this.sleep(10)
       const mv = this.config.movement
-      if (!mv.autoWTap || !this.isFocused('left') || !(await this.input.isKeyDown(VK_LMB))) {
+      if (!mv.autoWTap || !this.isGameFocused() || !(await this.input.isKeyDown(VK_LMB))) {
         await this.sleep(500); continue
       }
       const w = await this.input.isKeyDown(0x57)
@@ -415,9 +415,15 @@ export class AutoclickerEngine {
 
   private async startAutoSprint(): Promise<void> {
     while (this.running) {
-      if (!this.config.movement.autoSprint || !this.isFocused('left')) {
-        await this.input.keyUp(0x11)
-        await this.sleep(500); continue
+      // Autosprint is Minecraft-specific. Gate on the game window directly so
+      // it can't end up holding Ctrl globally just because the left clicker is
+      // configured to work outside the game.
+      const enabled = this.config.movement.autoSprint
+      const inGame = this.isGameFocused()
+      if (!enabled || !inGame) {
+        if (await this.input.isKeyDown(0x11)) await this.input.keyUp(0x11)
+        await this.sleep(200)
+        continue
       }
       await this.sleep(50)
       const moving = await this.input.isKeyDown(0x57) || await this.input.isKeyDown(0x41) || await this.input.isKeyDown(0x44)
@@ -429,7 +435,7 @@ export class AutoclickerEngine {
 
   private async startBetterInput(): Promise<void> {
     while (this.running) {
-      if (!this.config.movement.betterInput || !this.isFocused('left')) { await this.sleep(100); continue }
+      if (!this.config.movement.betterInput || !this.isGameFocused()) { await this.sleep(100); continue }
       const a = await this.input.isKeyDown(0x41)
       const d = await this.input.isKeyDown(0x44)
       if (this.strafeState.a && d) { await this.input.keyUp(0x41); this.betterInputTimestamp = Date.now() }
@@ -441,7 +447,7 @@ export class AutoclickerEngine {
 
   private async startFastStop(): Promise<void> {
     while (this.running) {
-      if (!this.config.movement.fastStop || !this.isFocused('left')) { await this.sleep(100); continue }
+      if (!this.config.movement.fastStop || !this.isGameFocused()) { await this.sleep(100); continue }
       if (await this.input.isKeyDown(0x20)) this.movementState.jump = Date.now()
       const w = await this.input.isKeyDown(0x57); const s = await this.input.isKeyDown(0x53)
       const a = await this.input.isKeyDown(0x41); const d = await this.input.isKeyDown(0x44)
