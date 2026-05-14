@@ -55,6 +55,10 @@ export class AutoclickerEngine {
   private cursorHandle = 0
   private smartBHActive = false
   private currentPotSlot = 0
+  // Tracks whether autosprint itself is currently holding Ctrl down. We only
+  // ever release Ctrl that we pressed — otherwise we'd cancel the user's
+  // Ctrl+A / Ctrl+C / etc. in other windows.
+  private sprintHoldingCtrl = false
 
   private windowInterval: ReturnType<typeof setInterval> | null = null
   private bindPollInterval: ReturnType<typeof setInterval> | null = null
@@ -417,19 +421,28 @@ export class AutoclickerEngine {
     while (this.running) {
       // Autosprint is Minecraft-specific. Gate on the game window directly so
       // it can't end up holding Ctrl globally just because the left clicker is
-      // configured to work outside the game.
+      // configured to work outside the game. Only release Ctrl that *we*
+      // pressed — otherwise we'd cancel the user's Ctrl+A / Ctrl+C in other
+      // windows.
       const enabled = this.config.movement.autoSprint
       const inGame = this.isGameFocused()
       if (!enabled || !inGame) {
-        if (await this.input.isKeyDown(0x11)) await this.input.keyUp(0x11)
+        if (this.sprintHoldingCtrl) {
+          await this.input.keyUp(0x11)
+          this.sprintHoldingCtrl = false
+        }
         await this.sleep(200)
         continue
       }
       await this.sleep(50)
       const moving = await this.input.isKeyDown(0x57) || await this.input.isKeyDown(0x41) || await this.input.isKeyDown(0x44)
-      const ctrl = await this.input.isKeyDown(0x11)
-      if (moving && !ctrl) await this.input.keyDown(0x11)
-      else if (!moving && ctrl) await this.input.keyUp(0x11)
+      if (moving && !this.sprintHoldingCtrl) {
+        await this.input.keyDown(0x11)
+        this.sprintHoldingCtrl = true
+      } else if (!moving && this.sprintHoldingCtrl) {
+        await this.input.keyUp(0x11)
+        this.sprintHoldingCtrl = false
+      }
     }
   }
 
