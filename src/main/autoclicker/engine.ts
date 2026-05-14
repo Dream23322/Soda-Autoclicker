@@ -1,4 +1,4 @@
-import { AutoclickerConfig, DEFAULT_CONFIG } from './types'
+import { AutoclickerConfig, DEFAULT_CONFIG, Macro, MacroAction } from './types'
 import * as path from 'path'
 import * as fs from 'fs'
 import * as os from 'os'
@@ -74,6 +74,7 @@ export class AutoclickerEngine {
 
   onConfigUpdate: ConfigUpdateCallback | null = null
   onHideGUI: (() => void) | null = null
+  onShowGUI: (() => void) | null = null
 
   private bootstrapResources(): void {
     try {
@@ -169,15 +170,18 @@ export class AutoclickerEngine {
       const gameplayOk = gameOk && !this.cursorIsInMenu()
 
       type Gate = 'always' | 'gameplay'
-      const checks: { id: string; vk: number; action: () => void; gate: Gate }[] = [
+      const checks: { id: string; vk: number; action: () => void; gate: Gate; edge?: 'rising' | 'both' }[] = [
         { id: 'panic', vk: PANIC_VK, action: () => this.panic(), gate: 'always' },
-        { id: 'hideGUI', vk: this.config.misc.bindHideGUI, action: () => this.onHideGUI?.(), gate: 'always' },
+        { id: 'hideGUI', vk: this.config.misc.bindHideGUI, action: () => this.onHideGUI?.(), gate: 'always', edge: this.config.misc.holdToHideGUI ? 'both' : 'rising' },
         { id: 'left', vk: this.config.left.bind, action: () => this.toggleLeft(), gate: 'gameplay' },
         { id: 'right', vk: this.config.right.bind, action: () => this.toggleRight(), gate: 'gameplay' },
         { id: 'rod', vk: this.config.misc.rodBind, action: () => this.doRod(), gate: 'gameplay' },
         { id: 'pearl', vk: this.config.misc.pearlBind, action: () => this.doPearl(), gate: 'gameplay' },
         { id: 'pot', vk: this.config.potions.potBind, action: () => this.doPotion(), gate: 'gameplay' },
         { id: 'potReset', vk: this.config.potions.potResetBind, action: () => { this.currentPotSlot = this.config.potions.lowestSlot }, gate: 'always' },
+        ...this.config.macros.list.filter(m => m.bind).map((m, i) => ({
+          id: `macro_${i}`, vk: m.bind, action: () => { this.runMacro(m).catch(() => {}) }, gate: 'gameplay' as Gate,
+        })),
       ]
 
       const active = checks.filter(c => c.vk && (c.gate === 'always' || gameplayOk))
@@ -197,6 +201,11 @@ export class AutoclickerEngine {
         this.prevBindStates[c.id] = held
         if (held && !prev) {
           try { c.action() } catch (e) { console.error(`[bind:${c.id}] action threw:`, e) }
+        } else if (!held && prev && c.edge === 'both') {
+          // Falling edge — release callback
+          if (c.id === 'hideGUI') {
+            try { this.onShowGUI?.() } catch {}
+          }
         }
       }
     }, POLL_INTERVAL)
@@ -484,6 +493,228 @@ export class AutoclickerEngine {
   }
 
   private cursorIsInMenu(): boolean { return this.cursorVisible }
+
+  // ── Macro execution ──
+
+  private keyNameToVk(name: string): number {
+    const map: Record<string, number> = {
+      lmb: 0x01, rmb: 0x02, mmb: 0x04,
+      backspace: 0x08, tab: 0x09, enter: 0x0D, shift: 0x10, ctrl: 0x11, alt: 0x12,
+      esc: 0x1B, space: 0x20,
+      left: 0x25, up: 0x26, right: 0x27, down: 0x28,
+    }
+    const lower = name.toLowerCase().replace(/["']/g, '')
+    if (map[lower]) return map[lower]
+    if (/^f\d{1,2}$/i.test(lower)) {
+      const n = parseInt(lower.slice(1))
+      if (n >= 1 && n <= 12) return 0x6F + n
+    }
+    if (/^[a-z]$/i.test(lower)) return lower.charCodeAt(0) - (lower >= 'a' ? 0x61 - 0x41 : 0x41) + 0x41
+    if (/^\d$/i.test(lower)) return 0x30 + parseInt(lower)
+    return parseInt(lower) || 0
+  }
+
+  private parseScriptLines(lines: string[], startIdx: number): { actions: MacroAction[]; nextIdx: number } {
+    const actions: MacroAction[] = []
+    const id = () => `script_${actions.length}_${Date.now()}`
+    let i = startIdx
+    while (i < lines.length) {
+      const s = lines[i].trim()
+      i++
+      if (!s || s.startsWith('#')) continue
+
+      // endif — pop back to the caller (handles nesting)
+      if (/^endif\s*$/i.test(s)) break
+
+      // if condition ... endif
+      const ifMatch = s.match(/^if\s+(.+)$/i)
+      if (ifMatch) {
+        const { actions: body, nextIdx } = this.parseScriptLines(lines, i)
+        i = nextIdx
+        actions.push({
+          id: id(), type: 'script_if', label: `If: ${ifMatch[1]}`,
+          config: { condition: ifMatch[1].trim(), body },
+        })
+        continue
+      }
+
+      const delayMatch = s.match(/^delay\s*\(\s*(\d+)\s*\)$/i)
+      if (delayMatch) { actions.push({ id: id(), type: 'delay', label: `Delay ${delayMatch[1]}ms`, config: { ms: parseInt(delayMatch[1]) } }); continue }
+
+      // key("name") or key(0xNN) or key(N)
+      let simpleKey = s.match(/^(key|tap)\s*\(\s*(0x[0-9a-f]+|\d+)\s*\)$/i)
+      if (!simpleKey) simpleKey = s.match(/^(key|tap)\s*\(\s*['"](.+?)['"]\s*\)$/i)
+      if (simpleKey) {
+        const vk = simpleKey[2].startsWith('0x') ? parseInt(simpleKey[2]) : this.keyNameToVk(simpleKey[2])
+        actions.push({ id: id(), type: 'key_tap', label: `Key ${vk}`, config: { vk } }); continue
+      }
+
+      // convert_key("name") — inline, returns VK code at parse time
+      const convMatch = s.match(/convert_key\s*\(\s*['"](.+?)['"]\s*\)/i)
+      if (convMatch) { const vk = this.keyNameToVk(convMatch[1]); actions.push({ id: id(), type: 'key_tap', label: `Key ${vk}`, config: { vk } }); continue }
+
+      const clickMatch = s.match(/^click\s*\(\s*(\d+)\s*\)$/i)
+      if (clickMatch) { actions.push({ id: id(), type: 'mouse_click', label: `Click ${clickMatch[1]}`, config: { button: parseInt(clickMatch[1]) } }); continue }
+
+      // pitch(delta) / yaw(delta) — relative mouse move
+      const pitchMatch = s.match(/^pitch\s*\(\s*(-?\d+)\s*\)$/i)
+      if (pitchMatch) { actions.push({ id: id(), type: 'mouse_relative_move', label: `Pitch ${pitchMatch[1]}`, config: { dx: 0, dy: parseInt(pitchMatch[1]) } }); continue }
+      const yawMatch = s.match(/^yaw\s*\(\s*(-?\d+)\s*\)$/i)
+      if (yawMatch) { actions.push({ id: id(), type: 'mouse_relative_move', label: `Yaw ${yawMatch[1]}`, config: { dx: parseInt(yawMatch[1]), dy: 0 } }); continue }
+
+      const holdMatch = s.match(/^hold\s*\(\s*(0x[0-9a-f]+|\d+)\s*,\s*(\d+)\s*\)$/i)
+      if (holdMatch) {
+        const vk = parseInt(holdMatch[1]); const ms = parseInt(holdMatch[2])
+        actions.push({ id: id(), type: 'key_down', label: `Hold ${vk}`, config: { vk } })
+        actions.push({ id: id(), type: 'delay', label: `Delay ${ms}ms`, config: { ms } })
+        actions.push({ id: id(), type: 'key_up', label: `Release ${vk}`, config: { vk } })
+        continue
+      }
+      const setSlotMatch = s.match(/^setslot\s*\(\s*(\d+)\s*\)$/i)
+      if (setSlotMatch) { actions.push({ id: id(), type: 'key_tap', label: `Slot ${setSlotMatch[1]}`, config: { vk: 0x30 + parseInt(setSlotMatch[1]) } }); continue }
+      const keyDownMatch = s.match(/^keydown\s*\(\s*(0x[0-9a-f]+|\d+)\s*\)$/i)
+      if (keyDownMatch) { actions.push({ id: id(), type: 'key_down', label: `KeyDown ${keyDownMatch[1]}`, config: { vk: parseInt(keyDownMatch[1]) } }); continue }
+      const keyUpMatch = s.match(/^keyup\s*\(\s*(0x[0-9a-f]+|\d+)\s*\)$/i)
+      if (keyUpMatch) { actions.push({ id: id(), type: 'key_up', label: `KeyUp ${keyUpMatch[1]}`, config: { vk: parseInt(keyUpMatch[1]) } }); continue }
+    }
+    return { actions, nextIdx: i }
+  }
+
+  private parseScript(code: string): MacroAction[] {
+    return this.parseScriptLines(code.split('\n'), 0).actions
+  }
+
+  private async execAction(action: MacroAction): Promise<void> {
+    const { type, config } = action
+    switch (type) {
+      case 'delay':
+        await this.sleep((config.ms as number) || 100)
+        break
+      case 'key_tap':
+        await this.input.keyTap((config.vk as number) || 0)
+        break
+      case 'key_down':
+        await this.input.keyDown((config.vk as number) || 0)
+        break
+      case 'key_up':
+        await this.input.keyUp((config.vk as number) || 0)
+        break
+      case 'mouse_click':
+        await this.input.mouseClick((config.button as number) || 1)
+        break
+      case 'mouse_down':
+        await this.input.mouseDown((config.button as number) || 1)
+        break
+      case 'mouse_up':
+        await this.input.mouseUp((config.button as number) || 1)
+        break
+      case 'rod': {
+        const slot = (config.slot as string) || '2'
+        const delay = (config.delay as number) || 200
+        const swordSlot = this.config.misc.swordSlot || '1'
+        await this.input.keyTap(0x30 + parseInt(slot))
+        await this.sleep(delay)
+        await this.input.mouseClick(2)
+        await this.sleep(delay)
+        await this.input.keyTap(0x30 + parseInt(swordSlot))
+        break
+      }
+      case 'pearl': {
+        const pSlot = (config.slot as string) || '8'
+        const pSwordSlot = this.config.misc.swordSlot || '1'
+        await this.input.keyTap(0x30 + parseInt(pSlot))
+        await this.sleep(60)
+        await this.input.mouseClick(2)
+        await this.sleep(800)
+        await this.input.keyTap(0x30 + parseInt(pSwordSlot))
+        break
+      }
+      case 'potion': {
+        const throwDelay = (config.throwDelay as number) || 700
+        const potSwordSlot = this.config.misc.swordSlot || '1'
+        if (this.currentPotSlot < this.config.potions.lowestSlot) this.currentPotSlot = this.config.potions.lowestSlot
+        if (this.currentPotSlot > this.config.potions.highestSlot) { console.log('[macro/pot] none left'); return }
+        await this.input.keyTap(0x30 + this.currentPotSlot)
+        await this.sleep(throwDelay)
+        await this.input.mouseClick(2)
+        await this.sleep(600)
+        await this.input.keyTap(0x30 + parseInt(potSwordSlot))
+        this.currentPotSlot++
+        break
+      }
+      case 'condition': {
+        const condType = config.type as string
+        const condVk = (config.vk as number) || 0
+        if (condType === 'key_held') {
+          if (!await this.input.isKeyDown(condVk)) throw new Error('condition: key not held')
+        } else if (condType === 'key_not_held') {
+          if (await this.input.isKeyDown(condVk)) throw new Error('condition: key held')
+        } else if (condType === 'chance') {
+          const chance = (config.chance as number) || 50
+          if (Math.random() * 100 > chance) throw new Error('condition: chance failed')
+        } else if (condType === 'mouse_held') {
+          const btn = (config.button as number) || 1
+          if (!await this.input.isKeyDown(btn === 1 ? 0x01 : 0x02)) throw new Error('condition: mouse not held')
+        }
+        break
+      }
+      case 'loop': {
+        const count = (config.count as number) || 3
+        const loopActions = (config.actions as MacroAction[]) || []
+        for (let i = 0; i < count; i++) {
+          for (const a of loopActions) await this.execAction(a)
+        }
+        break
+      }
+      case 'script_if': {
+        const condition = (config.condition as string) || ''
+        const body = (config.body as MacroAction[]) || []
+        let pass = false
+        const keyHeldMatch = condition.match(/^key_held\s*\(\s*(0x[0-9a-f]+|\d+)\s*\)$/i)
+        if (keyHeldMatch) pass = await this.input.isKeyDown(parseInt(keyHeldMatch[1]))
+        const keyNotHeldMatch = condition.match(/^key_not_held\s*\(\s*(0x[0-9a-f]+|\d+)\s*\)$/i)
+        if (keyNotHeldMatch) pass = !await this.input.isKeyDown(parseInt(keyNotHeldMatch[1]))
+        const chanceMatch = condition.match(/^chance\s*\(\s*(\d+)\s*\)$/i)
+        if (chanceMatch) pass = Math.random() * 100 < parseInt(chanceMatch[1])
+        const mouseHeldMatch = condition.match(/^mouse_held\s*\(\s*(\d+)\s*\)$/i)
+        if (mouseHeldMatch) pass = await this.input.isKeyDown(parseInt(mouseHeldMatch[1]) === 1 ? 0x01 : 0x02)
+        if (/^focused$/i.test(condition)) pass = this.isGameFocused()
+        if (/^clicking_left$/i.test(condition)) pass = this.config.left.enabled
+        if (/^clicking_right$/i.test(condition)) pass = this.config.right.enabled
+        if (pass) { for (const a of body) await this.execAction(a) }
+        break
+      }
+      case 'mouse_relative_move': {
+        const dx = (config.dx as number) || 0
+        const dy = (config.dy as number) || 0
+        await this.input.mouseRelativeMove(dx, dy)
+        break
+      }
+      case 'script': {
+        const code = (config.code as string) || ''
+        const parsed = this.parseScript(code)
+        for (const a of parsed) await this.execAction(a)
+        break
+      }
+    }
+  }
+
+  private async runMacro(macro: Macro): Promise<void> {
+    console.log(`[macro] running "${macro.name}"`)
+    try {
+      for (const step of macro.steps) {
+        for (const action of step.actions) {
+          await this.execAction(action)
+        }
+      }
+    } catch (err) {
+      if (err instanceof Error && err.message.startsWith('condition:')) {
+        console.log(`[macro] "${macro.name}": ${err.message}`)
+      } else {
+        console.error(`[macro] "${macro.name}" error:`, err)
+      }
+    }
+  }
 
   // ── Movement ──
   //

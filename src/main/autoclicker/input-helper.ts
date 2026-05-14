@@ -239,6 +239,10 @@ export class InputHelper {
     return r?.ok ? (r.cursor_handle ?? 0) : 0
   }
 
+  async mouseRelativeMove(dx: number, dy: number): Promise<void> {
+    await this.send({ action: 'mouse_relative_move', dx, dy })
+  }
+
   /** Batched: process name + cursor info in one round-trip. */
   async getWindowInfo(): Promise<{ processName: string; cursorHandle: number; cursorVisible: boolean }> {
     const r = await this.send({ action: 'get_window_info' }, true) as any

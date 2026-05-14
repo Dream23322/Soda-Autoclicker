@@ -10,6 +10,7 @@ import { RightClickerPage } from "@/pages/right-clicker"
 import { RecorderPage } from "@/pages/recorder"
 import { PotionsPage } from "@/pages/potions"
 import { MovementPage } from "@/pages/movement"
+import { MacrosPage } from "@/pages/macros"
 import { ConfigManagerPage } from "@/pages/config-manager"
 
 import Titlebar from "./components/titlebar"
@@ -111,6 +112,7 @@ function RoutedApp() {
             <Route path="/recorder" element={<RecorderPage config={config} updateConfig={updateConfig} />} />
             <Route path="/potions" element={<PotionsPage config={config} updateConfig={updateConfig} />} />
             <Route path="/movement" element={<MovementPage config={config} updateConfig={updateConfig} />} />
+            <Route path="/macros" element={<MacrosPage config={config} updateConfig={updateConfig} />} />
             <Route path="/config-manager" element={<ConfigManagerPage />} />
             <Route path="/misc" element={<MiscPage config={config} updateConfig={updateConfig} />} />
             <Route path="/help" element={<HelpPage />} />

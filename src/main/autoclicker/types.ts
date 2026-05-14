@@ -51,6 +51,7 @@ export interface OverlayConfig {
 export interface MiscConfig {
   saveSettings: boolean
   bindHideGUI: number
+  holdToHideGUI: boolean
   windowName: string
   discordRichPresence: boolean
   switchDelay: number
@@ -87,6 +88,92 @@ export interface MovementConfig {
   fastStop: boolean
 }
 
+// ── Macro system ──
+
+export type MacroActionType =
+  | 'delay'
+  | 'key_tap' | 'key_down' | 'key_up'
+  | 'mouse_click' | 'mouse_down' | 'mouse_up'
+  | 'mouse_relative_move'
+  | 'rod' | 'pearl' | 'potion'
+  | 'condition' | 'loop' | 'script' | 'script_if'
+
+export interface MacroAction {
+  id: string
+  type: MacroActionType
+  label: string
+  config: Record<string, unknown>
+}
+
+export interface Macro {
+  name: string
+  bind: number
+  steps: MacroStep[]
+}
+
+export interface MacroStep {
+  id: string
+  label: string
+  actions: MacroAction[]
+}
+
+export interface MacrosConfig {
+  list: Macro[]
+}
+
+export const DEFAULT_MACROS: MacrosConfig = {
+  list: [
+    {
+      name: 'Rod',
+      bind: 0,
+      steps: [
+        {
+          id: 'rod_1', label: 'Rod Macro',
+          actions: [
+            { id: 'rod_swap', type: 'key_tap', label: 'Press Sword Slot', config: { vk: 0x32 } },
+            { id: 'rod_delay_1', type: 'delay', label: 'Wait 50ms', config: { ms: 50 } },
+            { id: 'rod_click', type: 'mouse_click', label: 'Right Click', config: { button: 2 } },
+            { id: 'rod_delay_2', type: 'delay', label: 'Wait (rodDelay)', config: { ms: 200 } },
+            { id: 'rod_swap_back', type: 'key_tap', label: 'Press Sword Slot', config: { vk: 0x31 } },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'Pearl',
+      bind: 0,
+      steps: [
+        {
+          id: 'pearl_1', label: 'Pearl Macro',
+          actions: [
+            { id: 'pearl_swap', type: 'key_tap', label: 'Press Pearl Slot', config: { vk: 0x38 } },
+            { id: 'pearl_delay_1', type: 'delay', label: 'Wait 60ms', config: { ms: 60 } },
+            { id: 'pearl_click', type: 'mouse_click', label: 'Right Click', config: { button: 2 } },
+            { id: 'pearl_delay_2', type: 'delay', label: 'Wait 800ms', config: { ms: 800 } },
+            { id: 'pearl_swap_back', type: 'key_tap', label: 'Press Sword Slot', config: { vk: 0x31 } },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'Potion',
+      bind: 0,
+      steps: [
+        {
+          id: 'pot_1', label: 'Potion Macro',
+          actions: [
+            { id: 'pot_swap', type: 'key_tap', label: 'Press Pot Slot', config: { vk: 0x34 } },
+            { id: 'pot_delay_1', type: 'delay', label: 'Wait (throwDelay)', config: { ms: 700 } },
+            { id: 'pot_click', type: 'mouse_click', label: 'Right Click', config: { button: 2 } },
+            { id: 'pot_delay_2', type: 'delay', label: 'Wait 600ms', config: { ms: 600 } },
+            { id: 'pot_swap_back', type: 'key_tap', label: 'Press Sword Slot', config: { vk: 0x31 } },
+          ],
+        },
+      ],
+    },
+  ],
+}
+
 export interface AutoclickerConfig {
   left: LeftClickerConfig
   right: RightClickerConfig
@@ -95,6 +182,7 @@ export interface AutoclickerConfig {
   misc: MiscConfig
   potions: PotionsConfig
   movement: MovementConfig
+  macros: MacrosConfig
   filename: string
   displayName: string
   description: string
@@ -158,6 +246,7 @@ export const DEFAULT_CONFIG: AutoclickerConfig = {
   misc: {
     saveSettings: true,
     bindHideGUI: 0,
+    holdToHideGUI: true,
     windowName: 'soda-autoclicker',
     discordRichPresence: false,
     switchDelay: 0.1,
@@ -191,6 +280,7 @@ export const DEFAULT_CONFIG: AutoclickerConfig = {
     betterInput: false,
     fastStop: false,
   },
+  macros: DEFAULT_MACROS,
   filename: 'config',
   displayName: 'Default',
   description: 'Default Config',

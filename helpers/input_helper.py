@@ -160,6 +160,11 @@ def handle_command(cmd):
         vk = cmd.get('vk', 0)
         win32api.keybd_event(vk, 0, win32con.KEYEVENTF_KEYUP, 0)
 
+    elif action == 'mouse_relative_move':
+        dx = cmd.get('dx', 0)
+        dy = cmd.get('dy', 0)
+        win32api.mouse_event(win32con.MOUSEEVENTF_MOVE, dx, dy, 0, 0)
+
     else:
         result = {'ok': False, 'error': f'Unknown action: {action}'}
         if cmd_id is not None:
