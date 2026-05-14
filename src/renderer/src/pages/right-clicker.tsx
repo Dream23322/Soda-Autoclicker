@@ -82,6 +82,7 @@ export function RightClickerPage({ config, updateConfig }: Props) {
             <Label>Items Mode</Label>
             <Switch checked={r.items} onCheckedChange={(v) => updateConfig(['right', 'items'], v)} />
           </div>
+          <Label>// May cause issues with some clients. If the clicker isn't working this might be it.</Label>
         </CardContent>
       </Card>
 

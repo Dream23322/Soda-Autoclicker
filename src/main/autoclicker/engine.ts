@@ -306,9 +306,9 @@ export class AutoclickerEngine {
         if (cfg.items) {
           await this.input.mouseDown(2); console.log('[R] mouseDown items')
         } else {
-          console.log('[R] calling mouseClick(2)...')
-          await this.input.mouseClick(2)
-          console.log('[R] mouseClick(2) returned OK')
+          console.log('[R] calling windowRightClick...')
+          await this.input.windowRightClick()
+          console.log('[R] windowRightClick OK')
         }
 
         if (cfg.shakeEffect) {

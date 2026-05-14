@@ -130,6 +130,7 @@ export function LeftClickerPage({ config, updateConfig }: Props) {
               </SelectContent>
             </Select>
           </div>
+          <Label>// May cause issues with some clients. If the clicker isn't working this might be it.</Label>
         </CardContent>
       </Card>
 
