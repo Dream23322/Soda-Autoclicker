@@ -154,25 +154,26 @@ export class AutoclickerEngine {
         return
       }
 
+      // Per-bind gating. Toggles + panic + hideGUI + potReset fire from
+      // anywhere (they have their own internal guards where it matters).
+      // Macros that synthesise input (rod / pearl / pot) only fire when
+      // the game has focus, otherwise pressing the bind would type slot
+      // keys into whatever window is active.
       const gameOk = this.isGameFocused() || this.focusedProcess === ''
-      const menuOk = !this.cursorIsInMenu()
-      const inputOk = gameOk && menuOk
 
-      // PANIC is always polled, regardless of focus/menu state — the user
-      // needs to be able to kill the clicker even when the game has lost
-      // focus. Everything else still respects inputOk.
-      const checks: { id: string; vk: number; action: () => void; alwaysOn?: boolean }[] = [
-        { id: 'panic', vk: PANIC_VK, action: () => this.panic(), alwaysOn: true },
-        { id: 'hideGUI', vk: this.config.misc.bindHideGUI, action: () => this.onHideGUI?.(), alwaysOn: true },
-        { id: 'left', vk: this.config.left.bind, action: () => this.toggleLeft() },
-        { id: 'right', vk: this.config.right.bind, action: () => this.toggleRight() },
-        { id: 'rod', vk: this.config.misc.rodBind, action: () => this.doRod() },
-        { id: 'pearl', vk: this.config.misc.pearlBind, action: () => this.doPearl() },
-        { id: 'pot', vk: this.config.potions.potBind, action: () => this.doPotion() },
-        { id: 'potReset', vk: this.config.potions.potResetBind, action: () => { this.currentPotSlot = this.config.potions.lowestSlot } },
+      type Gate = 'always' | 'gameOnly'
+      const checks: { id: string; vk: number; action: () => void; gate: Gate }[] = [
+        { id: 'panic', vk: PANIC_VK, action: () => this.panic(), gate: 'always' },
+        { id: 'hideGUI', vk: this.config.misc.bindHideGUI, action: () => this.onHideGUI?.(), gate: 'always' },
+        { id: 'left', vk: this.config.left.bind, action: () => this.toggleLeft(), gate: 'always' },
+        { id: 'right', vk: this.config.right.bind, action: () => this.toggleRight(), gate: 'always' },
+        { id: 'rod', vk: this.config.misc.rodBind, action: () => this.doRod(), gate: 'gameOnly' },
+        { id: 'pearl', vk: this.config.misc.pearlBind, action: () => this.doPearl(), gate: 'gameOnly' },
+        { id: 'pot', vk: this.config.potions.potBind, action: () => this.doPotion(), gate: 'gameOnly' },
+        { id: 'potReset', vk: this.config.potions.potResetBind, action: () => { this.currentPotSlot = this.config.potions.lowestSlot }, gate: 'always' },
       ]
 
-      const active = checks.filter(c => c.vk && (c.alwaysOn || inputOk))
+      const active = checks.filter(c => c.vk && (c.gate === 'always' || gameOk))
       if (active.length === 0) return
 
       // Batched: one stdio round-trip per poll tick instead of up to seven.
