@@ -2,6 +2,8 @@ import sys
 import json
 import random
 import time
+import ctypes
+from ctypes import wintypes
 import win32api
 import win32con
 import win32gui
@@ -13,10 +15,7 @@ except ImportError:
     psutil = None
 
 
-# CURSORINFO.flags bits. CURSOR_SHOWING (0x1) is set when the OS is currently
-# drawing the cursor. MC clears it during gameplay (cursor captured by GLFW)
-# and sets it in any text-input context: inventory, chat, anvil, sign editor.
-CURSOR_SHOWING = 0x00000001
+
 
 
 def get_mc_hwnd():
@@ -53,12 +52,21 @@ def foreground_process_name():
 
 
 def cursor_info():
-    """Return (handle, visible). visible reflects CURSOR_SHOWING."""
+    """Return (handle, in_menu).  in_menu is True when the cursor is NOT
+    clipped — during gameplay GLFW calls ClipCursor() to trap the cursor in
+    the game window; in menus, chat, inventory etc. the clip is released."""
     try:
-        info = win32gui.GetCursorInfo()
-        flags = info[0]
-        hcursor = info[1]
-        return hcursor, bool(flags & CURSOR_SHOWING)
+        rect = wintypes.RECT()
+        ctypes.windll.user32.GetClipCursor(ctypes.byref(rect))
+        screen_w = win32api.GetSystemMetrics(0)
+        screen_h = win32api.GetSystemMetrics(1)
+        # If the clip rect roughly matches the full screen, the cursor is free
+        # (menu / chat / alt-tabbed).  If it's smaller, MC has it captured
+        # (gameplay).
+        r = (rect.left, rect.top, rect.right, rect.bottom)
+        free = r[0] <= 0 and r[1] <= 0 and r[2] >= screen_w - 5 and r[3] >= screen_h - 5
+        hcursor = win32gui.GetCursorInfo()[1]
+        return hcursor, free
     except Exception:
         return 0, False
 

@@ -1,14 +1,4 @@
-// Discord Rich Presence integration.
-//
-// IMPORTANT: paste your Discord *Application ID* (not the public key!) below.
-// Find it at https://discord.com/developers/applications/<your-app>/general-information
-//   - 'Application ID'  → long numeric snowflake, looks like 1234567890123456789
-//                        → this is what we need
-//   - 'Public Key'      → 64-char hex, used only for HTTP interaction signing
-//                        → NOT what we need
-//
-// If left blank, Discord RPC stays disabled and logs a warning at startup.
-const DISCORD_APP_ID = ''
+const DISCORD_APP_ID = '1400790093312032808'
 
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-var-requires */
 let DiscordRPC: any = null

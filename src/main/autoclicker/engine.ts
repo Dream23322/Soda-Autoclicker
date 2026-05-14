@@ -53,7 +53,7 @@ export class AutoclickerEngine {
   private movementState = { w: false, a: false, s: false, d: false, jump: 0 }
   private recordCycleIndex = 0
   focusedProcess = ''
-  private cursorHandle = 0
+  private cursorVisible = false
   private smartBHActive = false
   private currentPotSlot = 0
   // Tracks whether autosprint itself is currently holding Ctrl down. We only
@@ -65,6 +65,9 @@ export class AutoclickerEngine {
   // physical button stuck pressed at the OS level.
   private leftHoldingMouse = false
   private rightHoldingMouse = false
+  // Set to true after the first successful window-listener poll so we know
+  // an empty focusedProcess means "genuinely not Minecraft" vs "not checked yet".
+  private windowPolledOnce = false
 
   private windowInterval: ReturnType<typeof setInterval> | null = null
   private bindPollInterval: ReturnType<typeof setInterval> | null = null
@@ -162,7 +165,7 @@ export class AutoclickerEngine {
       //                 the clicker or types slot keys must use this so it
       //                 doesn't fire while the user is in chat / inventory /
       //                 anvil / sign / another app.
-      const gameOk = this.isGameFocused() || this.focusedProcess === ''
+      const gameOk = this.isGameFocused() || (!this.windowPolledOnce && this.focusedProcess === '')
       const gameplayOk = gameOk && !this.cursorIsInMenu()
 
       type Gate = 'always' | 'gameplay'
@@ -252,7 +255,8 @@ export class AutoclickerEngine {
 
   /** True when MC is focused and the player is in gameplay (no menu/inventory/chat open). */
   private inActiveGameplay(): boolean {
-    return this.isGameFocused() && !this.cursorIsInMenu()
+    if (this.focusedProcess && !this.isGameFocused()) return false
+    return !this.cursorIsInMenu()
   }
 
   private isFocused(section: string): boolean {
@@ -470,12 +474,16 @@ export class AutoclickerEngine {
       try {
         const info = await this.input.getWindowInfo()
         this.focusedProcess = info.processName
-        this.cursorHandle = info.cursorHandle
-      } catch { this.focusedProcess = ''; this.cursorHandle = 0 }
+        this.cursorVisible = info.cursorVisible
+        this.windowPolledOnce = true
+      } catch {
+        this.focusedProcess = ''
+        this.cursorVisible = false
+      }
     }, 500)
   }
 
-  private cursorIsInMenu(): boolean { return this.cursorHandle > 50000 && this.cursorHandle < 100000 }
+  private cursorIsInMenu(): boolean { return this.cursorVisible }
 
   // ── Movement ──
   //

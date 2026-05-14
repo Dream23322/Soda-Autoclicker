@@ -18,6 +18,9 @@ export class InputHelper {
   private warnedStaleBatch = false
 
   async start(): Promise<void> {
+    // Kill any stale helper from a previous run to prevent orphan processes.
+    this.stop()
+    try { spawn('taskkill', ['/f', '/im', 'input_helper.exe'], { windowsHide: true }).unref() } catch {}
     if (this.started) return
 
     const isDev = !app.isPackaged
@@ -236,13 +239,14 @@ export class InputHelper {
     return r?.ok ? (r.cursor_handle ?? 0) : 0
   }
 
-  /** Batched: process name + cursor handle in one round-trip. */
-  async getWindowInfo(): Promise<{ processName: string; cursorHandle: number }> {
+  /** Batched: process name + cursor info in one round-trip. */
+  async getWindowInfo(): Promise<{ processName: string; cursorHandle: number; cursorVisible: boolean }> {
     const r = await this.send({ action: 'get_window_info' }, true) as any
-    if (!r?.ok) return { processName: '', cursorHandle: 0 }
+    if (!r?.ok) return { processName: '', cursorHandle: 0, cursorVisible: false }
     return {
       processName: r.process_name ?? '',
       cursorHandle: r.cursor_handle ?? 0,
+      cursorVisible: !!r.cursor_visible,
     }
   }
 }
