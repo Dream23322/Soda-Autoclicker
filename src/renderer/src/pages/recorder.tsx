@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -16,65 +16,54 @@ export function RecorderPage({ config, updateConfig }: Props) {
   const [recording, setRecording] = useState(false)
   const [clickCount, setClickCount] = useState(0)
 
+  // Refs survive renders without triggering re-binding, and they don't get
+  // captured into stale closures the way state does.
+  const cleanupRef = useRef<(() => void) | null>(null)
+
   const rec = r.record ?? []
   const mult = r.recordMultiplier ?? 1
+  // Average CPS = clicks / (total seconds). `rec` is stored in seconds.
+  const totalSec = rec.reduce((a: number, b: number) => a + b, 0) || 1
   const avgCps = rec.length > 0
-    ? Math.round((rec.length / (rec.reduce((a: number, b: number) => a + b, 0) || 1)) * mult * 100) / 100
+    ? Math.round((rec.length / totalSec) / mult * 100) / 100
     : 0
 
   const startRecording = () => {
+    if (cleanupRef.current) cleanupRef.current()
     setRecording(true)
     setClickCount(0)
+
     const recorded: number[] = []
     let lastTime = Date.now()
 
     const handler = (e: MouseEvent) => {
       if (e.button !== 0) return
       const now = Date.now()
-      recorded.push(now - lastTime)
+      // Store deltas in SECONDS — the engine multiplies back to ms.
+      recorded.push((now - lastTime) / 1000)
       lastTime = now
       setClickCount(recorded.length)
     }
 
     window.addEventListener('mousedown', handler)
 
-    // Auto-stop after 10 seconds or manual stop
-    const checkInterval = setInterval(() => {
-      if (!recording) {
-        clearInterval(checkInterval)
-        window.removeEventListener('mousedown', handler)
-        if (recorded.length < 2) {
-          recorded.length = 0
-          recorded.push(0.08)
-        } else {
-          recorded[0] = 0
-          recorded.pop()
-        }
-        updateConfig(['recorder', 'record'], recorded)
-      }
-    }, 100)
-
-    // Store cleanup
-    ;(window as any).__recorderCleanup = () => {
-      clearInterval(checkInterval)
+    cleanupRef.current = () => {
       window.removeEventListener('mousedown', handler)
+      cleanupRef.current = null
       if (recorded.length < 2) {
-        recorded.length = 0
-        recorded.push(0.08)
-      } else {
-        recorded[0] = 0
-        recorded.pop()
+        updateConfig(['recorder', 'record'], [0.08])
+        return
       }
-      updateConfig(['recorder', 'record'], recorded)
+      // Drop the synthetic first delta (Start → first click) and the trailing
+      // one (last click → Stop), neither of which represents a real cadence.
+      const cleaned = recorded.slice(1, -1)
+      updateConfig(['recorder', 'record'], cleaned.length ? cleaned : [0.08])
     }
   }
 
   const stopRecording = () => {
     setRecording(false)
-    if ((window as any).__recorderCleanup) {
-      ;(window as any).__recorderCleanup()
-      ;(window as any).__recorderCleanup = null
-    }
+    if (cleanupRef.current) cleanupRef.current()
   }
 
   return (
@@ -94,7 +83,7 @@ export function RecorderPage({ config, updateConfig }: Props) {
           <div className="space-y-2">
             <Label>Multiplier: {(r.recordMultiplier ?? 1).toFixed(2)}x</Label>
             <Slider min={0.5} max={2.5} step={0.1} value={[r.recordMultiplier ?? 1]}
-              onValueChange={([v]) => updateConfig(['recorder', 'recordMultiplier'], Math.round(v * 100) / 100)} />{/*  */}
+              onValueChange={([v]) => updateConfig(['recorder', 'recordMultiplier'], Math.round(v * 100) / 100)} />
           </div>
           <div className="flex gap-2">
             <Button onClick={startRecording} disabled={recording}>Start Recording</Button>

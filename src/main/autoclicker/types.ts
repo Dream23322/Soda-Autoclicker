@@ -9,7 +9,6 @@ export interface LeftClickerConfig {
   RMBLock: boolean
   blockHit: boolean
   blockHitChance: number
-  bhType: 'V1' | 'V2' | 'V3'
   smartBH: number
   shakeEffect: boolean
   shakeEffectForce: number
@@ -51,25 +50,21 @@ export interface OverlayConfig {
 
 export interface MiscConfig {
   saveSettings: boolean
-  guiHidden: boolean
   bindHideGUI: number
   windowName: string
   discordRichPresence: boolean
   switchDelay: number
   rodBind: number
-  longRod: boolean
   rodDelay: number
   rodSlot: string
   pearlBind: number
   pearlSlot: string
   swordSlot: string
-  theme: string
   red: number
   green: number
   blue: number
   toggleSounds: boolean
   compatibilityMode: boolean
-  ping: number
   overlayPosition: string
   overlayLayout: string
 }
@@ -78,7 +73,6 @@ export interface PotionsConfig {
   enabled: boolean
   potBind: number
   throwDelay: number
-  switchBackSlot: string
   potResetBind: number
   lowestSlot: number
   highestSlot: number
@@ -126,7 +120,6 @@ export const DEFAULT_CONFIG: AutoclickerConfig = {
     RMBLock: false,
     blockHit: false,
     blockHitChance: 20,
-    bhType: 'V2',
     smartBH: 0,
     shakeEffect: false,
     shakeEffectForce: 5,
@@ -164,25 +157,21 @@ export const DEFAULT_CONFIG: AutoclickerConfig = {
   },
   misc: {
     saveSettings: true,
-    guiHidden: false,
     bindHideGUI: 0,
     windowName: 'soda-autoclicker',
     discordRichPresence: false,
     switchDelay: 0.1,
     rodBind: 0,
-    longRod: false,
     rodDelay: 0.2,
     rodSlot: '2',
     pearlBind: 0,
     pearlSlot: '8',
     swordSlot: '1',
-    theme: 'lightblue',
     red: 0,
     green: 0,
     blue: 0,
     toggleSounds: true,
     compatibilityMode: false,
-    ping: 230,
     overlayPosition: 'top-right',
     overlayLayout: 'horizontal',
   },
@@ -190,7 +179,6 @@ export const DEFAULT_CONFIG: AutoclickerConfig = {
     enabled: false,
     potBind: 0,
     throwDelay: 0.7,
-    switchBackSlot: '1',
     potResetBind: 0,
     lowestSlot: 1,
     highestSlot: 9,

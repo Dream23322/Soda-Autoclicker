@@ -4,6 +4,7 @@ import { electronApp, optimizer, is } from "@electron-toolkit/utils"
 import { AutoclickerEngine } from "./autoclicker/engine"
 import { registerAutoclickerIPC } from "./autoclicker/ipc"
 import { enable as enableLogger } from "./logger"
+import { startDiscord, stopDiscord } from "./discord"
 
 enableLogger()
 
@@ -35,8 +36,6 @@ function createSettingsWindow(): void {
 
 	settingsWindow.setTitle(autoclickerEngine.config.misc.windowName || 'soda-autoclicker')
 
-	// Intercept any real close (Alt+F4, app.quit propagation, etc) and just hide
-	// to the tray, unless the user actually picked Quit.
 	settingsWindow.on("close", (e) => {
 		if (isQuitting) return
 		e.preventDefault()
@@ -184,6 +183,15 @@ app.whenReady().then(() => {
 		}
 	}
 
+	startDiscord(() => ({
+		enabled: autoclickerEngine.config.misc.discordRichPresence,
+		leftEnabled: autoclickerEngine.config.left.enabled,
+		rightEnabled: autoclickerEngine.config.right.enabled,
+		leftCPS: autoclickerEngine.config.left.averageCPS,
+		rightCPS: autoclickerEngine.config.right.averageCPS,
+		recording: autoclickerEngine.config.recorder.enabled,
+	}))
+
 	setTimeout(() => overlayWindow?.showInactive(), 1500)
 
 	app.on("activate", function () {
@@ -196,6 +204,7 @@ app.on("window-all-closed", () => {
 })
 
 app.on("will-quit", () => {
+	stopDiscord()
 	autoclickerEngine.stop()
 	tray?.destroy()
 	tray = null

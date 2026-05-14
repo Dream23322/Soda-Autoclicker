@@ -12,6 +12,7 @@ const PANIC_VK = 0x1B
 const POLL_INTERVAL = 50
 const VK_LMB = 0x01
 const VK_RMB = 0x02
+const VK_CTRL = 0x11
 
 const UNSAFE_KEYS = new Set(['__proto__', 'prototype', 'constructor'])
 
@@ -59,6 +60,11 @@ export class AutoclickerEngine {
   // ever release Ctrl that we pressed — otherwise we'd cancel the user's
   // Ctrl+A / Ctrl+C / etc. in other windows.
   private sprintHoldingCtrl = false
+  // Track held mouse buttons separately for left ('Full' / 'Shift With Click')
+  // and right ('items' mode). Without this, disabling mid-hold leaves the
+  // physical button stuck pressed at the OS level.
+  private leftHoldingMouse = false
+  private rightHoldingMouse = false
 
   private windowInterval: ReturnType<typeof setInterval> | null = null
   private bindPollInterval: ReturnType<typeof setInterval> | null = null
@@ -114,7 +120,29 @@ export class AutoclickerEngine {
     this.running = false
     if (this.windowInterval) clearInterval(this.windowInterval)
     if (this.bindPollInterval) clearInterval(this.bindPollInterval)
+    this.releaseHeldInputs()
     this.input.stop()
+  }
+
+  /**
+   * Release any inputs we're currently holding (mouse buttons from
+   * Full/Shift-With-Click/items, Ctrl from autosprint) so the user doesn't
+   * end up with a stuck button or modifier after panic / toggle-off / quit.
+   * Synchronous fire-and-forget; safe to call from non-async contexts.
+   */
+  private releaseHeldInputs(): void {
+    if (this.leftHoldingMouse) {
+      this.input.mouseUp(1).catch(() => {})
+      this.leftHoldingMouse = false
+    }
+    if (this.rightHoldingMouse) {
+      this.input.mouseUp(2).catch(() => {})
+      this.rightHoldingMouse = false
+    }
+    if (this.sprintHoldingCtrl) {
+      this.input.keyUp(VK_CTRL).catch(() => {})
+      this.sprintHoldingCtrl = false
+    }
   }
 
   // ── Bind polling ──
@@ -173,6 +201,10 @@ export class AutoclickerEngine {
       if (!this.config.left.workInMenus && this.cursorIsInMenu()) return
     }
     this.config.left.enabled = wouldEnable
+    if (!wouldEnable && this.leftHoldingMouse) {
+      this.input.mouseUp(1).catch(() => {})
+      this.leftHoldingMouse = false
+    }
     console.log(`[clicker] left ${this.config.left.enabled ? 'ENABLED' : 'DISABLED'}`)
     this.playToggleSound(this.config.left.enabled)
     this.emitUpdate()
@@ -185,6 +217,10 @@ export class AutoclickerEngine {
       if (!this.config.right.workInMenus && this.cursorIsInMenu()) return
     }
     this.config.right.enabled = wouldEnable
+    if (!wouldEnable && this.rightHoldingMouse) {
+      this.input.mouseUp(2).catch(() => {})
+      this.rightHoldingMouse = false
+    }
     console.log(`[clicker] right ${this.config.right.enabled ? 'ENABLED' : 'DISABLED'}`)
     this.playToggleSound(this.config.right.enabled)
     this.emitUpdate()
@@ -195,6 +231,7 @@ export class AutoclickerEngine {
     if (was) {
       this.config.left.enabled = false
       this.config.right.enabled = false
+      this.releaseHeldInputs()
       console.log('[clicker] PANIC — all disabled')
       this.emitUpdate()
     }
@@ -243,30 +280,39 @@ export class AutoclickerEngine {
           ? this.getRecordedDelay()
           : this.calculateDelay(this.randomCPS(cfg), cfg.blatant)
 
-        if (!cfg.enabled || this.smartBHActive) { await this.sleep(delay); continue }
+        if (!cfg.enabled || this.smartBHActive) {
+          if (this.leftHoldingMouse && !cfg.enabled) {
+            try { await this.input.mouseUp(1) } catch {}
+            this.leftHoldingMouse = false
+          }
+          await this.sleep(delay); continue
+        }
 
         if (cfg.mode === 'Hold') {
           const lmb = await this.input.isKeyDown(VK_LMB)
           if (!lmb) { await this.sleep(5); continue }
         }
 
-        if (cfg.RMBLock && await this.input.isKeyDown(VK_RMB)) { console.log('[L] blocked by RMBLock'); await this.sleep(10); continue }
+        if (cfg.RMBLock && await this.input.isKeyDown(VK_RMB)) { await this.sleep(10); continue }
         if (cfg.onlyWhenFocused && this.focusedProcess && !this.isGameFocused()) { await this.sleep(50); continue }
         if (!cfg.workInMenus && this.cursorIsInMenu()) { await this.sleep(50); continue }
 
-        console.log('[L] pass all checks -> click')
         const breakMode = cfg.breakBlocks
         const shift = (breakMode === 'Shift No Click' || breakMode === 'Shift With Click') ? await this.input.isKeyDown(0x10) : false
 
         if (breakMode === 'Shift No Click' && shift) { await this.sleep(delay); continue }
         if (breakMode === 'Shift With Click' && shift) {
-          await this.input.mouseDown(1); console.log('[L] mouseDown Shift')
+          await this.input.mouseDown(1)
+          this.leftHoldingMouse = true
         } else if (breakMode === 'Full') {
-          await this.input.mouseDown(1); console.log('[L] mouseDown Full')
+          await this.input.mouseDown(1)
+          this.leftHoldingMouse = true
         } else {
-          console.log('[L] calling mouseClick(1)...')
+          if (this.leftHoldingMouse) {
+            try { await this.input.mouseUp(1) } catch {}
+            this.leftHoldingMouse = false
+          }
           await this.input.mouseClick(1)
-          console.log('[L] mouseClick(1) returned OK')
         }
 
         if (cfg.blockHit) {
@@ -294,7 +340,13 @@ export class AutoclickerEngine {
         const cfg = this.config.right
         const delay = this.calculateDelay(this.randomCPS(cfg), cfg.blatant)
 
-        if (!cfg.enabled || this.smartBHActive) { await this.sleep(delay); continue }
+        if (!cfg.enabled || this.smartBHActive) {
+          if (this.rightHoldingMouse && !cfg.enabled) {
+            try { await this.input.mouseUp(2) } catch {}
+            this.rightHoldingMouse = false
+          }
+          await this.sleep(delay); continue
+        }
 
         if (cfg.mode === 'Hold') {
           const rmb = await this.input.isKeyDown(VK_RMB)
@@ -309,13 +361,15 @@ export class AutoclickerEngine {
         if (cfg.onlyWhenFocused && this.focusedProcess && !this.isGameFocused()) { await this.sleep(50); continue }
         if (!cfg.workInMenus && this.cursorIsInMenu()) { await this.sleep(50); continue }
 
-        console.log('[R] pass all checks -> click')
         if (cfg.items) {
-          await this.input.mouseDown(2); console.log('[R] mouseDown items')
+          await this.input.mouseDown(2)
+          this.rightHoldingMouse = true
         } else {
-          console.log('[R] calling windowRightClick...')
+          if (this.rightHoldingMouse) {
+            try { await this.input.mouseUp(2) } catch {}
+            this.rightHoldingMouse = false
+          }
           await this.input.windowRightClick()
-          console.log('[R] windowRightClick OK')
         }
 
         if (cfg.shakeEffect) {
@@ -391,6 +445,10 @@ export class AutoclickerEngine {
   }
 
   // ── Recorder ──
+  //
+  // record entries are stored in SECONDS (e.g. 0.08 = 80ms between clicks),
+  // so a fresh recording of 100ms gaps becomes `0.1` and the loop sleeps
+  // `0.1 * 1000 * multiplier` ms.
 
   private getRecordedDelay(): number {
     const r = this.config.recorder.record
@@ -433,20 +491,16 @@ export class AutoclickerEngine {
       if (!(a || d) || !w) continue
       if (mv.wTapMode === 'chance' && Math.random() > mv.wTapValue / 100) continue
       await this.input.keyUp(0x57); await this.sleep(50); await this.input.keyDown(0x57)
-      // In `delay` mode wTapValue is the cooldown (ms) between taps.
       if (mv.wTapMode === 'delay') await this.sleep(Math.max(0, mv.wTapValue))
     }
   }
 
   private async startAutoSprint(): Promise<void> {
     while (this.running) {
-      // Autosprint is Minecraft-specific. Gate on the game window AND active
-      // gameplay (no inventory/chat). Only release Ctrl that *we* pressed —
-      // otherwise we'd cancel the user's Ctrl+A / Ctrl+C in other windows.
       const enabled = this.config.movement.autoSprint
       if (!enabled || !this.inActiveGameplay()) {
         if (this.sprintHoldingCtrl) {
-          await this.input.keyUp(0x11)
+          await this.input.keyUp(VK_CTRL)
           this.sprintHoldingCtrl = false
         }
         await this.sleep(200)
@@ -455,10 +509,10 @@ export class AutoclickerEngine {
       await this.sleep(50)
       const moving = await this.input.isKeyDown(0x57) || await this.input.isKeyDown(0x41) || await this.input.isKeyDown(0x44)
       if (moving && !this.sprintHoldingCtrl) {
-        await this.input.keyDown(0x11)
+        await this.input.keyDown(VK_CTRL)
         this.sprintHoldingCtrl = true
       } else if (!moving && this.sprintHoldingCtrl) {
-        await this.input.keyUp(0x11)
+        await this.input.keyUp(VK_CTRL)
         this.sprintHoldingCtrl = false
       }
     }
@@ -523,7 +577,6 @@ export class AutoclickerEngine {
   }
 
   updateConfig(p: string[], value: unknown): void {
-    // Reject any path segment that could pollute the prototype chain.
     for (const seg of p) {
       if (UNSAFE_KEYS.has(seg)) {
         console.warn('[config] rejected unsafe path segment:', seg)
@@ -539,24 +592,27 @@ export class AutoclickerEngine {
 
   getConfig(): AutoclickerConfig { return this.config }
 
-  private emitUpdate(): void { this.onConfigUpdate?.({ ...this.config }) }
+  private emitUpdate(): void {
+    try { this.onConfigUpdate?.(this.config) } catch {}
+  }
+
+  // ── Misc helpers ──
+
+  private sleep(ms: number): Promise<void> { return new Promise(r => setTimeout(r, Math.max(0, ms))) }
 
   private playToggleSound(enabled: boolean): void {
     if (!this.config.misc.toggleSounds) return
-    const name = enabled ? 'notify_on.wav' : 'notify_off.wav'
-    const wavPath = path.join(USER_RESOURCE, name)
-    if (!fs.existsSync(wavPath)) return
     try {
-      const cmd = process.platform === 'win32'
-        ? ['powershell', '-c', `(New-Object Media.SoundPlayer '${wavPath.replace(/'/g, "''")}').PlaySync()`]
-        : process.platform === 'darwin'
-          ? ['afplay', wavPath]
-          : ['paplay', wavPath]
-      spawn(cmd[0], cmd.slice(1), { windowsHide: true }).unref()
+      const file = enabled ? 'on.wav' : 'off.wav'
+      const p = path.join(USER_RESOURCE, file)
+      if (!fs.existsSync(p)) return
+      if (process.platform === 'win32') {
+        spawn('powershell', ['-NoProfile', '-Command', `(New-Object Media.SoundPlayer '${p}').PlaySync()`], { stdio: 'ignore', windowsHide: true }).unref()
+      } else if (process.platform === 'darwin') {
+        spawn('afplay', [p], { stdio: 'ignore' }).unref()
+      } else {
+        spawn('aplay', [p], { stdio: 'ignore' }).unref()
+      }
     } catch {}
-  }
-
-  private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms))
   }
 }

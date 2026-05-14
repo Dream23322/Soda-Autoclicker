@@ -103,8 +103,9 @@ export function registerAutoclickerIPC(engine: AutoclickerEngine, settingsWindow
       const filepath = path.join(RESOURCE_FOLDER, `${filename}.json`)
       if (!fs.existsSync(filepath)) return false
       const data = JSON.parse(fs.readFileSync(filepath, 'utf-8'))
-      // Deep merge per section so a preset that only customises e.g. `left`
-      // doesn't blow away everything else.
+      // Strip ephemeral `enabled` flags so loading a preset never silently
+      // turns the clicker on. The user explicitly toggles after load.
+      stripEphemeralFlags(data)
       engine.applyPreset(data)
       engine.saveConfig()
       return true
@@ -117,7 +118,11 @@ export function registerAutoclickerIPC(engine: AutoclickerEngine, settingsWindow
     try {
       if (!isSafeFilename(args?.filename)) return false
       if (!fs.existsSync(RESOURCE_FOLDER)) fs.mkdirSync(RESOURCE_FOLDER, { recursive: true })
-      const cfg = engine.getConfig()
+      // Deep clone so we never mutate the live config.
+      const cfg = JSON.parse(JSON.stringify(engine.getConfig()))
+      // Don't bake `enabled: true` into a shared preset — otherwise loading
+      // it would auto-start the clicker on whoever imports it.
+      stripEphemeralFlags(cfg)
       cfg.filename = args.filename
       cfg.displayName = args.displayName
       cfg.Author = args.Author
@@ -152,4 +157,11 @@ export function registerAutoclickerIPC(engine: AutoclickerEngine, settingsWindow
   ipcMain.on('debug:log', (_e, level: string, ...args: unknown[]) => {
     logger.fromRenderer(level, ...args)
   })
+}
+
+function stripEphemeralFlags(cfg: Record<string, any>): void {
+  if (cfg?.left && typeof cfg.left === 'object') cfg.left.enabled = false
+  if (cfg?.right && typeof cfg.right === 'object') cfg.right.enabled = false
+  if (cfg?.recorder && typeof cfg.recorder === 'object') cfg.recorder.enabled = false
+  if (cfg?.potions && typeof cfg.potions === 'object') cfg.potions.enabled = false
 }
