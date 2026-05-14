@@ -1,6 +1,6 @@
 {
   "name": "soda",
-  "version": "2.0.1",
+  "version": "2.0.2-beta",
   "description": "The best 1.8.9 Autoclicker to ever do it",
   "main": "./out/main/index.js",
   "author": "4urxra",
