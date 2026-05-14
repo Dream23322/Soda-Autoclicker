@@ -13,6 +13,12 @@ except ImportError:
     psutil = None
 
 
+# CURSORINFO.flags bits. CURSOR_SHOWING (0x1) is set when the OS is currently
+# drawing the cursor. MC clears it during gameplay (cursor captured by GLFW)
+# and sets it in any text-input context: inventory, chat, anvil, sign editor.
+CURSOR_SHOWING = 0x00000001
+
+
 def get_mc_hwnd():
     """Try to find Minecraft's LWJGL window, fall back to foreground."""
     hwnd = win32gui.FindWindow("LWJGL", None)
@@ -46,12 +52,15 @@ def foreground_process_name():
         return ''
 
 
-def cursor_handle():
+def cursor_info():
+    """Return (handle, visible). visible reflects CURSOR_SHOWING."""
     try:
         info = win32gui.GetCursorInfo()
-        return info[1]
+        flags = info[0]
+        hcursor = info[1]
+        return hcursor, bool(flags & CURSOR_SHOWING)
     except Exception:
-        return 0
+        return 0, False
 
 
 def handle_command(cmd):
@@ -114,12 +123,16 @@ def handle_command(cmd):
         result['process_name'] = foreground_process_name()
 
     elif action == 'get_cursor_info':
-        result['cursor_handle'] = cursor_handle()
+        handle, visible = cursor_info()
+        result['cursor_handle'] = handle
+        result['cursor_visible'] = visible
 
     elif action == 'get_window_info':
         # One round-trip for both. Saves a stdio hop every 500ms.
+        handle, visible = cursor_info()
         result['process_name'] = foreground_process_name()
-        result['cursor_handle'] = cursor_handle()
+        result['cursor_handle'] = handle
+        result['cursor_visible'] = visible
 
     elif action == 'window_right_click':
         hwnd = get_mc_hwnd()
