@@ -10,5 +10,7 @@ out/
 pnpm-lock.yaml
 *.spec
 helpers/*.exe
+helpers/debug_*
+helpers/test_*
 build/
 package-lock.json
