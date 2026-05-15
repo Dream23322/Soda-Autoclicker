@@ -60,6 +60,10 @@ export class AutoclickerEngine {
   private moduleEnabled: Record<string, boolean> = {}
   /** Overlay items set by modules. Each item is { t:'text', v:string } or { t:'bar', v:number, l:number, filled:number }. */
   moduleOverlayText: any[] = []
+  /** Built-in keystrokes overlay — reads keys in one batch and updates overlay atomically */
+  keystrokesInterval: ReturnType<typeof setInterval> | null = null
+  /** The 7 VKs for the keystrokes grid (LMB, W, RMB, A, S, D, Space) */
+  private readonly KS_VKS = [0x01, 0x57, 0x02, 0x41, 0x53, 0x44, 0x20]
 
   private lastBlockHitTime = 0
   private betterInputTimestamp = 0
@@ -92,6 +96,7 @@ export class AutoclickerEngine {
 
   onConfigUpdate: ConfigUpdateCallback | null = null
   onHideGUI: (() => void) | null = null
+  onOverlayUpdate: ((items: any[]) => void) | null = null
 
   private bootstrapResources(): void {
     try {
@@ -550,6 +555,52 @@ export class AutoclickerEngine {
 
   private cursorIsInMenu(): boolean { return this.cursorVisible }
 
+  private pushOverlay(): void {
+    this.onOverlayUpdate?.([...this.moduleOverlayText])
+  }
+
+  // ── Built-in keystrokes overlay ──
+
+  /**
+   * Enable the keystrokes overlay.  Reads 7 key states (LMB, W, RMB, A, S, D, Space)
+   * in ONE batched round-trip and atomically replaces moduleOverlayText so there's
+   * never a frame where the overlay sees an empty or partial array.
+   */
+  startKeystrokes(): void {
+    if (this.keystrokesInterval) return
+    console.log('[ks] starting')
+    this.keystrokesInterval = setInterval(async () => {
+      try {
+        const states = await this.input.getKeyStates(this.KS_VKS)
+        const dot = (held: boolean) => held ? 100 : 5
+        this.moduleOverlayText = [
+          { t: 'dot', v: '●', pct: dot(states[0]) / 100 },
+          { t: 'dot', v: '●', pct: dot(states[1]) / 100 },
+          { t: 'dot', v: '●', pct: dot(states[2]) / 100 },
+          { t: 'dot', v: '●', pct: dot(states[3]) / 100 },
+          { t: 'dot', v: '●', pct: dot(states[4]) / 100 },
+          { t: 'dot', v: '●', pct: dot(states[5]) / 100 },
+          { t: 'dot', v: '●', pct: dot(states[6]) / 100 },
+          { t: 'dot', v: '●', pct: dot(states[6]) / 100 },
+          { t: 'dot', v: '●', pct: dot(states[6]) / 100 },
+        ]
+        this.pushOverlay()
+      } catch {
+        // input helper down — keep last frame rather than clearing
+      }
+    }, 30)
+  }
+
+  stopKeystrokes(): void {
+    if (this.keystrokesInterval) {
+      clearInterval(this.keystrokesInterval)
+      this.keystrokesInterval = null
+      this.moduleOverlayText = []
+      this.pushOverlay()
+      console.log('[ks] stopped')
+    }
+  }
+
   // ── Macro execution ──
 
   private keyNameToVk(name: string): number {
@@ -980,6 +1031,7 @@ export class AutoclickerEngine {
     if (this.moduleEnabled[key]) {
       this.moduleEnabled[key] = false
       this.moduleOverlayText = []
+      this.pushOverlay()
       console.log(`[module] "${macro.name}" disabled`)
       return
     }
@@ -1006,11 +1058,14 @@ export class AutoclickerEngine {
     const actions = this.modules[key]
     if (!actions) return
     while (this.moduleEnabled[key]) {
-      this.moduleOverlayText = []
+      // Module MUST call overlay_clear as its first action if it wants to
+      // replace overlay content.  We no longer nuke moduleOverlayText here
+      // so there's no frame where the overlay polls an empty array.
       for (const a of actions) {
         if (!this.moduleEnabled[key]) break
         await this.execAction(a)
       }
+      this.pushOverlay()
       if (!this.moduleEnabled[key]) break
     }
   }
@@ -1040,6 +1095,7 @@ export class AutoclickerEngine {
       this.moduleOverlayText = []
       this.macroLoopAbort[key] = false
       await this.runMacro(macro)
+      this.pushOverlay()
       if (this.macroLoopAbort[key]) break
     }
   }

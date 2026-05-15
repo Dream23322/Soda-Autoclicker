@@ -31,15 +31,20 @@ function useOverlayState() {
           setEnabled(s.overlayEnabled !== false)
         }
       } catch {}
-      try {
-        // @ts-ignore
-        const mt = await window.electron.autoclicker.getModuleOverlay()
-        if (alive) setModuleItems(mt || [])
-      } catch {}
     }
     poll()
-    const id = setInterval(poll, 80)
-    return () => { alive = false; clearInterval(id) }
+    const id = setInterval(poll, 500)
+
+    // Listen for push updates from the main process
+    const handler = (items: any[]) => { if (alive) setModuleItems(items || []) }
+    // @ts-ignore
+    window.electron.ipc.on('overlay:update', handler)
+
+    return () => {
+      alive = false; clearInterval(id)
+      // @ts-ignore
+      window.electron.ipc.removeListener('overlay:update', handler)
+    }
   }, [])
 
   return { l, r, pos, layout, enabled, moduleItems }
@@ -131,11 +136,12 @@ export function StatusOverlay() {
             }}>
               {dots.map((item, i) => {
                 const pct = (item as any).pct ?? 1
+                const mix = Math.round(15 + pct * 85)
                 return (
                   <div key={i} style={{
                     width: 12, height: 12,
-                    background: `color-mix(in srgb, var(--primary) ${Math.round(pct * 100)}%, transparent)`,
-                    boxShadow: pct > 0.5 ? `0 0 6px var(--primary), 0 0 12px var(--primary)` : 'none',
+                    background: `color-mix(in srgb, var(--primary) ${mix}%, transparent)`,
+                    boxShadow: pct > 0.6 ? `0 0 6px var(--primary), 0 0 12px var(--primary)` : 'none',
                     transition: 'all 0.08s',
                   }} />
                 )

@@ -172,6 +172,11 @@ app.whenReady().then(() => {
 	createTray()
 
 	registerAutoclickerIPC(autoclickerEngine, settingsWindow)
+	autoclickerEngine.onOverlayUpdate = (items) => {
+		if (overlayWindow && !overlayWindow.isDestroyed()) {
+			overlayWindow.webContents.send('overlay:update', items)
+		}
+	}
 	autoclickerEngine.onHideGUI = () => {
 		if (settingsWindow?.isVisible()) {
 			settingsWindow?.hide()

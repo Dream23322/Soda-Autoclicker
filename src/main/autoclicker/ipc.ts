@@ -334,4 +334,9 @@ export function registerAutoclickerIPC(engine: AutoclickerEngine, settingsWindow
     if (cfg?.recorder && typeof cfg.recorder === 'object') cfg.recorder.enabled = false
     if (cfg?.potions && typeof cfg.potions === 'object') cfg.potions.enabled = false
   }
+
+  ipcMain.handle('autoclicker:toggleKeystrokes', () => {
+    if (engine.keystrokesInterval) { engine.stopKeystrokes(); return false }
+    engine.startKeystrokes(); return true
+  })
 }

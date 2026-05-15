@@ -16,6 +16,7 @@ const INVOKE_CHANNELS: Set<string> = new Set([
 	"autoclicker:getConfigData",
 	"autoclicker:getStatus",
 	"autoclicker:getModuleOverlay",
+	"autoclicker:toggleKeystrokes",
 	"cloud:getUserId",
 	"cloud:setUserId",
 	"cloud:getServerUrl",
@@ -40,6 +41,7 @@ const INVOKE_CHANNELS: Set<string> = new Set([
 ])
 
 const SEND_CHANNELS: Set<string> = new Set(["window-control", "debug:log", "update:startDownload"])
+const LISTEN_CHANNELS: Set<string> = new Set(["overlay:update"])
 
 function assertAllowed(set: Set<string>, channel: string): void {
 	if (!set.has(channel)) throw new Error(`Blocked IPC channel: ${channel}`)
@@ -66,6 +68,7 @@ const api = {
 		getConfigData: (filename: string) => ipcRenderer.invoke("autoclicker:getConfigData", filename),
 		getStatus: () => ipcRenderer.invoke("autoclicker:getStatus"),
 		getModuleOverlay: () => ipcRenderer.invoke("autoclicker:getModuleOverlay"),
+		toggleKeystrokes: () => ipcRenderer.invoke("autoclicker:toggleKeystrokes"),
 	},
 
 	update: {
@@ -119,6 +122,13 @@ const api = {
 		send: (channel: string, data?: any) => {
 			assertAllowed(SEND_CHANNELS, channel)
 			ipcRenderer.send(channel, data)
+		},
+		on: (channel: string, callback: (...args: any[]) => void) => {
+			if (!LISTEN_CHANNELS.has(channel)) throw new Error(`Blocked IPC channel: ${channel}`)
+			ipcRenderer.on(channel, (_e, ...args) => callback(...args))
+		},
+		removeListener: (channel: string, callback: (...args: any[]) => void) => {
+			ipcRenderer.removeListener(channel, callback)
 		},
 	},
 }
