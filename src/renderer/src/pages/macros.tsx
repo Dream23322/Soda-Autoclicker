@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { BindButton } from '@/components/bind-button'
-import { Plus, Trash2, GripVertical, ChevronDown, ChevronRight, HelpCircle, ArrowUp, ArrowDown } from 'lucide-react'
+import { Plus, Trash2, GripVertical, ChevronDown, ChevronRight, HelpCircle, ArrowUp, ArrowDown, RefreshCw } from 'lucide-react'
+import { useAutoclicker } from '@/hooks/use-autoclicker'
 
 interface MacroAction {
   id: string
@@ -23,6 +24,7 @@ interface MacroStep {
 interface Macro {
   name: string
   bind: number
+  loop: boolean
   steps: MacroStep[]
 }
 
@@ -110,17 +112,20 @@ function KeyPicker({ value, onChange }: { value: number; onChange: (vk: number) 
 }
 
 const SCRIPT_SUGGESTIONS = [
+  { text: '// comment', label: '// — Comment' },
   { text: 'delay(100)', label: 'delay(ms) — Wait' },
   { text: 'key(0x31)', label: 'key(vk) — Tap key' },
   { text: 'key("a")', label: 'key("name") — Tap key by name' },
-  { text: 'keydown(0x31)', label: 'keydown(vk) — Hold key' },
+  { text: 'key(convert_key("shift"))', label: 'key(convert_key("name")) — Tap named key' },
+  { text: 'keydown(convert_key("shift"))', label: 'keydown(convert_key("name")) — Hold named key' },
   { text: 'keyup(0x31)', label: 'keyup(vk) — Release key' },
   { text: 'click(1)', label: 'click(btn) — Click mouse' },
-  { text: 'hold(0x31,200)', label: 'hold(vk, ms) — Hold then release' },
+  { text: 'hold(convert_key("shift"),$_delay)', label: 'hold(vk, ms) — Hold then release' },
   { text: 'setslot(1)', label: 'setslot(n) — Press hotbar slot' },
   { text: 'pitch(5)', label: 'pitch(delta) — Move mouse vertically' },
   { text: 'yaw(5)', label: 'yaw(delta) — Move mouse horizontally' },
-  { text: 'convert_key("a")', label: 'convert_key("name") — Get VK code' },
+  { text: '_delay: int = new_random(50,200)', label: 'Variable: random int' },
+  { text: '_r: float = new_random(0,1).fix=5', label: 'Variable: random float' },
   { text: 'if focused', label: 'if focused' },
   { text: 'if chance(50)', label: 'if chance(%)' },
   { text: 'if key_held(0x31)', label: 'if key_held(vk)' },
@@ -129,6 +134,10 @@ const SCRIPT_SUGGESTIONS = [
   { text: 'if clicking_left', label: 'if clicking_left' },
   { text: 'if clicking_right', label: 'if clicking_right' },
   { text: 'endif', label: 'endif' },
+  { text: 'overlay_text("hello")', label: 'overlay_text("text") — Show on overlay' },
+  { text: 'loadingbar($_cps,20,10)', label: 'loadingbar(value,max,length) — Loading bar on overlay' },
+  { text: 'overlay_clear', label: 'overlay_clear — Clear overlay text' },
+  { text: '$fullscript', label: '$fullscript — Module mode (toggle on/off)' },
 ]
 
 function ScriptEditor({ value, onChange }: { value: string; onChange: (v: string) => void }) {
@@ -137,6 +146,7 @@ function ScriptEditor({ value, onChange }: { value: string; onChange: (v: string
   const [cursorPos, setCursorPos] = useState(0)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const cursorRef = useRef<number | null>(null)
 
   const updateSuggestions = (text: string, cursor: number) => {
     const before = text.slice(0, cursor)
@@ -158,17 +168,20 @@ function ScriptEditor({ value, onChange }: { value: string; onChange: (v: string
     const wordMatch = before.match(/(\S+)$/)
     if (!wordMatch) return
     const start = cursorPos - wordMatch[1].length
+    const pos = start + suggestion.length + 1
     const newVal = value.slice(0, start) + suggestion + ' ' + after
+    cursorRef.current = pos
     onChange(newVal)
     setSuggestions([])
-    setTimeout(() => {
-      if (textareaRef.current) {
-        const pos = start + suggestion.length + 1
-        textareaRef.current.setSelectionRange(pos, pos)
-        textareaRef.current.focus()
-      }
-    }, 0)
   }
+
+  // Restore cursor position after controlled value update
+  useEffect(() => {
+    if (textareaRef.current && cursorRef.current !== null) {
+      textareaRef.current.setSelectionRange(cursorRef.current, cursorRef.current)
+      cursorRef.current = null
+    }
+  }, [value])
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -211,7 +224,11 @@ function ScriptEditor({ value, onChange }: { value: string; onChange: (v: string
         className="h-16 w-full rounded border border-[#333] bg-[#0d0d0d] p-1 text-[10px] font-mono text-muted-foreground"
         placeholder={'delay(500)\nkey(0x31)\nclick(2)\nhold(0x31,200)'}
         value={value}
-        onChange={e => { onChange(e.target.value); updateSuggestions(e.target.value, e.target.selectionStart) }}
+        onChange={e => {
+          cursorRef.current = e.target.selectionStart
+          onChange(e.target.value)
+          updateSuggestions(e.target.value, e.target.selectionStart)
+        }}
         onKeyDown={handleKeyDown}
         onSelect={e => updateSuggestions(value, (e.target as HTMLTextAreaElement).selectionStart)}
       />
@@ -247,17 +264,33 @@ function ScriptingDocs({ onClose, onBack }: { onClose: () => void; onBack?: () =
           <section>
             <h3 className="font-semibold text-foreground mb-1">Basic Commands</h3>
             <div className="space-y-1 text-[11px]">
+              <p><code className="text-primary">//</code> — Comments. Anything after // on a line is ignored.</p>
               <p><code className="text-primary">delay(ms)</code> — Wait for X milliseconds</p>
-              <p><code className="text-primary">key(vk)</code> or <code>tap(vk)</code> — Press and release a key. Accepts VK code <code>key(0x31)</code> or name <code>key("a")</code>, <code>key("space")</code>, <code>key("shift")</code></p>
-              <p><code className="text-primary">keydown(vk)</code> — Hold a key down</p>
+              <p><code className="text-primary">key(vk)</code> or <code>tap(vk)</code> — Press and release a key. Accepts VK code <code>key(0x31)</code>, name <code>key("shift")</code>, or <code>key(convert_key("a"))</code></p>
+              <p><code className="text-primary">keydown(convert_key("shift"))</code> — Hold a key down. Supports <code>convert_key()</code> and <code>$_var</code> inline.</p>
               <p><code className="text-primary">keyup(vk)</code> — Release a held key</p>
-              <p><code className="text-primary">click(button)</code> — Click mouse (1=left, 2=right)</p>
-              <p><code className="text-primary">hold(vk, ms)</code> — Hold a key for X ms then release</p>
+              <p><code className="text-primary">click(button)</code> — Click mouse (1=left, 2=right). Supports <code>$_var</code>.</p>
+              <p><code className="text-primary">hold(convert_key("shift"), $_delay)</code> — Hold a key for X ms then release</p>
               <p><code className="text-primary">setslot(n)</code> — Press hotbar slot 1-9</p>
-              <p><code className="text-primary">pitch(delta)</code> — Move mouse vertically (negative = up, positive = down)</p>
-              <p><code className="text-primary">yaw(delta)</code> — Move mouse horizontally (negative = left, positive = right)</p>
-              <p><code className="text-primary">convert_key("name")</code> — Convert a key name to VK code (e.g. <code>key(convert_key("a"))</code>)</p>
+              <p><code className="text-primary">pitch(delta)</code> — Move mouse vertically (negative = up). Supports <code>$_var</code>.</p>
+              <p><code className="text-primary">yaw(delta)</code> — Move mouse horizontally (negative = left). Supports <code>$_var</code>.</p>
             </div>
+          </section>
+
+          <section>
+            <h3 className="font-semibold text-foreground mb-1">Variables</h3>
+            <div className="space-y-1 text-[11px]">
+              <p><code className="text-primary">_name: int = new_random(min, max)</code> — Random integer between min and max (inclusive)</p>
+              <p><code className="text-primary">_name: float = new_random(min, max)</code> — Random float between min and max</p>
+              <p><code className="text-primary">_name: float = new_random(0,1).fix=5</code> — Float rounded to N decimal places</p>
+              <p><code className="text-primary">$_varname</code> — Reference a variable in any numeric parameter (delay, pitch, yaw, click, etc.)</p>
+            </div>
+            <pre className="mt-2 rounded bg-[#0a0a0a] border border-[#222] p-2 text-[10px] font-mono text-muted-foreground">
+{`// Randomised strafe in a loop
+_delay: int = new_random(50, 150)
+_yaw: int = new_random(8, 20)
+delay($_delay)
+yaw($_yaw)`}</pre>
           </section>
 
           <section>
@@ -273,15 +306,41 @@ function ScriptingDocs({ onClose, onBack }: { onClose: () => void; onBack?: () =
               <p><code className="text-primary">endif</code> — End an if block</p>
             </div>
             <pre className="mt-2 rounded bg-[#0a0a0a] border border-[#222] p-2 text-[10px] font-mono text-muted-foreground">
-{`if key_held(0x31)
-  delay(50)
-  click(2)
-endif
-
-if chance(30)
-  setslot(3)
-  click(1)
+{`if focused
+  if chance(30)
+    setslot(3)
+    click(1)
+  endif
 endif`}</pre>
+          </section>
+
+          <section>
+            <h3 className="font-semibold text-foreground mb-1">$fullscript Module Mode</h3>
+            <p className="text-[11px]">Put <code>$fullscript</code> at the top of a script to make it a toggleable background module. Press its bind to enable/disable it. While running, it loops continuously and can use <code>overlay_text()</code> to display information on the in-game overlay.</p>
+            <pre className="mt-2 rounded bg-[#0a0a0a] border border-[#222] p-2 text-[10px] font-mono text-muted-foreground">
+{`$fullscript
+// CPS randomisation visualiser
+overlay_clear
+_lCPS: int = new_random(8, 16)
+_rCPS: int = new_random(6, 12)
+if clicking_left
+  overlay_text("L: " + $_lCPS + " CPS")
+endif
+if clicking_right
+  overlay_text("R: " + $_rCPS + " CPS")
+endif
+delay(1000)`}</pre>
+            <div className="space-y-1 text-[11px] mt-2">
+              <p><code className="text-primary">overlay_text("text" + $_var + "more")</code> — Add a line of text, supports <code>$_var</code> and concatenation</p>
+              <p><code className="text-primary">loadingbar(value, max, length)</code> — Display a loading bar (e.g. <code>loadingbar($_cps, 20, 10)</code>)</p>
+              <p><code className="text-primary">overlay_clear</code> — Clear all overlay text</p>
+              <p>Combine with <code>if clicking_left</code>, <code>if clicking_right</code>, <code>if focused</code>, and <code>new_random()</code> to build live visualisers.</p>
+            </div>
+          </section>
+
+          <section>
+            <h3 className="font-semibold text-foreground mb-1">Loop Mode</h3>
+            <p className="text-[11px]">Enable the <strong>loop</strong> checkbox on a macro to make it run continuously when the bind is pressed. Press the bind again to stop. Variables like <code>new_random()</code> are re-evaluated each loop iteration.</p>
           </section>
 
           <section>
@@ -326,8 +385,10 @@ function MacroTutorial({ onClose, onDocs }: { onClose: () => void; onDocs: () =>
           <p><strong>4. Configure</strong> — Click the arrow on an action to expand its settings (delay time, key, button, etc.).</p>
           <p><strong>5. Reorder</strong> — Use the up/down arrows on each action to reorder it within the step.</p>
           <p><strong>6. Built-in</strong> — Rod, Pearl, and Potion actions are pre-configured. Just set your slot keys.</p>
-          <p><strong>7. Logic</strong> — Use <strong>Condition</strong> to check key states, <strong>Loop</strong> to repeat actions, and <strong>Script</strong> for custom commands.</p>
-          <p><strong>8. Scripting</strong> — See the <button onClick={onDocs} className="text-primary underline underline-offset-2">Scripting Reference</button> for all commands including <code>if/endif</code>, <code>chance</code>, <code>focused</code>, and more.</p>
+           <p><strong>7. Logic</strong> — Use <strong>Condition</strong> to check key states, <strong>Loop</strong> to repeat actions, and <strong>Script</strong> for custom commands.</p>
+           <p><strong>8. Loop Mode</strong> — Tick the <strong>loop</strong> checkbox to make the macro repeat continuously. Press the bind again to stop.</p>
+           <p><strong>9. Variables</strong> — Declare <code>_name: int = new_random(1,5)</code> and use <code>$_name</code> in commands. Each loop iteration gets fresh values.</p>
+           <p><strong>10. Scripting</strong> — See the <button onClick={onDocs} className="text-primary underline underline-offset-2">Scripting Reference</button> for all commands including <code>if/endif</code>, <code>chance</code>, <code>focused</code>, and more.</p>
         </div>
         <Button className="mt-4 w-full" onClick={onClose}>Got it</Button>
       </div>
@@ -521,6 +582,15 @@ function MacroEditor({ macro, index, onChange, onDelete, updateConfig }: {
             }}
           />
         </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Label className="text-[10px] text-muted-foreground cursor-pointer">loop</Label>
+          <input
+            type="checkbox"
+            checked={macro.loop}
+            onChange={e => onChange({ ...macro, loop: e.target.checked })}
+            className="accent-primary w-3 h-3 cursor-pointer"
+          />
+        </div>
         <button onClick={onDelete} className="text-red-500/60 hover:text-red-400 shrink-0"><Trash2 size={14} /></button>
       </div>
 
@@ -544,10 +614,12 @@ function MacroEditor({ macro, index, onChange, onDelete, updateConfig }: {
   )
 }
 
-export function MacrosPage({ config, updateConfig }: Props) {
+export function MacrosPage({ config: _config, updateConfig }: Props) {
   const [showTutorial, setShowTutorial] = useState(false)
   const [showDocs, setShowDocs] = useState(false)
   const [selected, setSelected] = useState(0)
+  const { config: hookConfig, loadConfig } = useAutoclicker()
+  const config = hookConfig || _config
   if (!config) return null
 
   const macros: Macro[] = config.macros?.list || []
@@ -559,6 +631,7 @@ export function MacrosPage({ config, updateConfig }: Props) {
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold">Macros</h1>
         <div className="flex items-center gap-2">
+          <button onClick={() => loadConfig()} className="text-muted-foreground hover:text-primary cursor-pointer" title="Reload macros"><RefreshCw size={14} /></button>
           <button onClick={() => setShowDocs(true)} className="text-[9px] text-[#555] hover:text-[#999] underline underline-offset-2 transition-colors" title="Scripting Reference">
             Scripting Docs
           </button>
@@ -586,8 +659,9 @@ export function MacrosPage({ config, updateConfig }: Props) {
             </button>
           ))}
           <Button variant="outline" size="sm" className="w-full text-xs h-7" onClick={() => {
-            updateMacros([...macros, { name: 'New Macro', bind: 0, steps: [{ id: uid(), label: 'Step 1', actions: [] }] }])
+            updateMacros([...macros, { name: 'New Macro', bind: 0, loop: false, steps: [{ id: uid(), label: 'Step 1', actions: [] }] }])
             setSelected(macros.length)
+            loadConfig()
           }}>
             <Plus size={12} className="mr-1" /> Add Macro
           </Button>
@@ -605,11 +679,13 @@ export function MacrosPage({ config, updateConfig }: Props) {
                   const list = [...macros]
                   list[selected] = m
                   updateMacros(list)
+                  loadConfig()
                 }}
                 onDelete={() => {
                   const list = macros.filter((_, i) => i !== selected)
                   updateMacros(list)
                   if (selected >= list.length) setSelected(Math.max(0, list.length - 1))
+                  loadConfig()
                 }}
               />
             </div>

@@ -80,18 +80,20 @@ export function registerAutoclickerIPC(engine: AutoclickerEngine, settingsWindow
   })
 
   ipcMain.handle('autoclicker:getConfigs', () => {
-    const configs: { filename: string; displayName: string; Author: string; description: string }[] = []
+    const configs: { filename: string; displayName: string; Author: string; description: string; builtin?: boolean }[] = []
     try {
       if (!fs.existsSync(RESOURCE_FOLDER)) return configs
       for (const filename of fs.readdirSync(RESOURCE_FOLDER)) {
         if (!filename.endsWith('.json')) continue
         try {
+          const fname = filename.replace('.json', '')
           const data = JSON.parse(fs.readFileSync(path.join(RESOURCE_FOLDER, filename), 'utf-8'))
           configs.push({
-            filename: filename.replace('.json', ''),
-            displayName: data.displayName || filename,
+            filename: fname,
+            displayName: data.displayName || fname,
             Author: data.Author || 'Unknown',
             description: data.description || '',
+            builtin: BUNDLED_PRESETS.has(fname) || data.Author === '4urxra',
           })
         } catch { /* skip */ }
       }
@@ -136,12 +138,27 @@ export function registerAutoclickerIPC(engine: AutoclickerEngine, settingsWindow
     }
   })
 
+  const BUNDLED_PRESETS = new Set(['hypixelbw', 'hypixelbridge', 'hypixelduels', 'hypixelskywars', 'maxed', 'mmc'])
+
+  ipcMain.handle('autoclicker:getConfigData', (_e, filename: string) => {
+    try {
+      if (!isSafeFilename(filename)) return null
+      const filepath = path.join(RESOURCE_FOLDER, `${filename}.json`)
+      if (!fs.existsSync(filepath)) return null
+      return JSON.parse(fs.readFileSync(filepath, 'utf-8'))
+    } catch { return null }
+  })
+
   ipcMain.handle('autoclicker:openResourceFolder', () => {
     try {
       if (!fs.existsSync(RESOURCE_FOLDER)) fs.mkdirSync(RESOURCE_FOLDER, { recursive: true })
       shell.openPath(RESOURCE_FOLDER)
     } catch { /* skip */ }
     return true
+  })
+
+  ipcMain.handle('autoclicker:getModuleOverlay', () => {
+    return engine.moduleOverlayText
   })
 
   ipcMain.handle('debug:openLogs', () => {
@@ -162,12 +179,14 @@ export function registerAutoclickerIPC(engine: AutoclickerEngine, settingsWindow
     return getCurrentVersion()
   })
 
-  ipcMain.handle('update:downloadAndInstall', async (_e, downloadUrl: string) => {
+  ipcMain.on('update:startDownload', async (event, downloadUrl: string) => {
     try {
-      await downloadAndInstall(downloadUrl)
-      return { ok: true }
+      await downloadAndInstall(downloadUrl, (percent) => {
+        event.sender.send('update:progress', percent)
+      })
+      event.sender.send('update:progress', -1) // -1 = done, quit
     } catch (e: any) {
-      return { ok: false, error: e.message }
+      event.sender.send('update:error', e.message || 'Download failed')
     }
   })
 
@@ -228,17 +247,29 @@ export function registerAutoclickerIPC(engine: AutoclickerEngine, settingsWindow
   })
 
   ipcMain.handle('cloud:downloadPublicAndSave', async (_e, itemId: string) => {
-    const item = await cloud.downloadPublicItem(itemId)
-    if (item.type === 'config') {
-      const safeName = item.name.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 64)
-      const filepath = path.join(RESOURCE_FOLDER, `${safeName}.json`)
-      const cfg = typeof item.data === 'object' ? item.data : JSON.parse(item.data)
-      cfg.filename = safeName
-      cfg.displayName = item.name
-      cfg.description = item.description || ''
-      fs.writeFileSync(filepath, JSON.stringify(cfg, null, 2), 'utf-8')
+    try {
+      const item = await cloud.downloadPublicItem(itemId)
+      if (item.type === 'config') {
+        const safeName = item.name.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 64)
+        const filepath = path.join(RESOURCE_FOLDER, `${safeName}.json`)
+        const cfg = typeof item.data === 'object' ? item.data : JSON.parse(item.data)
+        cfg.filename = safeName
+        cfg.displayName = item.name
+        cfg.description = item.description || ''
+        fs.writeFileSync(filepath, JSON.stringify(cfg, null, 2), 'utf-8')
+      } else if (item.type === 'macro') {
+        const macro = typeof item.data === 'object' ? item.data : JSON.parse(item.data)
+        macro.name = item.name
+        // Merge into the engine's macro list
+        engine.config.macros.list.push(macro)
+        engine.saveConfig()
+        engine.emitUpdate()
+      }
+      return true
+    } catch (e) {
+      console.error('[cloud] downloadPublicAndSave failed:', e)
+      throw e
     }
-    return true
   })
 
   ipcMain.handle('cloud:download', async (_e, itemId: string) => {
@@ -246,18 +277,29 @@ export function registerAutoclickerIPC(engine: AutoclickerEngine, settingsWindow
   })
 
   ipcMain.handle('cloud:downloadAndSave', async (_e, itemId: string) => {
-    const item = await cloud.downloadItem(itemId)
-    if (item.type === 'config') {
-      const safeName = item.name.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 64)
-      const filepath = path.join(RESOURCE_FOLDER, `${safeName}.json`)
-      const cfg = typeof item.data === 'object' ? item.data : JSON.parse(item.data)
-      cfg.filename = safeName
-      cfg.displayName = item.name
-      cfg.description = item.description || ''
-      cfg.cloudId = item.id
-      fs.writeFileSync(filepath, JSON.stringify(cfg, null, 2), 'utf-8')
+    try {
+      const item = await cloud.downloadItem(itemId)
+      if (item.type === 'config') {
+        const safeName = item.name.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 64)
+        const filepath = path.join(RESOURCE_FOLDER, `${safeName}.json`)
+        const cfg = typeof item.data === 'object' ? item.data : JSON.parse(item.data)
+        cfg.filename = safeName
+        cfg.displayName = item.name
+        cfg.description = item.description || ''
+        cfg.cloudId = item.id
+        fs.writeFileSync(filepath, JSON.stringify(cfg, null, 2), 'utf-8')
+      } else if (item.type === 'macro') {
+        const macro = typeof item.data === 'object' ? item.data : JSON.parse(item.data)
+        macro.name = item.name
+        engine.config.macros.list.push(macro)
+        engine.saveConfig()
+        engine.emitUpdate()
+      }
+      return true
+    } catch (e) {
+      console.error('[cloud] downloadAndSave failed:', e)
+      throw e
     }
-    return true
   })
 
   ipcMain.handle('cloud:delete', async (_e, itemId: string) => {

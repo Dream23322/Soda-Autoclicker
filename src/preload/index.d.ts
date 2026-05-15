@@ -39,10 +39,12 @@ interface AutoclickerApi {
   doRod: () => Promise<boolean>
   doPearl: () => Promise<boolean>
   doPotion: () => Promise<boolean>
-  getConfigs: () => Promise<Array<{ filename: string; displayName: string; Author: string; description: string }>>
+  getConfigs: () => Promise<Array<{ filename: string; displayName: string; Author: string; description: string; builtin?: boolean }>>
+  getConfigData: (filename: string) => Promise<any>
   loadPreset: (filename: string) => Promise<boolean>
   savePreset: (args: { filename: string; displayName: string; Author: string; description: string }) => Promise<boolean>
   openResourceFolder: () => Promise<boolean>
+  getModuleOverlay: () => Promise<Array<{ t: string; v: any; l?: number; filled?: number }>>
   getStatus: () => Promise<{
     focusedProcess: string
     isGameFocused: boolean
@@ -67,7 +69,9 @@ interface AutoclickerApi {
 interface UpdateApi {
   check: () => Promise<{ version: string | null; downloadUrl: string | null; notes: string | null } | null>
   currentVersion: () => Promise<string>
-  downloadAndInstall: (downloadUrl: string) => Promise<{ ok: boolean; error?: string }>
+  startDownload: (downloadUrl: string) => void
+  onProgress: (callback: (percent: number) => void) => () => void
+  onError: (callback: (error: string) => void) => () => void
 }
 
 export interface SodaPreloadApi extends ElectronAPI {

@@ -7,12 +7,15 @@ class Safe extends Component<{ children: ReactNode }, { hasError: boolean }> {
   render() { return this.state.hasError ? null : this.props.children }
 }
 
+interface OverlayItem { t: string; v: any; l?: number; filled?: number }
+
 function useOverlayState() {
   const [l, setL] = useState(false)
   const [r, setR] = useState(false)
   const [pos, setPos] = useState('top-right')
   const [layout, setLayout] = useState('horizontal')
   const [enabled, setEnabled] = useState(false)
+  const [moduleItems, setModuleItems] = useState<OverlayItem[]>([])
 
   useEffect(() => {
     let alive = true
@@ -28,13 +31,18 @@ function useOverlayState() {
           setEnabled(s.overlayEnabled !== false)
         }
       } catch {}
+      try {
+        // @ts-ignore
+        const mt = await window.electron.autoclicker.getModuleOverlay()
+        if (alive) setModuleItems(mt || [])
+      } catch {}
     }
     poll()
     const id = setInterval(poll, 300)
     return () => { alive = false; clearInterval(id) }
   }, [])
 
-  return { l, r, pos, layout, enabled }
+  return { l, r, pos, layout, enabled, moduleItems }
 }
 
 const POS_STYLES: Record<string, { top?: number; bottom?: number; left?: number; right?: number }> = {
@@ -70,7 +78,7 @@ function Dot({ label, on }: { label: string; on: boolean }) {
 }
 
 export function StatusOverlay() {
-  const { l, r, pos, layout, enabled } = useOverlayState()
+  const { l, r, pos, layout, enabled, moduleItems } = useOverlayState()
 
   if (!enabled) return null
 
@@ -89,6 +97,25 @@ export function StatusOverlay() {
       }}>
         <Dot label="L" on={l} />
         <Dot label="R" on={r} />
+        {moduleItems.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'rgba(13,13,13,0.6)', padding: '2px 5px' }}>
+            {moduleItems.map((item, i) => {
+              if (item.t === 'bar') {
+                const pct = item.v
+                const len = item.l || 10
+                return (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: 10, lineHeight: '14px', whiteSpace: 'nowrap' }}>
+                    <span style={{ width: len * 5 + 2, height: 6, background: '#1a1a1a', display: 'inline-flex', alignItems: 'center', padding: '0 1px' }}>
+                      <span style={{ width: Math.round(pct * len * 5), height: 4, background: '#7c9ced', transition: 'width 0.3s' }} />
+                    </span>
+                    <span style={{ color: '#585858', fontSize: 9 }}>{Math.round(pct * 100)}%</span>
+                  </div>
+                )
+              }
+              return <span key={i} style={{ fontSize: 10, lineHeight: '14px', color: '#c8c8c8', whiteSpace: 'nowrap' }}>{item.v}</span>
+            })}
+          </div>
+        )}
       </div>
     </Safe>
   )

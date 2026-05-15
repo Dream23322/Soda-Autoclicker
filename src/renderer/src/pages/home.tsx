@@ -9,7 +9,7 @@ interface Props {
 }
 
 interface PresetInfo {
-  filename: string
+  filename: string  
   displayName: string
   Author?: string
   description?: string
@@ -66,6 +66,8 @@ export default function HomePage({ config: _config }: Props) {
   const [draft, setDraft] = useState<string[]>([])
   const [updateInfo, setUpdateInfo] = useState<{ version: string; downloadUrl: string; notes: string } | null>(null)
   const [updating, setUpdating] = useState(false)
+  const [downloadProgress, setDownloadProgress] = useState(0)
+  const [updateError, setUpdateError] = useState("")
   const effectiveConfig = config || _config
 
   useEffect(() => {
@@ -143,27 +145,53 @@ export default function HomePage({ config: _config }: Props) {
       </div>
 
       {/* Update banner */}
-      {updateInfo && (
-        <div className="border border-primary/30 bg-primary/5 p-3 flex items-center justify-between gap-2">
-          <div className="min-w-0">
-            <p className="text-xs font-bold text-primary">update available — v{updateInfo.version}</p>
-            {updateInfo.notes && <p className="text-[10px] text-muted-foreground truncate">{updateInfo.notes}</p>}
+      {updateInfo && !updateError && (
+        <div className="border border-primary/30 bg-primary/5 p-3">
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-primary">update available — v{updateInfo.version}</p>
+              {updateInfo.notes && <p className="text-[10px] text-muted-foreground truncate">{updateInfo.notes}</p>}
+            </div>
+            {!updating && (
+              <button
+                onClick={() => {
+                  setUpdating(true)
+                  setDownloadProgress(0)
+                  const e = (window as any).electron
+                  const cleanup = e.update.onProgress((pct: number) => {
+                    if (pct === -1) { /* app will quit */ }
+                    else setDownloadProgress(pct)
+                  })
+                  e.update.onError((err: string) => {
+                    setUpdateError(err)
+                    setUpdating(false)
+                    cleanup()
+                  })
+                  e.update.startDownload(updateInfo.downloadUrl)
+                }}
+                className="flex-shrink-0 text-xs bg-primary text-primary-foreground px-3 py-1.5 font-bold cursor-pointer border-none"
+              >
+                update
+              </button>
+            )}
           </div>
-          <button
-            onClick={async () => {
-              setUpdating(true)
-              try {
-                const e = (window as any).electron
-                const result = await e.update.downloadAndInstall(updateInfo.downloadUrl)
-                if (!result.ok) console.error('Update failed:', result.error)
-              } catch (e) { console.error('Update failed:', e) }
-              setUpdating(false)
-            }}
-            disabled={updating}
-            className="flex-shrink-0 text-xs bg-primary text-primary-foreground px-3 py-1.5 font-bold cursor-pointer disabled:opacity-50 border-none"
-          >
-            {updating ? 'downloading...' : 'update'}
-          </button>
+          {updating && (
+            <div className="w-full bg-[#1a1a1a] h-2 mt-1">
+              <div
+                className="bg-primary h-2 transition-all duration-200"
+                style={{ width: `${downloadProgress}%` }}
+              />
+            </div>
+          )}
+          {updating && downloadProgress > 0 && (
+            <p className="text-[10px] text-muted-foreground mt-1">{downloadProgress}%</p>
+          )}
+        </div>
+      )}
+      {updateError && (
+        <div className="border border-red-500/30 bg-red-500/5 p-3 flex items-center justify-between gap-2">
+          <p className="text-xs text-red-500">update failed: {updateError}</p>
+          <button onClick={() => setUpdateError("")} className="text-xs text-muted-foreground hover:text-foreground cursor-pointer bg-transparent border-none">dismiss</button>
         </div>
       )}
 

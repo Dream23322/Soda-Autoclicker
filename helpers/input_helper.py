@@ -152,6 +152,16 @@ def handle_command(cmd):
         time.sleep(0.045)
         win32api.keybd_event(vk, 0, win32con.KEYEVENTF_KEYUP, 0)
 
+    elif action == 'window_key_tap':
+        # Same as key_tap but sends directly to Minecraft's HWND via
+        # SendMessage so it doesn't affect the global keyboard state.
+        # Used by macros to avoid canceling the user's physical key press.
+        vk = cmd.get('vk', 0)
+        hwnd = get_mc_hwnd()
+        win32api.SendMessage(hwnd, win32con.WM_KEYDOWN, vk, 0)
+        time.sleep(0.045)
+        win32api.SendMessage(hwnd, win32con.WM_KEYUP, vk, 0)
+
     elif action == 'key_down':
         vk = cmd.get('vk', 0)
         win32api.keybd_event(vk, 0, 0, 0)

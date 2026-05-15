@@ -203,6 +203,7 @@ export class InputHelper {
   async mouseDown(b: number) { await this.send({ action: 'mouse_down', button: b }) }
   async mouseUp(b: number) { await this.send({ action: 'mouse_up', button: b }) }
   async keyTap(vk: number) { await this.send({ action: 'key_tap', vk }) }
+  async windowKeyTap(vk: number) { await this.send({ action: 'window_key_tap', vk }) }
   async keyDown(vk: number) { await this.send({ action: 'key_down', vk }) }
   async keyUp(vk: number) { await this.send({ action: 'key_up', vk }) }
   async cursorShake(force: number) { await this.send({ action: 'cursor_shake', force }) }

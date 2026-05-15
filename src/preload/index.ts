@@ -13,7 +13,9 @@ const INVOKE_CHANNELS: Set<string> = new Set([
 	"autoclicker:loadPreset",
 	"autoclicker:savePreset",
 	"autoclicker:openResourceFolder",
+	"autoclicker:getConfigData",
 	"autoclicker:getStatus",
+	"autoclicker:getModuleOverlay",
 	"cloud:getUserId",
 	"cloud:setUserId",
 	"cloud:getServerUrl",
@@ -32,13 +34,12 @@ const INVOKE_CHANNELS: Set<string> = new Set([
 	"cloud:syncAll",
 	"update:check",
 	"update:currentVersion",
-	"update:downloadAndInstall",
 	"debug:toggle",
 	"debug:status",
 	"debug:openLogs",
 ])
 
-const SEND_CHANNELS: Set<string> = new Set(["window-control", "debug:log"])
+const SEND_CHANNELS: Set<string> = new Set(["window-control", "debug:log", "update:startDownload"])
 
 function assertAllowed(set: Set<string>, channel: string): void {
 	if (!set.has(channel)) throw new Error(`Blocked IPC channel: ${channel}`)
@@ -62,13 +63,25 @@ const api = {
 		savePreset: (args: { filename: string; displayName: string; Author: string; description: string }) =>
 			ipcRenderer.invoke("autoclicker:savePreset", args),
 		openResourceFolder: () => ipcRenderer.invoke("autoclicker:openResourceFolder"),
+		getConfigData: (filename: string) => ipcRenderer.invoke("autoclicker:getConfigData", filename),
 		getStatus: () => ipcRenderer.invoke("autoclicker:getStatus"),
+		getModuleOverlay: () => ipcRenderer.invoke("autoclicker:getModuleOverlay"),
 	},
 
 	update: {
 		check: () => ipcRenderer.invoke("update:check"),
 		currentVersion: () => ipcRenderer.invoke("update:currentVersion"),
-		downloadAndInstall: (downloadUrl: string) => ipcRenderer.invoke("update:downloadAndInstall", downloadUrl),
+		startDownload: (downloadUrl: string) => ipcRenderer.send("update:startDownload", downloadUrl),
+		onProgress: (callback: (percent: number) => void) => {
+			const handler = (_e: any, percent: number) => callback(percent)
+			ipcRenderer.on("update:progress", handler)
+			return () => ipcRenderer.removeListener("update:progress", handler)
+		},
+		onError: (callback: (error: string) => void) => {
+			const handler = (_e: any, error: string) => callback(error)
+			ipcRenderer.on("update:error", handler)
+			return () => ipcRenderer.removeListener("update:error", handler)
+		},
 	},
 
 	cloud: {

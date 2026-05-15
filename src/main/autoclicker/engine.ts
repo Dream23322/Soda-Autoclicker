@@ -46,6 +46,19 @@ export class AutoclickerEngine {
   // Keyed by action id ("left", "right", "panic", etc.) rather than VK,
   // so two actions sharing the same key both fire on a fresh press.
   private prevBindStates: Record<string, boolean> = {}
+  private macroCooldowns: Record<string, number> = {}
+  private readonly MACRO_COOLDOWN_MS = 150
+  /** Tracks whether a loop-enabled macro is currently running */
+  private macroLoopActive: Record<string, boolean> = {}
+  private macroLoopAbort: Record<string, boolean> = {}
+
+  // ── $fullscript module system ──
+  /** Registered modules: keyed by macro index, value = list of actions to loop */
+  private modules: Record<string, MacroAction[]> = {}
+  /** Whether each module is currently enabled */
+  private moduleEnabled: Record<string, boolean> = {}
+  /** Overlay items set by modules. Each item is { t:'text', v:string } or { t:'bar', v:number, l:number, filled:number }. */
+  moduleOverlayText: any[] = []
 
   private lastBlockHitTime = 0
   private betterInputTimestamp = 0
@@ -182,9 +195,16 @@ export class AutoclickerEngine {
         { id: 'pearl', vk: this.config.misc.pearlBind, action: () => this.doPearl(), gate: 'gameplay' },
         { id: 'pot', vk: this.config.potions.potBind, action: () => this.doPotion(), gate: 'gameplay' },
         { id: 'potReset', vk: this.config.potions.potResetBind, action: () => { this.currentPotSlot = this.config.potions.lowestSlot }, gate: 'always' },
-        ...this.config.macros.list.filter(m => m.bind).map((m, i) => ({
-          id: `macro_${i}`, vk: m.bind, action: () => { this.runMacro(m).catch(() => {}) }, gate: 'gameplay' as Gate,
-        })),
+        ...this.config.macros.list.filter(m => m.bind).map((m, i) => {
+          const hasFullscript = m.steps.some(step =>
+            step.actions.some(a => a.type === 'script' && (a.config.code as string || '').trimStart().startsWith('$fullscript'))
+          )
+          if (hasFullscript) {
+            console.log(`[bind] registering module_${i} "${m.name}" vk=${m.bind}`)
+            return { id: `module_${i}`, vk: m.bind, action: () => { console.log(`[bind] firing module_${i}`); this.toggleModule(i).catch(() => {}) }, gate: 'gameplay' as Gate }
+          }
+          return { id: `macro_${i}`, vk: m.bind, action: () => { this.runMacroAction(m, i).catch(() => {}) }, gate: 'gameplay' as Gate }
+        }),
       ]
 
       const active = checks.filter(c => c.vk && (c.gate === 'always' || gameplayOk))
@@ -203,6 +223,13 @@ export class AutoclickerEngine {
         const prev = this.prevBindStates[c.id] ?? false
         this.prevBindStates[c.id] = held
 
+        // Skip macro binds during cooldown (only for non-loop toggles)
+        if (c.id.startsWith('macro_')) {
+          const mi = parseInt(c.id.slice(6))
+          const isLoop = !isNaN(mi) && this.config.macros.list[mi]?.loop
+          if (!isLoop && this.macroCooldowns[c.id] && Date.now() < this.macroCooldowns[c.id]) continue
+        }
+
         // hideGUI uses a 3-second hold instead of instant toggle
         if (c.id === 'hideGUI') {
           if (held && !prev) {
@@ -217,7 +244,14 @@ export class AutoclickerEngine {
         }
 
         if (held && !prev) {
-          try { c.action() } catch (e) { console.error(`[bind:${c.id}] action threw:`, e) }
+          try {
+            if (c.id.startsWith('macro_')) {
+              const mi = parseInt(c.id.slice(6))
+              const isLoop = !isNaN(mi) && this.config.macros.list[mi]?.loop
+              if (!isLoop) this.macroCooldowns[c.id] = Date.now() + this.MACRO_COOLDOWN_MS
+            }
+            c.action()
+          } catch (e) { console.error(`[bind:${c.id}] action threw:`, e) }
         }
       }
     }, POLL_INTERVAL)
@@ -526,6 +560,31 @@ export class AutoclickerEngine {
     return parseInt(lower) || 0
   }
 
+  // Runtime script variable storage
+  private scriptVars: Record<string, number> = {}
+
+  /** Resolve a config value at runtime. Accepts raw numbers, $var references,
+   *  convert_key("name"), 'namedKey' strings, 0xNN hex, or plain numeric strings. */
+  private resolveVal(v: unknown): number {
+    if (typeof v === 'number') return v
+    if (typeof v === 'string') {
+      if (v.startsWith('$_')) {
+        const raw = this.scriptVars[v.slice(1)]
+        if (raw !== undefined) return raw
+        return 0
+      }
+      const named = v.match(/^'(.*)'\s*$/)
+      if (named) return this.keyNameToVk(named[1])
+      const convMatch = v.match(/^convert_key\s*\(\s*['"](.+?)['"]\s*\)$/i)
+      if (convMatch) return this.keyNameToVk(convMatch[1])
+      if (/^0x[0-9a-f]+$/i.test(v)) return parseInt(v)
+      const n = parseInt(v)
+      if (!isNaN(n)) return n
+      return 0
+    }
+    return 0
+  }
+
   private parseScriptLines(lines: string[], startIdx: number): { actions: MacroAction[]; nextIdx: number } {
     const actions: MacroAction[] = []
     const id = () => `script_${actions.length}_${Date.now()}`
@@ -533,7 +592,7 @@ export class AutoclickerEngine {
     while (i < lines.length) {
       const s = lines[i].trim()
       i++
-      if (!s || s.startsWith('#')) continue
+      if (!s || s.startsWith('//')) continue
 
       // endif — pop back to the caller (handles nesting)
       if (/^endif\s*$/i.test(s)) break
@@ -550,44 +609,70 @@ export class AutoclickerEngine {
         continue
       }
 
-      const delayMatch = s.match(/^delay\s*\(\s*(\d+)\s*\)$/i)
-      if (delayMatch) { actions.push({ id: id(), type: 'delay', label: `Delay ${delayMatch[1]}ms`, config: { ms: parseInt(delayMatch[1]) } }); continue }
-
-      // key("name") or key(0xNN) or key(N)
-      let simpleKey = s.match(/^(key|tap)\s*\(\s*(0x[0-9a-f]+|\d+)\s*\)$/i)
-      if (!simpleKey) simpleKey = s.match(/^(key|tap)\s*\(\s*['"](.+?)['"]\s*\)$/i)
-      if (simpleKey) {
-        const vk = simpleKey[2].startsWith('0x') ? parseInt(simpleKey[2]) : this.keyNameToVk(simpleKey[2])
-        actions.push({ id: id(), type: 'key_tap', label: `Key ${vk}`, config: { vk } }); continue
+      // Variable declaration: _name: type = new_random(min, max).fix=N or _name: type = value
+      const varNewRandom = s.match(/^(_[a-zA-Z_]\w*)\s*:\s*(int|float)\s*=\s*new_random\s*\(\s*([^,]+)\s*,\s*([^)]+)\s*\)\s*(?:\.fix\s*=\s*(\d+))?\s*$/i)
+      if (varNewRandom) {
+        actions.push({
+          id: id(), type: 'var_set', label: `Var ${varNewRandom[1]}`,
+          config: { name: varNewRandom[1], min: varNewRandom[3].trim(), max: varNewRandom[4].trim(), fix: varNewRandom[5] ? parseInt(varNewRandom[5]) : undefined, mode: 'random', type: varNewRandom[2] },
+        })
+        continue
+      }
+      const varPlain = s.match(/^(_[a-zA-Z_]\w*)\s*:\s*(int|float)\s*=\s*(\d+)\s*$/i)
+      if (varPlain) {
+        actions.push({
+          id: id(), type: 'var_set', label: `Var ${varPlain[1]}`,
+          config: { name: varPlain[1], value: parseInt(varPlain[3]), mode: 'plain' },
+        })
+        continue
       }
 
-      // convert_key("name") — inline, returns VK code at parse time
-      const convMatch = s.match(/convert_key\s*\(\s*['"](.+?)['"]\s*\)/i)
-      if (convMatch) { const vk = this.keyNameToVk(convMatch[1]); actions.push({ id: id(), type: 'key_tap', label: `Key ${vk}`, config: { vk } }); continue }
+      const delayMatch = s.match(/^delay\s*\(\s*(\d+|'[^']+'|\$_[\w]+)\s*\)$/i)
+      if (delayMatch) {
+        actions.push({ id: id(), type: 'delay', label: `Delay ${delayMatch[1]}ms`, config: { ms: delayMatch[1] } }); continue
+      }
 
-      const clickMatch = s.match(/^click\s*\(\s*(\d+)\s*\)$/i)
-      if (clickMatch) { actions.push({ id: id(), type: 'mouse_click', label: `Click ${clickMatch[1]}`, config: { button: parseInt(clickMatch[1]) } }); continue }
+      // key("name") or key(0xNN) or key(N) or key($var) or key(convert_key("name"))
+      let simpleKey = s.match(/^(key|tap)\s*\(\s*(0x[0-9a-f]+|\d+|\$_[\w]+)\s*\)$/i)
+      if (!simpleKey) simpleKey = s.match(/^(key|tap)\s*\(\s*['"](.+?)['"]\s*\)$/i)
+      if (!simpleKey) simpleKey = s.match(/^(key|tap)\s*\(\s*convert_key\s*\(\s*['"](.+?)['"]\s*\)\s*\)$/i)
+      if (simpleKey) {
+        let raw: string
+        if (simpleKey[2].startsWith('$_')) raw = simpleKey[2]
+        else if (simpleKey[2].startsWith('0x')) raw = simpleKey[2]
+        else raw = `'${simpleKey[2]}'` // named key ref — resolve at exec time
+        actions.push({ id: id(), type: 'key_tap', label: `Key ${raw}`, config: { vk: raw } }); continue
+      }
 
-      // pitch(delta) / yaw(delta) — relative mouse move
-      const pitchMatch = s.match(/^pitch\s*\(\s*(-?\d+)\s*\)$/i)
-      if (pitchMatch) { actions.push({ id: id(), type: 'mouse_relative_move', label: `Pitch ${pitchMatch[1]}`, config: { dx: 0, dy: parseInt(pitchMatch[1]) } }); continue }
-      const yawMatch = s.match(/^yaw\s*\(\s*(-?\d+)\s*\)$/i)
-      if (yawMatch) { actions.push({ id: id(), type: 'mouse_relative_move', label: `Yaw ${yawMatch[1]}`, config: { dx: parseInt(yawMatch[1]), dy: 0 } }); continue }
+      const clickMatch = s.match(/^click\s*\(\s*(\d+|\$_[\w]+)\s*\)$/i)
+      if (clickMatch) { actions.push({ id: id(), type: 'mouse_click', label: `Click ${clickMatch[1]}`, config: { button: clickMatch[1] } }); continue }
 
-      const holdMatch = s.match(/^hold\s*\(\s*(0x[0-9a-f]+|\d+)\s*,\s*(\d+)\s*\)$/i)
+      const pitchMatch = s.match(/^pitch\s*\(\s*(-?\d+|\$_[\w]+)\s*\)$/i)
+      if (pitchMatch) { actions.push({ id: id(), type: 'mouse_relative_move', label: `Pitch ${pitchMatch[1]}`, config: { dx: '0', dy: pitchMatch[1] } }); continue }
+      const yawMatch = s.match(/^yaw\s*\(\s*(-?\d+|\$_[\w]+)\s*\)$/i)
+      if (yawMatch) { actions.push({ id: id(), type: 'mouse_relative_move', label: `Yaw ${yawMatch[1]}`, config: { dx: yawMatch[1], dy: '0' } }); continue }
+
+      const holdMatch = s.match(/^hold\s*\(\s*((?:0x[0-9a-f]+|\d+|\$_[\w]+|convert_key\s*\(\s*['"][^'"]+['"]\s*\)))\s*,\s*(\d+|\$_[\w]+)\s*\)$/i)
       if (holdMatch) {
-        const vk = parseInt(holdMatch[1]); const ms = parseInt(holdMatch[2])
-        actions.push({ id: id(), type: 'key_down', label: `Hold ${vk}`, config: { vk } })
-        actions.push({ id: id(), type: 'delay', label: `Delay ${ms}ms`, config: { ms } })
-        actions.push({ id: id(), type: 'key_up', label: `Release ${vk}`, config: { vk } })
+        actions.push({ id: id(), type: 'key_down', label: `Hold ${holdMatch[1]}`, config: { vk: holdMatch[1] } })
+        actions.push({ id: id(), type: 'delay', label: `Delay ${holdMatch[2]}ms`, config: { ms: holdMatch[2] } })
+        actions.push({ id: id(), type: 'key_up', label: `Release ${holdMatch[1]}`, config: { vk: holdMatch[1] } })
         continue
       }
       const setSlotMatch = s.match(/^setslot\s*\(\s*(\d+)\s*\)$/i)
-      if (setSlotMatch) { actions.push({ id: id(), type: 'key_tap', label: `Slot ${setSlotMatch[1]}`, config: { vk: 0x30 + parseInt(setSlotMatch[1]) } }); continue }
-      const keyDownMatch = s.match(/^keydown\s*\(\s*(0x[0-9a-f]+|\d+)\s*\)$/i)
-      if (keyDownMatch) { actions.push({ id: id(), type: 'key_down', label: `KeyDown ${keyDownMatch[1]}`, config: { vk: parseInt(keyDownMatch[1]) } }); continue }
-      const keyUpMatch = s.match(/^keyup\s*\(\s*(0x[0-9a-f]+|\d+)\s*\)$/i)
-      if (keyUpMatch) { actions.push({ id: id(), type: 'key_up', label: `KeyUp ${keyUpMatch[1]}`, config: { vk: parseInt(keyUpMatch[1]) } }); continue }
+      if (setSlotMatch) { const n = parseInt(setSlotMatch[1]); actions.push({ id: id(), type: 'key_tap', label: `Slot ${n}`, config: { vk: String(0x30 + n) } }); continue }
+
+      // overlay_text("text") and overlay_clear
+      const overlayTextMatch = s.match(/^overlay_text\s*\(\s*(.+)\s*\)$/i)
+      if (overlayTextMatch) { actions.push({ id: id(), type: 'overlay_text', label: `Overlay`, config: { expr: overlayTextMatch[1] } }); continue }
+      const overlayBarMatch = s.match(/^loadingbar\s*\(\s*(\d+|\$_[\w]+)\s*,\s*(\d+|\$_[\w]+)\s*,\s*(\d+|\$_[\w]+)\s*\)$/i)
+      if (overlayBarMatch) { actions.push({ id: id(), type: 'overlay_bar', label: 'LoadingBar', config: { value: overlayBarMatch[1], max: overlayBarMatch[2], len: overlayBarMatch[3] } }); continue }
+      if (/^overlay_clear\s*$/i.test(s)) { actions.push({ id: id(), type: 'overlay_clear', label: 'Clear Overlay', config: {} }); continue }
+
+      const keyDownMatch = s.match(/^keydown\s*\(\s*((?:0x[0-9a-f]+|\d+|\$_[\w]+|convert_key\s*\(\s*['"][^'"]+['"]\s*\)))\s*\)$/i)
+      if (keyDownMatch) { actions.push({ id: id(), type: 'key_down', label: `KeyDown ${keyDownMatch[1]}`, config: { vk: keyDownMatch[1] } }); continue }
+      const keyUpMatch = s.match(/^keyup\s*\(\s*((?:0x[0-9a-f]+|\d+|\$_[\w]+|convert_key\s*\(\s*['"][^'"]+['"]\s*\)))\s*\)$/i)
+      if (keyUpMatch) { actions.push({ id: id(), type: 'key_up', label: `KeyUp ${keyUpMatch[1]}`, config: { vk: keyUpMatch[1] } }); continue }
     }
     return { actions, nextIdx: i }
   }
@@ -599,79 +684,105 @@ export class AutoclickerEngine {
   private async execAction(action: MacroAction): Promise<void> {
     const { type, config } = action
     switch (type) {
-      case 'delay':
-        await this.sleep((config.ms as number) || 100)
+      case 'delay': {
+        const delayMs = this.resolveVal(config.ms) || 100
+        console.log(`[exec] delay(${delayMs}) from config.ms=${JSON.stringify(config.ms)}`)
+        await this.sleep(delayMs)
         break
+      }
       case 'key_tap':
-        await this.input.keyTap((config.vk as number) || 0)
+        await this.input.windowKeyTap(this.resolveVal(config.vk) || 0)
         break
       case 'key_down':
-        await this.input.keyDown((config.vk as number) || 0)
+        await this.input.keyDown(this.resolveVal(config.vk) || 0)
         break
       case 'key_up':
-        await this.input.keyUp((config.vk as number) || 0)
+        await this.input.keyUp(this.resolveVal(config.vk) || 0)
         break
       case 'mouse_click':
-        await this.input.mouseClick((config.button as number) || 1)
+        await this.input.mouseClick(this.resolveVal(config.button) || 1)
         break
       case 'mouse_down':
-        await this.input.mouseDown((config.button as number) || 1)
+        await this.input.mouseDown(this.resolveVal(config.button) || 1)
         break
       case 'mouse_up':
-        await this.input.mouseUp((config.button as number) || 1)
+        await this.input.mouseUp(this.resolveVal(config.button) || 1)
         break
       case 'rod': {
         const slot = (config.slot as string) || '2'
-        const delay = (config.delay as number) || 200
+        const delay = this.resolveVal(config.delay) || 200
         const swordSlot = this.config.misc.swordSlot || '1'
-        await this.input.keyTap(0x30 + parseInt(slot))
+        await this.input.windowKeyTap(0x30 + parseInt(slot))
         await this.sleep(delay)
         await this.input.mouseClick(2)
         await this.sleep(delay)
-        await this.input.keyTap(0x30 + parseInt(swordSlot))
+        await this.input.windowKeyTap(0x30 + parseInt(swordSlot))
         break
       }
       case 'pearl': {
         const pSlot = (config.slot as string) || '8'
         const pSwordSlot = this.config.misc.swordSlot || '1'
-        await this.input.keyTap(0x30 + parseInt(pSlot))
+        await this.input.windowKeyTap(0x30 + parseInt(pSlot))
         await this.sleep(60)
         await this.input.mouseClick(2)
         await this.sleep(800)
-        await this.input.keyTap(0x30 + parseInt(pSwordSlot))
+        await this.input.windowKeyTap(0x30 + parseInt(pSwordSlot))
         break
       }
       case 'potion': {
-        const throwDelay = (config.throwDelay as number) || 700
+        const throwDelay = this.resolveVal(config.throwDelay) || 700
         const potSwordSlot = this.config.misc.swordSlot || '1'
         if (this.currentPotSlot < this.config.potions.lowestSlot) this.currentPotSlot = this.config.potions.lowestSlot
         if (this.currentPotSlot > this.config.potions.highestSlot) { console.log('[macro/pot] none left'); return }
-        await this.input.keyTap(0x30 + this.currentPotSlot)
+        await this.input.windowKeyTap(0x30 + this.currentPotSlot)
         await this.sleep(throwDelay)
         await this.input.mouseClick(2)
         await this.sleep(600)
-        await this.input.keyTap(0x30 + parseInt(potSwordSlot))
+        await this.input.windowKeyTap(0x30 + parseInt(potSwordSlot))
         this.currentPotSlot++
         break
       }
       case 'condition': {
         const condType = config.type as string
-        const condVk = (config.vk as number) || 0
+        const condVk = this.resolveVal(config.vk) || 0
         if (condType === 'key_held') {
           if (!await this.input.isKeyDown(condVk)) throw new Error('condition: key not held')
         } else if (condType === 'key_not_held') {
           if (await this.input.isKeyDown(condVk)) throw new Error('condition: key held')
         } else if (condType === 'chance') {
-          const chance = (config.chance as number) || 50
+          const chance = this.resolveVal(config.chance) || 50
           if (Math.random() * 100 > chance) throw new Error('condition: chance failed')
         } else if (condType === 'mouse_held') {
-          const btn = (config.button as number) || 1
+          const btn = this.resolveVal(config.button) || 1
           if (!await this.input.isKeyDown(btn === 1 ? 0x01 : 0x02)) throw new Error('condition: mouse not held')
         }
         break
       }
+      case 'var_set': {
+        const name = config.name as string
+        const mode = (config.mode as string) || 'random'
+        let val: number
+        if (mode === 'plain') {
+          val = (config.value as number) || 0
+        } else {
+          const rawMin = config.min as string
+          const rawMax = config.max as string
+          const min = this.resolveVal(rawMin) || 0
+          const max = this.resolveVal(rawMax) || 1
+          const fix = config.fix as number | undefined
+          if (config.type === 'int') {
+            val = Math.floor(Math.random() * (max - min + 1)) + min
+          } else {
+            val = Math.random() * (max - min) + min
+            if (fix !== undefined) val = parseFloat(val.toFixed(fix))
+          }
+        }
+        this.scriptVars[name] = val
+        console.log(`[exec] var_set ${name}=${val} (mode=${mode} min=${config.min} max=${config.max} scriptKeys=[${Object.keys(this.scriptVars).join(',')}])`)
+        break
+      }
       case 'loop': {
-        const count = (config.count as number) || 3
+        const count = this.resolveVal(config.count) || 3
         const loopActions = (config.actions as MacroAction[]) || []
         for (let i = 0; i < count; i++) {
           for (const a of loopActions) await this.execAction(a)
@@ -697,17 +808,133 @@ export class AutoclickerEngine {
         break
       }
       case 'mouse_relative_move': {
-        const dx = (config.dx as number) || 0
-        const dy = (config.dy as number) || 0
+        const dx = this.resolveVal(config.dx) || 0
+        const dy = this.resolveVal(config.dy) || 0
+        console.log(`[exec] mouse_move(${dx}, ${dy}) from dx=${JSON.stringify(config.dx)} dy=${JSON.stringify(config.dy)}`)
         await this.input.mouseRelativeMove(dx, dy)
         break
       }
       case 'script': {
         const code = (config.code as string) || ''
+        console.log(`[script] parsing: "${code.split('\n')[0]}"`)
+        const savedVars = { ...this.scriptVars }
         const parsed = this.parseScript(code)
-        for (const a of parsed) await this.execAction(a)
+        console.log(`[script] parsed ${parsed.length} actions`)
+        for (const a of parsed) {
+          console.log(`[script] -> ${a.type}${a.type === 'var_set' ? ' name='+a.config.name : ''}${a.type === 'delay' ? ' ms='+a.config.ms : ''}${a.type === 'mouse_relative_move' ? ' dx='+a.config.dx : ''}`)
+          await this.execAction(a)
+        }
+        this.scriptVars = savedVars
         break
       }
+      case 'overlay_text': {
+        const expr = (config.expr as string) || ''
+        // Evaluate expression: split by +, resolve each part
+        const resolved = expr.split('+').map(p => p.trim()).map(p => {
+          if ((p.startsWith('"') && p.endsWith('"')) || (p.startsWith("'") && p.endsWith("'")))
+            return p.slice(1, -1)
+          const m = p.match(/^\$_([a-zA-Z_]\w*)$/)
+          if (m) { const v = this.scriptVars[m[1]]; return v !== undefined ? String(v) : '' }
+          return p
+        }).join('')
+        if (resolved) this.moduleOverlayText.push({ t: 'text', v: resolved })
+        break
+      }
+      case 'overlay_bar': {
+        const raw = this.resolveVal(config.value as string || config.value as number) || 0
+        const max = this.resolveVal(config.max as string || config.max as number) || 1
+        const len = this.resolveVal(config.len as string || config.len as number) || 10
+        const pct = Math.min(raw / max, 1)
+        const filled = Math.round(pct * len)
+        this.moduleOverlayText.push({ t: 'bar', v: pct, l: len, filled })
+        break
+      }
+      case 'overlay_clear': {
+        this.moduleOverlayText = []
+        break
+      }
+    }
+  }
+
+  private async toggleModule(index: number): Promise<void> {
+    const key = `module_${index}`
+    const macro = this.config.macros.list[index]
+    if (!macro) { console.log(`[module] no macro at index ${index}`); return }
+
+    // Check ALL actions for $fullscript
+    let foundFullscript = false
+    for (const step of macro.steps) {
+      for (const action of step.actions) {
+        const code = (action.config.code as string) || ''
+        if (code.trimStart().startsWith('$fullscript')) { foundFullscript = true; break }
+      }
+      if (foundFullscript) break
+    }
+    if (!foundFullscript) { console.log(`[module] "${macro.name}" has no $fullscript action`); return }
+
+    if (this.moduleEnabled[key]) {
+      this.moduleEnabled[key] = false
+      this.moduleOverlayText = []
+      console.log(`[module] "${macro.name}" disabled`)
+      return
+    }
+
+    // Find and parse the $fullscript action
+    for (const step of macro.steps) {
+      for (const action of step.actions) {
+        if (action.type === 'script') {
+          const code = (action.config.code as string) || ''
+          if (code.trimStart().startsWith('$fullscript')) {
+            const body = code.replace(/^\$fullscript\s*\r?\n/i, '')
+            this.modules[key] = this.parseScript(body)
+            this.moduleEnabled[key] = true
+            console.log(`[module] "${macro.name}" enabled`)
+            this.runModule(key).catch(() => {})
+            return
+          }
+        }
+      }
+    }
+  }
+
+  private async runModule(key: string): Promise<void> {
+    const actions = this.modules[key]
+    if (!actions) return
+    while (this.moduleEnabled[key]) {
+      this.moduleOverlayText = []
+      for (const a of actions) {
+        if (!this.moduleEnabled[key]) break
+        await this.execAction(a)
+      }
+      if (!this.moduleEnabled[key]) break
+    }
+  }
+
+  private async runMacroAction(macro: Macro, index: number): Promise<void> {
+    if (macro.loop) {
+      const key = `macro_${index}`
+      if (this.macroLoopActive[key]) {
+        // Toggle off
+        this.macroLoopActive[key] = false
+        this.macroLoopAbort[key] = true
+        console.log(`[macro] "${macro.name}" loop stopped`)
+      } else {
+        // Toggle on and start looping
+        this.macroLoopActive[key] = true
+        this.macroLoopAbort[key] = false
+        console.log(`[macro] "${macro.name}" loop started`)
+        this.runMacroLoop(macro, key).catch(() => {})
+      }
+    } else {
+      await this.runMacro(macro)
+    }
+  }
+
+  private async runMacroLoop(macro: Macro, key: string): Promise<void> {
+    while (this.macroLoopActive[key]) {
+      this.macroLoopAbort[key] = false
+      await this.runMacro(macro)
+      if (this.macroLoopAbort[key]) break
     }
   }
 
@@ -848,7 +1075,7 @@ export class AutoclickerEngine {
 
   getConfig(): AutoclickerConfig { return this.config }
 
-  private emitUpdate(): void {
+  emitUpdate(): void {
     try { this.onConfigUpdate?.(this.config) } catch {}
   }
 

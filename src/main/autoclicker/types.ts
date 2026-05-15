@@ -95,7 +95,7 @@ export type MacroActionType =
   | 'mouse_click' | 'mouse_down' | 'mouse_up'
   | 'mouse_relative_move'
   | 'rod' | 'pearl' | 'potion'
-  | 'condition' | 'loop' | 'script' | 'script_if'
+  | 'condition' | 'loop' | 'script' | 'script_if' | 'var_set' | 'overlay_text' | 'overlay_clear' | 'overlay_bar'
 
 export interface MacroAction {
   id: string
@@ -107,6 +107,7 @@ export interface MacroAction {
 export interface Macro {
   name: string
   bind: number
+  loop: boolean
   steps: MacroStep[]
 }
 
@@ -125,6 +126,7 @@ export const DEFAULT_MACROS: MacrosConfig = {
     {
       name: 'Rod',
       bind: 0,
+      loop: false,
       steps: [
         {
           id: 'rod_1', label: 'Rod Macro',
@@ -141,6 +143,7 @@ export const DEFAULT_MACROS: MacrosConfig = {
     {
       name: 'Pearl',
       bind: 0,
+      loop: false,
       steps: [
         {
           id: 'pearl_1', label: 'Pearl Macro',
@@ -157,6 +160,7 @@ export const DEFAULT_MACROS: MacrosConfig = {
     {
       name: 'Potion',
       bind: 0,
+      loop: false,
       steps: [
         {
           id: 'pot_1', label: 'Potion Macro',

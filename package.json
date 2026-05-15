@@ -1,6 +1,6 @@
 {
   "name": "soda",
-  "version": "2.0.4-beta",
+  "version": "2.0.5-beta",
   "description": "The best 1.8.9 Autoclicker to ever do it",
   "main": "./out/main/index.js",
   "author": "4urxra",
@@ -12,7 +12,7 @@
     "dev": "electron-vite dev -w ",
     "dev:py": "npm run build:helper:win && npm run dev",
     "build": "npm run typecheck && electron-vite build",
-    "build:helper:win": "python -m PyInstaller --noconfirm --onefile --distpath helpers --workpath build/pyinstaller --specpath build/pyinstaller --name input_helper helpers/input_helper.py",
+    "build:helper:win": "python -m PyInstaller --noconfirm --onefile --distpath helpers --workpath build/pyinstaller --specpath build/pyinstaller --name input_helper --hidden-import win32api --hidden-import win32con --hidden-import win32gui --hidden-import win32process --hidden-import psutil helpers/input_helper.py",
     "build:win": "npm run build:helper:win && npm run build && electron-builder --win",
     "build:mac": "electron-vite build && electron-builder --mac",
     "build:linux": "electron-vite build && electron-builder --linux"
@@ -34,6 +34,7 @@
     "@vitejs/plugin-vue": "^6.0.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "discord-rpc": "^4.0.1",
     "express": "^5.2.1",
     "keystar": "^0.1.15",
     "lucide-react": "^0.539.0",
@@ -95,7 +96,10 @@
       "resource/**"
     ],
     "extraResources": [
-      { "from": "helpers", "to": "helpers" }
+      {
+        "from": "helpers",
+        "to": "helpers"
+      }
     ],
     "win": {
       "executableName": "soda-app",
