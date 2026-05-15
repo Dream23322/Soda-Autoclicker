@@ -95,7 +95,7 @@ export type MacroActionType =
   | 'mouse_click' | 'mouse_down' | 'mouse_up'
   | 'mouse_relative_move'
   | 'rod' | 'pearl' | 'potion'
-  | 'condition' | 'loop' | 'script' | 'script_if' | 'var_set' | 'overlay_text' | 'overlay_clear' | 'overlay_bar'
+  | 'condition' | 'loop' | 'script' | 'script_if' | 'var_set' | 'var_assign' | 'overlay_text' | 'overlay_clear' | 'overlay_bar' | 'overlay_dot'
 
 export interface MacroAction {
   id: string

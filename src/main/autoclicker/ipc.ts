@@ -158,7 +158,7 @@ export function registerAutoclickerIPC(engine: AutoclickerEngine, settingsWindow
   })
 
   ipcMain.handle('autoclicker:getModuleOverlay', () => {
-    return engine.moduleOverlayText
+    return [...engine.moduleOverlayText]
   })
 
   ipcMain.handle('debug:openLogs', () => {
@@ -239,7 +239,8 @@ export function registerAutoclickerIPC(engine: AutoclickerEngine, settingsWindow
   })
 
   ipcMain.handle('cloud:listPublicItems', async () => {
-    return cloud.listPublicItems()
+    const items = await cloud.listPublicItems()
+    return { items }
   })
 
   ipcMain.handle('cloud:downloadPublicItem', async (_e, itemId: string) => {

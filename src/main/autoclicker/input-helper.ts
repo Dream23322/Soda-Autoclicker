@@ -34,11 +34,13 @@ export class InputHelper {
     if (fs.existsSync(exePath)) {
       console.log('InputHelper: spawning bundled exe at', exePath)
       try {
-        this.proc = spawn(exePath, [], { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true })
+        this.proc = spawn(exePath, [], { stdio: ['pipe', 'pipe', 'pipe'] })
+        let stderrBuf = ''
+        this.proc.stderr?.on('data', (d: Buffer) => { stderrBuf += d.toString() })
         await new Promise<void>((resolve, reject) => {
           const onError = (err: Error) => { cleanup(); reject(err) }
           const onExit = (code: number | null) => {
-            if (code !== null) { cleanup(); reject(new Error(`exited with code ${code}`)) }
+            if (code !== null) { cleanup(); reject(new Error(`exited with code ${code} — stderr: ${stderrBuf.trim()}`)) }
           }
           const cleanup = () => {
             this.proc?.off('error', onError)

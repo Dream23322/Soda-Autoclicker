@@ -7,7 +7,7 @@ class Safe extends Component<{ children: ReactNode }, { hasError: boolean }> {
   render() { return this.state.hasError ? null : this.props.children }
 }
 
-interface OverlayItem { t: string; v: any; l?: number; filled?: number }
+interface OverlayItem { t: string; v: any; l?: number; filled?: number; pct?: number }
 
 function useOverlayState() {
   const [l, setL] = useState(false)
@@ -38,7 +38,7 @@ function useOverlayState() {
       } catch {}
     }
     poll()
-    const id = setInterval(poll, 300)
+    const id = setInterval(poll, 80)
     return () => { alive = false; clearInterval(id) }
   }, [])
 
@@ -97,25 +97,52 @@ export function StatusOverlay() {
       }}>
         <Dot label="L" on={l} />
         <Dot label="R" on={r} />
-        {moduleItems.length > 0 && (
+        {moduleItems.filter(i => i.t !== 'dot').length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'rgba(13,13,13,0.6)', padding: '2px 5px' }}>
-            {moduleItems.map((item, i) => {
+            {moduleItems.filter(i => i.t !== 'dot').map((item, i) => {
               if (item.t === 'bar') {
-                const pct = item.v
-                const len = item.l || 10
+                const pct = (item as any).v
+                const len = (item as any).l || 10
                 return (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: 10, lineHeight: '14px', whiteSpace: 'nowrap' }}>
                     <span style={{ width: len * 5 + 2, height: 6, background: '#1a1a1a', display: 'inline-flex', alignItems: 'center', padding: '0 1px' }}>
-                      <span style={{ width: Math.round(pct * len * 5), height: 4, background: '#7c9ced', transition: 'width 0.3s' }} />
+                      <span style={{ width: Math.round(pct * len * 5), height: 4, background: 'var(--primary)', transition: 'width 0.3s' }} />
                     </span>
                     <span style={{ color: '#585858', fontSize: 9 }}>{Math.round(pct * 100)}%</span>
                   </div>
                 )
               }
-              return <span key={i} style={{ fontSize: 10, lineHeight: '14px', color: '#c8c8c8', whiteSpace: 'nowrap' }}>{item.v}</span>
+              return <span key={i} style={{ fontSize: 10, lineHeight: '14px', color: '#c8c8c8', whiteSpace: 'nowrap' }}>{(item as any).v}</span>
             })}
           </div>
         )}
+        {(() => {
+          const dots = moduleItems.filter(i => i.t === 'dot')
+          if (dots.length === 0) return null
+          const cols = Math.ceil(Math.sqrt(dots.length))
+          return (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: `repeat(${cols}, 16px)`,
+              gap: 3,
+              background: 'rgba(13,13,13,0.6)',
+              padding: '4px',
+              placeItems: 'center',
+            }}>
+              {dots.map((item, i) => {
+                const pct = (item as any).pct ?? 1
+                return (
+                  <div key={i} style={{
+                    width: 12, height: 12,
+                    background: `color-mix(in srgb, var(--primary) ${Math.round(pct * 100)}%, transparent)`,
+                    boxShadow: pct > 0.5 ? `0 0 6px var(--primary), 0 0 12px var(--primary)` : 'none',
+                    transition: 'all 0.08s',
+                  }} />
+                )
+              })}
+            </div>
+          )
+        })()}
       </div>
     </Safe>
   )

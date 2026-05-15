@@ -25,7 +25,7 @@ function Titlebar() {
       <div className="flex items-center gap-2">
         <span className="text-primary font-bold text-sm">$</span>
         <span className="text-xs font-bold tracking-wide">soda-autoclicker</span>
-        <span className="text-[10px] text-muted-foreground">v2.0.5-beta</span>
+        <span className="text-[10px] text-muted-foreground">v2.0.6-beta</span>
       </div>
 
       <div className="flex items-center gap-0" style={buttonContainerStyle}>

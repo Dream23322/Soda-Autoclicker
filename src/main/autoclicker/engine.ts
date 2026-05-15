@@ -50,6 +50,7 @@ export class AutoclickerEngine {
   private readonly MACRO_COOLDOWN_MS = 150
   /** Tracks whether a loop-enabled macro is currently running */
   private macroLoopActive: Record<string, boolean> = {}
+  private _loggedBinds = false
   private macroLoopAbort: Record<string, boolean> = {}
 
   // ── $fullscript module system ──
@@ -171,6 +172,9 @@ export class AutoclickerEngine {
     this.bindPollInterval = setInterval(async () => {
       if (!this.input.started) {
         try { await this.input.start() } catch {}
+        if (!this.input.started) {
+          this.windowPolledOnce = false
+        }
         return
       }
 
@@ -207,8 +211,14 @@ export class AutoclickerEngine {
         }),
       ]
 
+      const allBinds = checks.filter(c => c.vk).map(c => `${c.id}=${c.vk}`).join(', ')
+      if (!this._loggedBinds) { console.log(`[bind] registered: ${allBinds}`); this._loggedBinds = true }
+
       const active = checks.filter(c => c.vk && (c.gate === 'always' || gameplayOk))
-      if (active.length === 0) return
+      if (active.length === 0) {
+        console.log(`[bind] no active binds — gameplayOk=${gameplayOk} gameOk=${gameOk} focused="${this.focusedProcess}" cursorVis=${this.cursorVisible} windowPolled=${this.windowPolledOnce}`)
+        return
+      }
 
       // Batched: one stdio round-trip per poll tick instead of up to seven.
       const uniqueVks = Array.from(new Set(active.map(c => c.vk)))
@@ -585,6 +595,45 @@ export class AutoclickerEngine {
     return 0
   }
 
+  /** Evaluate a simple arithmetic expression with $_var references and basic
+   *  math (+, -, *, /, %, parentheses).  Safe from injection: only operates on
+   *  $var values, not the full JS environment.
+   *  Built-in functions: rnd(min,max), sin(x), cos(x), abs(x), floor(x), clamp(v,lo,hi) */
+  private evalExpr(expr: string): number {
+    const t = expr.trim()
+    if (/^-?\d+(\.\d+)?$/.test(t)) return parseFloat(t)
+
+    // Resolve $_var references
+    let resolved = t.replace(/\$(_[a-zA-Z_]\w*)/g, (_, name) => {
+      return String(this.scriptVars[name] ?? '0')
+    })
+
+    // Evaluate random() / rnd(min, max) at runtime — matches up to nested parens via simple heuristic
+    resolved = resolved.replace(/\br(?:nd|andom)\s*\(\s*([^,]+?)\s*,\s*([^)]+?)\s*\)/gi, (_, minStr, maxStr) => {
+      const min = this.evalExpr(minStr)
+      const max = this.evalExpr(maxStr)
+      return String(min + Math.random() * (max - min))
+    })
+
+    // Map math function names for new Function
+    resolved = resolved
+      .replace(/\bsin\s*\(/g, 'Math.sin(')
+      .replace(/\bcos\s*\(/g, 'Math.cos(')
+      .replace(/\babs\s*\(/g, 'Math.abs(')
+      .replace(/\bfloor\s*\(/g, 'Math.floor(')
+      .replace(/\bceil\s*\(/g, 'Math.ceil(')
+      .replace(/\bsqrt\s*\(/g, 'Math.sqrt(')
+      .replace(/\bclamp\s*\(/g, '_clamp(')
+
+    try {
+      const fn = new Function(`"use strict"; var _clamp=function(v,l,u){return v<l?l:v>u?u:v}; return (${resolved})`)
+      const r = fn()
+      return typeof r === 'number' && !isNaN(r) ? r : 0
+    } catch {
+      return 0
+    }
+  }
+
   private parseScriptLines(lines: string[], startIdx: number): { actions: MacroAction[]; nextIdx: number } {
     const actions: MacroAction[] = []
     const id = () => `script_${actions.length}_${Date.now()}`
@@ -618,18 +667,39 @@ export class AutoclickerEngine {
         })
         continue
       }
-      const varPlain = s.match(/^(_[a-zA-Z_]\w*)\s*:\s*(int|float)\s*=\s*(\d+)\s*$/i)
-      if (varPlain) {
+      // _name: type = expression (plain number, variable ref, or math expression)
+      const varExpr = s.match(/^(_[a-zA-Z_]\w*)\s*:\s*(int|float)\s*=\s*(.+)$/i)
+      if (varExpr) {
+        const expr = varExpr[3].trim()
+        // If it's just a plain number, use the simple path
+        if (/^\d+(\.\d+)?$/.test(expr)) {
+          actions.push({
+            id: id(), type: 'var_set', label: `Var ${varExpr[1]}`,
+            config: { name: varExpr[1], value: parseFloat(expr), mode: 'plain', exprKind: 'literal' },
+          })
+        } else {
+          // Expression — evaluated at runtime via var_assign
+          actions.push({
+            id: id(), type: 'var_assign', label: `Var ${varExpr[1]}`,
+            config: { name: varExpr[1], expr, exprKind: 'decl' },
+          })
+        }
+        continue
+      }
+
+      // Assignment: _name = expression
+      const assignMatch = s.match(/^(_[a-zA-Z_]\w*)\s*=\s*(.+)$/i)
+      if (assignMatch) {
         actions.push({
-          id: id(), type: 'var_set', label: `Var ${varPlain[1]}`,
-          config: { name: varPlain[1], value: parseInt(varPlain[3]), mode: 'plain' },
+          id: id(), type: 'var_assign', label: `Assign ${assignMatch[1]}`,
+          config: { name: assignMatch[1], expr: assignMatch[2].trim() },
         })
         continue
       }
 
-      const delayMatch = s.match(/^delay\s*\(\s*(\d+|'[^']+'|\$_[\w]+)\s*\)$/i)
+      const delayMatch = s.match(/^delay\s*\(\s*(.+)\s*\)$/i)
       if (delayMatch) {
-        actions.push({ id: id(), type: 'delay', label: `Delay ${delayMatch[1]}ms`, config: { ms: delayMatch[1] } }); continue
+        actions.push({ id: id(), type: 'delay', label: `Delay ${delayMatch[1].trim()}ms`, config: { ms: delayMatch[1].trim() } }); continue
       }
 
       // key("name") or key(0xNN) or key(N) or key($var) or key(convert_key("name"))
@@ -652,11 +722,14 @@ export class AutoclickerEngine {
       const yawMatch = s.match(/^yaw\s*\(\s*(-?\d+|\$_[\w]+)\s*\)$/i)
       if (yawMatch) { actions.push({ id: id(), type: 'mouse_relative_move', label: `Yaw ${yawMatch[1]}`, config: { dx: yawMatch[1], dy: '0' } }); continue }
 
-      const holdMatch = s.match(/^hold\s*\(\s*((?:0x[0-9a-f]+|\d+|\$_[\w]+|convert_key\s*\(\s*['"][^'"]+['"]\s*\)))\s*,\s*(\d+|\$_[\w]+)\s*\)$/i)
+      // hold — supports hex VK, raw number, $var, convert_key("name"), and 'name' string
+      let holdMatch = s.match(/^hold\s*\(\s*((?:0x[0-9a-f]+|\d+|\$_[\w]+|convert_key\s*\(\s*['"][^'"]+['"]\s*\)))\s*,\s*(\d+|\$_[\w]+)\s*\)$/i)
+      if (!holdMatch) holdMatch = s.match(/^hold\s*\(\s*'([^']+)'\s*,\s*(\d+|\$_[\w]+)\s*\)$/i)
       if (holdMatch) {
-        actions.push({ id: id(), type: 'key_down', label: `Hold ${holdMatch[1]}`, config: { vk: holdMatch[1] } })
+        const vk = holdMatch[1].startsWith('\'') ? `'${holdMatch[1].replace(/'/g, '')}'` : holdMatch[1]
+        actions.push({ id: id(), type: 'key_down', label: `Hold ${vk}`, config: { vk } })
         actions.push({ id: id(), type: 'delay', label: `Delay ${holdMatch[2]}ms`, config: { ms: holdMatch[2] } })
-        actions.push({ id: id(), type: 'key_up', label: `Release ${holdMatch[1]}`, config: { vk: holdMatch[1] } })
+        actions.push({ id: id(), type: 'key_up', label: `Release ${vk}`, config: { vk } })
         continue
       }
       const setSlotMatch = s.match(/^setslot\s*\(\s*(\d+)\s*\)$/i)
@@ -669,10 +742,15 @@ export class AutoclickerEngine {
       if (overlayBarMatch) { actions.push({ id: id(), type: 'overlay_bar', label: 'LoadingBar', config: { value: overlayBarMatch[1], max: overlayBarMatch[2], len: overlayBarMatch[3] } }); continue }
       if (/^overlay_clear\s*$/i.test(s)) { actions.push({ id: id(), type: 'overlay_clear', label: 'Clear Overlay', config: {} }); continue }
 
-      const keyDownMatch = s.match(/^keydown\s*\(\s*((?:0x[0-9a-f]+|\d+|\$_[\w]+|convert_key\s*\(\s*['"][^'"]+['"]\s*\)))\s*\)$/i)
-      if (keyDownMatch) { actions.push({ id: id(), type: 'key_down', label: `KeyDown ${keyDownMatch[1]}`, config: { vk: keyDownMatch[1] } }); continue }
-      const keyUpMatch = s.match(/^keyup\s*\(\s*((?:0x[0-9a-f]+|\d+|\$_[\w]+|convert_key\s*\(\s*['"][^'"]+['"]\s*\)))\s*\)$/i)
-      if (keyUpMatch) { actions.push({ id: id(), type: 'key_up', label: `KeyUp ${keyUpMatch[1]}`, config: { vk: keyUpMatch[1] } }); continue }
+      const dotMatch = s.match(/^overlay_dot\s*\(\s*['"](.+?)['"]\s*,\s*(.+)\s*\)$/i)
+      if (dotMatch) { actions.push({ id: id(), type: 'overlay_dot', label: `Dot: ${dotMatch[1]}`, config: { label: dotMatch[1], brightness: dotMatch[2].trim() } }); continue }
+
+      let keyDownMatch = s.match(/^keydown\s*\(\s*((?:0x[0-9a-f]+|\d+|\$_[\w]+|convert_key\s*\(\s*['"][^'"]+['"]\s*\)))\s*\)$/i)
+      if (!keyDownMatch) keyDownMatch = s.match(/^keydown\s*\(\s*'([^']+)'\s*\)$/i)
+      if (keyDownMatch) { const vk = keyDownMatch[1].startsWith('\'') ? `'${keyDownMatch[1].replace(/'/g, '')}'` : keyDownMatch[1]; actions.push({ id: id(), type: 'key_down', label: `KeyDown ${vk}`, config: { vk } }); continue }
+      let keyUpMatch = s.match(/^keyup\s*\(\s*((?:0x[0-9a-f]+|\d+|\$_[\w]+|convert_key\s*\(\s*['"][^'"]+['"]\s*\)))\s*\)$/i)
+      if (!keyUpMatch) keyUpMatch = s.match(/^keyup\s*\(\s*'([^']+)'\s*\)$/i)
+      if (keyUpMatch) { const vk = keyUpMatch[1].startsWith('\'') ? `'${keyUpMatch[1].replace(/'/g, '')}'` : keyUpMatch[1]; actions.push({ id: id(), type: 'key_up', label: `KeyUp ${vk}`, config: { vk } }); continue }
     }
     return { actions, nextIdx: i }
   }
@@ -685,8 +763,9 @@ export class AutoclickerEngine {
     const { type, config } = action
     switch (type) {
       case 'delay': {
-        const delayMs = this.resolveVal(config.ms) || 100
-        console.log(`[exec] delay(${delayMs}) from config.ms=${JSON.stringify(config.ms)}`)
+        const rawDelay = typeof config.ms === 'string' ? config.ms : String(config.ms ?? '100')
+        const delayMs = this.evalExpr(rawDelay) || 100
+        console.log(`[exec] delay(${delayMs}) from "${rawDelay}"`)
         await this.sleep(delayMs)
         break
       }
@@ -781,6 +860,14 @@ export class AutoclickerEngine {
         console.log(`[exec] var_set ${name}=${val} (mode=${mode} min=${config.min} max=${config.max} scriptKeys=[${Object.keys(this.scriptVars).join(',')}])`)
         break
       }
+      case 'var_assign': {
+        const vName = config.name as string
+        const rawExpr = (config.expr as string) || ''
+        const val = this.evalExpr(rawExpr)
+        console.log(`[exec] ${vName} = ${rawExpr} → ${val}`)
+        this.scriptVars[vName] = val
+        break
+      }
       case 'loop': {
         const count = this.resolveVal(config.count) || 3
         const loopActions = (config.actions as MacroAction[]) || []
@@ -793,14 +880,23 @@ export class AutoclickerEngine {
         const condition = (config.condition as string) || ''
         const body = (config.body as MacroAction[]) || []
         let pass = false
-        const keyHeldMatch = condition.match(/^key_held\s*\(\s*(0x[0-9a-f]+|\d+)\s*\)$/i)
-        if (keyHeldMatch) pass = await this.input.isKeyDown(parseInt(keyHeldMatch[1]))
-        const keyNotHeldMatch = condition.match(/^key_not_held\s*\(\s*(0x[0-9a-f]+|\d+)\s*\)$/i)
-        if (keyNotHeldMatch) pass = !await this.input.isKeyDown(parseInt(keyNotHeldMatch[1]))
+        const kvMatch = condition.match(/^key_held\s*\(\s*(.+)\s*\)$/i)
+        if (kvMatch) {
+          const vk = this.resolveVal(kvMatch[1].startsWith('\'') ? kvMatch[1] : (isNaN(parseInt(kvMatch[1])) ? `'${kvMatch[1]}'` : kvMatch[1]))
+          pass = vk ? await this.input.isKeyDown(vk) : false
+        }
+        const knMatch = condition.match(/^key_not_held\s*\(\s*(.+)\s*\)$/i)
+        if (knMatch) {
+          const vk = this.resolveVal(knMatch[1].startsWith('\'') ? knMatch[1] : (isNaN(parseInt(knMatch[1])) ? `'${knMatch[1]}'` : knMatch[1]))
+          pass = vk ? !await this.input.isKeyDown(vk) : false
+        }
         const chanceMatch = condition.match(/^chance\s*\(\s*(\d+)\s*\)$/i)
         if (chanceMatch) pass = Math.random() * 100 < parseInt(chanceMatch[1])
-        const mouseHeldMatch = condition.match(/^mouse_held\s*\(\s*(\d+)\s*\)$/i)
-        if (mouseHeldMatch) pass = await this.input.isKeyDown(parseInt(mouseHeldMatch[1]) === 1 ? 0x01 : 0x02)
+        const mhMatch = condition.match(/^mouse_held\s*\(\s*(.+)\s*\)$/i)
+        if (mhMatch) {
+          const btn = this.resolveVal(mhMatch[1]) || 1
+          pass = await this.input.isKeyDown(btn === 1 ? 0x01 : 0x02)
+        }
         if (/^focused$/i.test(condition)) pass = this.isGameFocused()
         if (/^clicking_left$/i.test(condition)) pass = this.config.left.enabled
         if (/^clicking_right$/i.test(condition)) pass = this.config.right.enabled
@@ -851,6 +947,15 @@ export class AutoclickerEngine {
       }
       case 'overlay_clear': {
         this.moduleOverlayText = []
+        break
+      }
+      case 'overlay_dot': {
+        const label = (config.label as string) || ''
+        const raw = (config.brightness as string) || '100'
+        const brightness = this.evalExpr(raw)
+        const pct = Math.min(Math.max(brightness, 0), 100) / 100
+        console.log(`[exec] overlay_dot("${label}", ${raw}) → ${brightness} → pct=${pct}`)
+        this.moduleOverlayText.push({ t: 'dot', v: label, pct })
         break
       }
     }
@@ -932,6 +1037,7 @@ export class AutoclickerEngine {
 
   private async runMacroLoop(macro: Macro, key: string): Promise<void> {
     while (this.macroLoopActive[key]) {
+      this.moduleOverlayText = []
       this.macroLoopAbort[key] = false
       await this.runMacro(macro)
       if (this.macroLoopAbort[key]) break
