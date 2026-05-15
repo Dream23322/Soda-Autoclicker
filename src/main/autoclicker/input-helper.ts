@@ -18,9 +18,8 @@ export class InputHelper {
   private warnedStaleBatch = false
 
   async start(): Promise<void> {
-    // Kill any stale helper from a previous run to prevent orphan processes.
+    // Kill tracked helper if any.
     this.stop()
-    try { spawn('taskkill', ['/f', '/im', 'input_helper.exe'], { windowsHide: true }).unref() } catch {}
     if (this.started) return
 
     const isDev = !app.isPackaged
@@ -30,33 +29,18 @@ export class InputHelper {
     const exePath = path.join(helpersDir, 'input_helper.exe')
     const scriptPath = path.join(helpersDir, 'input_helper.py')
 
-    // Try the bundled .exe first, then fall back to running the .py via Python
+    // Try the bundled .exe first — if the exe dies the common exit handler will notice
     if (fs.existsSync(exePath)) {
       console.log('InputHelper: spawning bundled exe at', exePath)
       try {
         this.proc = spawn(exePath, [], { stdio: ['pipe', 'pipe', 'pipe'] })
-        let stderrBuf = ''
-        this.proc.stderr?.on('data', (d: Buffer) => { stderrBuf += d.toString() })
-        await new Promise<void>((resolve, reject) => {
-          const onError = (err: Error) => { cleanup(); reject(err) }
-          const onExit = (code: number | null) => {
-            if (code !== null) { cleanup(); reject(new Error(`exited with code ${code} — stderr: ${stderrBuf.trim()}`)) }
-          }
-          const cleanup = () => {
-            this.proc?.off('error', onError)
-            this.proc?.off('exit', onExit)
-          }
-          this.proc!.once('error', onError)
-          this.proc!.once('exit', onExit)
-          setTimeout(() => { cleanup(); resolve() }, 300)
-        })
       } catch (err) {
-        console.error(`InputHelper: bundled exe failed — ${err instanceof Error ? err.message : String(err)}`)
-        this.proc?.kill()
+        console.error(`InputHelper: bundled exe spawn threw — ${err instanceof Error ? err.message : String(err)}`)
         this.proc = null
       }
     }
 
+    // If the exe didn't start or quickly died, fall back to Python
     if (!this.proc) {
       console.log('InputHelper: no bundled exe, trying python at', scriptPath)
       const pythonExes = process.platform === 'win32'
