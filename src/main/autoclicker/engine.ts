@@ -50,7 +50,6 @@ export class AutoclickerEngine {
   private readonly MACRO_COOLDOWN_MS = 150
   /** Tracks whether a loop-enabled macro is currently running */
   private macroLoopActive: Record<string, boolean> = {}
-  private _loggedBinds = false
   private macroLoopAbort: Record<string, boolean> = {}
 
   // ── $fullscript module system ──
@@ -73,6 +72,7 @@ export class AutoclickerEngine {
   private movementState = { w: false, a: false, s: false, d: false, jump: 0 }
   private recordCycleIndex = 0
   focusedProcess = ''
+  private focusedProcessLower = ''
   private cursorVisible = false
   private smartBHActive = false
   private currentPotSlot = 0
@@ -173,9 +173,42 @@ export class AutoclickerEngine {
     }
   }
 
+  /** Cached bind checks, rebuilt only when config changes (via emitUpdate). */
+  private cachedChecks: { id: string; vk: number; action: () => void; gate: 'always' | 'gameplay' }[] = []
+
+  private rebuildBindCache(): void {
+    type Gate = 'always' | 'gameplay'
+    this.cachedChecks = [
+      { id: 'panic', vk: PANIC_VK, action: () => this.panic(), gate: 'always' },
+      { id: 'hideGUI', vk: this.config.misc.bindHideGUI, action: () => this.onHideGUI?.(), gate: 'always' },
+      { id: 'left', vk: this.config.left.bind, action: () => this.toggleLeft(), gate: 'gameplay' },
+      { id: 'right', vk: this.config.right.bind, action: () => this.toggleRight(), gate: 'gameplay' },
+      { id: 'rod', vk: this.config.misc.rodBind, action: () => this.doRod(), gate: 'gameplay' },
+      { id: 'pearl', vk: this.config.misc.pearlBind, action: () => this.doPearl(), gate: 'gameplay' },
+      { id: 'pot', vk: this.config.potions.potBind, action: () => this.doPotion(), gate: 'gameplay' },
+      { id: 'potReset', vk: this.config.potions.potResetBind, action: () => { this.currentPotSlot = this.config.potions.lowestSlot }, gate: 'always' },
+      ...this.config.macros.list.reduce<{ id: string; vk: number; action: () => void; gate: Gate }[]>((acc, m, i) => {
+        if (!m.bind) return acc
+        const hasFullscript = m.steps.some(step =>
+          step.actions.some(a => a.type === 'script' && (a.config.code as string || '').trimStart().startsWith('$fullscript'))
+        )
+        if (hasFullscript) {
+          console.log(`[bind] registering module_${i} "${m.name}" vk=${m.bind}`)
+          acc.push({ id: `module_${i}`, vk: m.bind, action: () => { console.log(`[bind] firing module_${i}`); this.toggleModule(i).catch(() => {}) }, gate: 'gameplay' as Gate })
+        } else {
+          acc.push({ id: `macro_${i}`, vk: m.bind, action: () => { this.runMacroAction(m, i).catch(() => {}) }, gate: 'gameplay' as Gate })
+        }
+        return acc
+      }, []),
+    ]
+    const allBinds = this.cachedChecks.filter(c => c.vk).map(c => `${c.id}=${c.vk}`).join(', ')
+    console.log(`[bind] registered: ${allBinds}`)
+  }
+
   // ── Bind polling ──
 
   private startBindPollLoop(): void {
+    this.rebuildBindCache()
     this.bindPollInterval = setInterval(async () => {
       if (!this.input.started) {
         try { await this.input.start() } catch {}
@@ -185,46 +218,10 @@ export class AutoclickerEngine {
         return
       }
 
-      // Per-bind gating.
-      //   'always'    — fires from anywhere. Reserved for binds that don't
-      //                 synthesise input (panic, GUI hide, pot-cycle reset).
-      //   'gameplay'  — fires only when Minecraft is focused AND the cursor
-      //                 is hidden (in active gameplay). Anything that toggles
-      //                 the clicker or types slot keys must use this so it
-      //                 doesn't fire while the user is in chat / inventory /
-      //                 anvil / sign / another app.
       const gameOk = this.isGameFocused() || (!this.windowPolledOnce && this.focusedProcess === '')
       const gameplayOk = gameOk && !this.cursorIsInMenu()
 
-      type Gate = 'always' | 'gameplay'
-      const checks: { id: string; vk: number; action: () => void; gate: Gate }[] = [
-        { id: 'panic', vk: PANIC_VK, action: () => this.panic(), gate: 'always' },
-        { id: 'hideGUI', vk: this.config.misc.bindHideGUI, action: () => this.onHideGUI?.(), gate: 'always' },
-        { id: 'left', vk: this.config.left.bind, action: () => this.toggleLeft(), gate: 'gameplay' },
-        { id: 'right', vk: this.config.right.bind, action: () => this.toggleRight(), gate: 'gameplay' },
-        { id: 'rod', vk: this.config.misc.rodBind, action: () => this.doRod(), gate: 'gameplay' },
-        { id: 'pearl', vk: this.config.misc.pearlBind, action: () => this.doPearl(), gate: 'gameplay' },
-        { id: 'pot', vk: this.config.potions.potBind, action: () => this.doPotion(), gate: 'gameplay' },
-        { id: 'potReset', vk: this.config.potions.potResetBind, action: () => { this.currentPotSlot = this.config.potions.lowestSlot }, gate: 'always' },
-        ...this.config.macros.list.reduce<{ id: string; vk: number; action: () => void; gate: Gate }[]>((acc, m, i) => {
-          if (!m.bind) return acc
-          const hasFullscript = m.steps.some(step =>
-            step.actions.some(a => a.type === 'script' && (a.config.code as string || '').trimStart().startsWith('$fullscript'))
-          )
-          if (hasFullscript) {
-            if (!this._loggedBinds) console.log(`[bind] registering module_${i} "${m.name}" vk=${m.bind}`)
-            acc.push({ id: `module_${i}`, vk: m.bind, action: () => { console.log(`[bind] firing module_${i}`); this.toggleModule(i).catch(() => {}) }, gate: 'gameplay' as Gate })
-          } else {
-            acc.push({ id: `macro_${i}`, vk: m.bind, action: () => { this.runMacroAction(m, i).catch(() => {}) }, gate: 'gameplay' as Gate })
-          }
-          return acc
-        }, []),
-      ]
-
-      const allBinds = checks.filter(c => c.vk).map(c => `${c.id}=${c.vk}`).join(', ')
-      if (!this._loggedBinds) { console.log(`[bind] registered: ${allBinds}`); this._loggedBinds = true }
-
-      const active = checks.filter(c => c.vk && (c.gate === 'always' || gameplayOk))
+      const active = this.cachedChecks.filter(c => c.vk && (c.gate === 'always' || gameplayOk))
       if (active.length === 0) {
         console.log(`[bind] no active binds — gameplayOk=${gameplayOk} gameOk=${gameOk} focused="${this.focusedProcess}" cursorVis=${this.cursorVisible} windowPolled=${this.windowPolledOnce}`)
         return
@@ -322,10 +319,10 @@ export class AutoclickerEngine {
 
   isGameFocused(): boolean {
     if (this.config.misc.compatibilityMode) return true
-    return this.focusedProcess.toLowerCase().includes('java') ||
-           this.focusedProcess.toLowerCase().includes('az-launcher') ||
-           this.focusedProcess.toLowerCase().includes('badlion') ||
-           this.focusedProcess.toLowerCase().includes('feather')
+    return this.focusedProcessLower.includes('java') ||
+           this.focusedProcessLower.includes('az-launcher') ||
+           this.focusedProcessLower.includes('badlion') ||
+           this.focusedProcessLower.includes('feather')
   }
 
   /** True when MC is focused and the player is in gameplay (no menu/inventory/chat open). */
@@ -549,10 +546,12 @@ export class AutoclickerEngine {
       try {
         const info = await this.input.getWindowInfo()
         this.focusedProcess = info.processName
+        this.focusedProcessLower = info.processName.toLowerCase()
         this.cursorVisible = info.cursorVisible
         this.windowPolledOnce = true
       } catch {
         this.focusedProcess = ''
+        this.focusedProcessLower = ''
         this.cursorVisible = false
       }
     }, 500)
@@ -1333,6 +1332,7 @@ export class AutoclickerEngine {
   getConfig(): AutoclickerConfig { return this.config }
 
   emitUpdate(): void {
+    this.rebuildBindCache()
     try { this.onConfigUpdate?.(this.config) } catch {}
   }
 
