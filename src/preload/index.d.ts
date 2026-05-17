@@ -60,6 +60,8 @@ interface AutoclickerApi {
     autoRod: boolean
     recorder: boolean
     discord: boolean
+    hideDefaultLeft: boolean
+    hideDefaultRight: boolean
     overlayPosition: string
     overlayLayout: string
     overlayEnabled: boolean

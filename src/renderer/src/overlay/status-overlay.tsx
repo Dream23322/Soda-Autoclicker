@@ -12,6 +12,8 @@ interface OverlayItem { t: string; v: any; l?: number; filled?: number; pct?: nu
 function useOverlayState() {
   const [l, setL] = useState(false)
   const [r, setR] = useState(false)
+  const [hideL, setHideL] = useState(false)
+  const [hideR, setHideR] = useState(false)
   const [pos, setPos] = useState('top-right')
   const [layout, setLayout] = useState('horizontal')
   const [enabled, setEnabled] = useState(false)
@@ -26,6 +28,7 @@ function useOverlayState() {
         if (!alive) return
         if (s) {
           setL(!!s.leftEnabled); setR(!!s.rightEnabled)
+          setHideL(!!s.hideDefaultLeft); setHideR(!!s.hideDefaultRight)
           if (s.overlayPosition) setPos(s.overlayPosition)
           if (s.overlayLayout) setLayout(s.overlayLayout)
           setEnabled(s.overlayEnabled !== false)
@@ -47,7 +50,7 @@ function useOverlayState() {
     }
   }, [])
 
-  return { l, r, pos, layout, enabled, moduleItems }
+  return { l, r, pos, layout, enabled, moduleItems, hideL, hideR }
 }
 
 const POS_STYLES: Record<string, { top?: number; bottom?: number; left?: number; right?: number }> = {
@@ -83,7 +86,7 @@ function Dot({ label, on }: { label: string; on: boolean }) {
 }
 
 export function StatusOverlay() {
-  const { l, r, pos, layout, enabled, moduleItems } = useOverlayState()
+  const { l, r, pos, layout, enabled, moduleItems, hideL, hideR } = useOverlayState()
 
   if (!enabled) return null
 
@@ -100,11 +103,11 @@ export function StatusOverlay() {
         fontFamily: '"JetBrains Mono","Fira Code","Cascadia Code","Consolas",monospace',
         fontSize: 11, userSelect: 'none', pointerEvents: 'none',
       }}>
-        <Dot label="L" on={l} />
-        <Dot label="R" on={r} />
-        {moduleItems.filter(i => i.t !== 'dot').length > 0 && (
+        {!hideL && <Dot label="L" on={l} />}
+        {!hideR && <Dot label="R" on={r} />}
+        {moduleItems.filter(i => i.t !== 'dot' && i.t !== 'entry').length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'rgba(13,13,13,0.6)', padding: '2px 5px' }}>
-            {moduleItems.filter(i => i.t !== 'dot').map((item, i) => {
+            {moduleItems.filter(i => i.t !== 'dot' && i.t !== 'entry').map((item, i) => {
               if (item.t === 'bar') {
                 const pct = (item as any).v
                 const len = (item as any).l || 10
@@ -121,6 +124,55 @@ export function StatusOverlay() {
             })}
           </div>
         )}
+        {(() => {
+          const entries = moduleItems.filter(i => i.t === 'entry')
+          if (entries.length === 0) return null
+          const sorted = [...entries].sort((a, b) => String(b.v).length - String(a.v).length)
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {sorted.map((item, i) => {
+                const label = String(item.v)
+                const active = !!((item as any).a)
+                const side = ((item as any).side) || 'left'
+                return (
+                  <div key={i} style={{ display: 'flex', justifyContent: side === 'right' ? 'flex-end' : 'flex-start' }}>
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 4,
+                      padding: '2px 7px',
+                      background: active ? 'rgba(13,13,13,0.75)' : 'rgba(13,13,13,0.35)',
+                      border: active ? '0.5px solid color-mix(in srgb, var(--primary) 40%, transparent)' : '0.5px solid rgba(26,26,26,0.5)',
+                      width: 'fit-content',
+                    }}>
+                      {side === 'left' && (
+                        <span style={{
+                          display: 'inline-block', width: 6, height: 6, flexShrink: 0,
+                          background: active ? 'var(--primary)' : '#333',
+                          boxShadow: active ? '0 0 5px var(--primary), 0 0 10px var(--primary)' : 'none',
+                          transition: 'all 0.2s',
+                        }} />
+                      )}
+                      <span style={{
+                        color: active ? '#c8c8c8' : '#585858',
+                        fontWeight: 700, fontSize: 10, lineHeight: '14px',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        {label}
+                      </span>
+                      {side === 'right' && (
+                        <span style={{
+                          display: 'inline-block', width: 6, height: 6, flexShrink: 0,
+                          background: active ? 'var(--primary)' : '#333',
+                          boxShadow: active ? '0 0 5px var(--primary), 0 0 10px var(--primary)' : 'none',
+                          transition: 'all 0.2s',
+                        }} />
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })()}
         {(() => {
           const dots = moduleItems.filter(i => i.t === 'dot')
           if (dots.length === 0) return null

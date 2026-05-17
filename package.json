@@ -1,6 +1,6 @@
 {
   "name": "soda",
-  "version": "2.0.8-beta",
+  "version": "2.0.10-beta",
   "description": "The best 1.8.9 Autoclicker to ever do it",
   "main": "./out/main/index.js",
   "author": "4urxra",
@@ -41,7 +41,7 @@
     "react-markdown": "^10.1.0",
     "react-router": "^7.8.0",
     "remark-gfm": "^4.0.1",
-    "sonner": "^2.0.8",
+    "sonner": "^2.0.10",
     "tailwind-merge": "^3.3.1",
     "tailwindcss": "^4.1.11",
     "tesseract.js": "^7.0.0",

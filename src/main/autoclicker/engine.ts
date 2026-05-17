@@ -60,6 +60,8 @@ export class AutoclickerEngine {
   private moduleEnabled: Record<string, boolean> = {}
   /** Overlay items set by modules. Each item is { t:'text', v:string } or { t:'bar', v:number, l:number, filled:number }. */
   moduleOverlayText: any[] = []
+  /** Sides where the default L/R indicator should be hidden when the clicker is off. Set by overlay_request_hide(). */
+  overlayHideSides: Set<string> = new Set()
   /** Built-in keystrokes overlay — reads keys in one batch and updates overlay atomically */
   keystrokesInterval: ReturnType<typeof setInterval> | null = null
   /** The 7 VKs for the keystrokes grid (LMB, W, RMB, A, S, D, Space) */
@@ -204,16 +206,19 @@ export class AutoclickerEngine {
         { id: 'pearl', vk: this.config.misc.pearlBind, action: () => this.doPearl(), gate: 'gameplay' },
         { id: 'pot', vk: this.config.potions.potBind, action: () => this.doPotion(), gate: 'gameplay' },
         { id: 'potReset', vk: this.config.potions.potResetBind, action: () => { this.currentPotSlot = this.config.potions.lowestSlot }, gate: 'always' },
-        ...this.config.macros.list.filter(m => m.bind).map((m, i) => {
+        ...this.config.macros.list.reduce<{ id: string; vk: number; action: () => void; gate: Gate }[]>((acc, m, i) => {
+          if (!m.bind) return acc
           const hasFullscript = m.steps.some(step =>
             step.actions.some(a => a.type === 'script' && (a.config.code as string || '').trimStart().startsWith('$fullscript'))
           )
           if (hasFullscript) {
-            console.log(`[bind] registering module_${i} "${m.name}" vk=${m.bind}`)
-            return { id: `module_${i}`, vk: m.bind, action: () => { console.log(`[bind] firing module_${i}`); this.toggleModule(i).catch(() => {}) }, gate: 'gameplay' as Gate }
+            if (!this._loggedBinds) console.log(`[bind] registering module_${i} "${m.name}" vk=${m.bind}`)
+            acc.push({ id: `module_${i}`, vk: m.bind, action: () => { console.log(`[bind] firing module_${i}`); this.toggleModule(i).catch(() => {}) }, gate: 'gameplay' as Gate })
+          } else {
+            acc.push({ id: `macro_${i}`, vk: m.bind, action: () => { this.runMacroAction(m, i).catch(() => {}) }, gate: 'gameplay' as Gate })
           }
-          return { id: `macro_${i}`, vk: m.bind, action: () => { this.runMacroAction(m, i).catch(() => {}) }, gate: 'gameplay' as Gate }
-        }),
+          return acc
+        }, []),
       ]
 
       const allBinds = checks.filter(c => c.vk).map(c => `${c.id}=${c.vk}`).join(', ')
@@ -623,6 +628,23 @@ export class AutoclickerEngine {
 
   // Runtime script variable storage
   private scriptVars: Record<string, number> = {}
+  private scriptStrVars: Record<string, string> = {}
+
+  /** Resolve a value to a string. Handles $_var references (checks string vars
+   *  first, falls back to number vars), or strips surrounding quotes. */
+  private resolveStrVal(val: string): string {
+    const t = val.trim()
+    const varMatch = t.match(/^\$(_[a-zA-Z_]\w*)$/)
+    if (varMatch) {
+      const name = varMatch[1]
+      if (name in this.scriptStrVars) return this.scriptStrVars[name]
+      if (name in this.scriptVars) return String(this.scriptVars[name])
+      return ''
+    }
+    const quoted = t.match(/^['"](.*)['"]$/)
+    if (quoted) return quoted[1]
+    return t
+  }
 
   /** Resolve a config value at runtime. Accepts raw numbers, $var references,
    *  convert_key("name"), 'namedKey' strings, 0xNN hex, or plain numeric strings. */
@@ -646,10 +668,22 @@ export class AutoclickerEngine {
     return 0
   }
 
+  /** Resolve a named module state to 1 (enabled) or 0 (disabled). */
+  private getModuleState(name: string): number {
+    switch (name.toLowerCase()) {
+      case 'left': return this.config.left.enabled ? 1 : 0
+      case 'right': return this.config.right.enabled ? 1 : 0
+      case 'wtap': return this.config.movement.autoWTap ? 1 : 0
+      case 'autorod': return this.config.left.AutoRod ? 1 : 0
+      case 'potions': return this.config.potions.enabled ? 1 : 0
+      default: return 0
+    }
+  }
+
   /** Evaluate a simple arithmetic expression with $_var references and basic
    *  math (+, -, *, /, %, parentheses).  Safe from injection: only operates on
    *  $var values, not the full JS environment.
-   *  Built-in functions: rnd(min,max), sin(x), cos(x), abs(x), floor(x), clamp(v,lo,hi) */
+   *  Built-in functions: rnd(min,max), sin(x), cos(x), abs(x), floor(x), clamp(v,lo,hi), get_state('name') */
   private evalExpr(expr: string): number {
     const t = expr.trim()
     if (/^-?\d+(\.\d+)?$/.test(t)) return parseFloat(t)
@@ -664,6 +698,11 @@ export class AutoclickerEngine {
       const min = this.evalExpr(minStr)
       const max = this.evalExpr(maxStr)
       return String(min + Math.random() * (max - min))
+    })
+
+    // Resolve get_state('name') calls — reads config state at runtime
+    resolved = resolved.replace(/\bget_state\s*\(\s*'([^']+)'\s*\)/g, (_, name) => {
+      return String(this.getModuleState(name))
     })
 
     // Map math function names for new Function
@@ -718,6 +757,16 @@ export class AutoclickerEngine {
         })
         continue
       }
+      // String variable: _name: str = "value"
+      const varStr = s.match(/^(_[a-zA-Z_]\w*)\s*:\s*str\s*=\s*['"](.*?)['"]\s*$/i)
+      if (varStr) {
+        actions.push({
+          id: id(), type: 'var_set_str', label: `Str ${varStr[1]}`,
+          config: { name: varStr[1], value: varStr[2] },
+        })
+        continue
+      }
+
       // _name: type = expression (plain number, variable ref, or math expression)
       const varExpr = s.match(/^(_[a-zA-Z_]\w*)\s*:\s*(int|float)\s*=\s*(.+)$/i)
       if (varExpr) {
@@ -793,8 +842,16 @@ export class AutoclickerEngine {
       if (overlayBarMatch) { actions.push({ id: id(), type: 'overlay_bar', label: 'LoadingBar', config: { value: overlayBarMatch[1], max: overlayBarMatch[2], len: overlayBarMatch[3] } }); continue }
       if (/^overlay_clear\s*$/i.test(s)) { actions.push({ id: id(), type: 'overlay_clear', label: 'Clear Overlay', config: {} }); continue }
 
+      const hideMatch = s.match(/^overlay_request_hide\s*\(\s*['"](left|right)['"]\s*\)$/i)
+      if (hideMatch) { actions.push({ id: id(), type: 'overlay_request_hide', label: `Hide: ${hideMatch[1]}`, config: { side: hideMatch[1] } }); continue }
+
       const dotMatch = s.match(/^overlay_dot\s*\(\s*['"](.+?)['"]\s*,\s*(.+)\s*\)$/i)
       if (dotMatch) { actions.push({ id: id(), type: 'overlay_dot', label: `Dot: ${dotMatch[1]}`, config: { label: dotMatch[1], brightness: dotMatch[2].trim() } }); continue }
+
+      let entryMatch = s.match(/^overlay_entry\s*\(\s*['"](.+?)['"]\s*,\s*([^,]+?)\s*,\s*(.+)\s*\)$/i)
+      if (entryMatch) { actions.push({ id: id(), type: 'overlay_entry', label: `Entry: ${entryMatch[1]}`, config: { label: entryMatch[1], active: entryMatch[2].trim(), side: entryMatch[3].trim() } }); continue }
+      entryMatch = s.match(/^overlay_entry\s*\(\s*(\$_[a-zA-Z_]\w*)\s*,\s*([^,]+?)\s*,\s*(.+)\s*\)$/i)
+      if (entryMatch) { actions.push({ id: id(), type: 'overlay_entry', label: `Entry: ${entryMatch[1]}`, config: { label: entryMatch[1], active: entryMatch[2].trim(), side: entryMatch[3].trim() } }); continue }
 
       let keyDownMatch = s.match(/^keydown\s*\(\s*((?:0x[0-9a-f]+|\d+|\$_[\w]+|convert_key\s*\(\s*['"][^'"]+['"]\s*\)))\s*\)$/i)
       if (!keyDownMatch) keyDownMatch = s.match(/^keydown\s*\(\s*'([^']+)'\s*\)$/i)
@@ -919,6 +976,13 @@ export class AutoclickerEngine {
         this.scriptVars[vName] = val
         break
       }
+      case 'var_set_str': {
+        const svName = config.name as string
+        const svVal = (config.value as string) || ''
+        this.scriptStrVars[svName] = svVal
+        console.log(`[exec] ${svName}: str = "${svVal}"`)
+        break
+      }
       case 'loop': {
         const count = this.resolveVal(config.count) || 3
         const loopActions = (config.actions as MacroAction[]) || []
@@ -951,6 +1015,8 @@ export class AutoclickerEngine {
         if (/^focused$/i.test(condition)) pass = this.isGameFocused()
         if (/^clicking_left$/i.test(condition)) pass = this.config.left.enabled
         if (/^clicking_right$/i.test(condition)) pass = this.config.right.enabled
+        const varCond = condition.match(/^\$(_[a-zA-Z_]\w*)$/)
+        if (varCond) pass = (this.scriptVars[varCond[1]] ?? 0) !== 0
         if (pass) { for (const a of body) await this.execAction(a) }
         break
       }
@@ -965,6 +1031,7 @@ export class AutoclickerEngine {
         const code = (config.code as string) || ''
         console.log(`[script] parsing: "${code.split('\n')[0]}"`)
         const savedVars = { ...this.scriptVars }
+        const savedStrVars = { ...this.scriptStrVars }
         const parsed = this.parseScript(code)
         console.log(`[script] parsed ${parsed.length} actions`)
         for (const a of parsed) {
@@ -972,6 +1039,7 @@ export class AutoclickerEngine {
           await this.execAction(a)
         }
         this.scriptVars = savedVars
+        this.scriptStrVars = savedStrVars
         break
       }
       case 'overlay_text': {
@@ -981,7 +1049,12 @@ export class AutoclickerEngine {
           if ((p.startsWith('"') && p.endsWith('"')) || (p.startsWith("'") && p.endsWith("'")))
             return p.slice(1, -1)
           const m = p.match(/^\$_([a-zA-Z_]\w*)$/)
-          if (m) { const v = this.scriptVars[m[1]]; return v !== undefined ? String(v) : '' }
+          if (m) {
+            const name = m[1]
+            if (name in this.scriptStrVars) return this.scriptStrVars[name]
+            const v = this.scriptVars[name]
+            return v !== undefined ? String(v) : ''
+          }
           return p
         }).join('')
         if (resolved) this.moduleOverlayText.push({ t: 'text', v: resolved })
@@ -1009,6 +1082,27 @@ export class AutoclickerEngine {
         this.moduleOverlayText.push({ t: 'dot', v: label, pct })
         break
       }
+      case 'overlay_entry': {
+        const eLabelRaw = (config.label as string) || ''
+        const eRaw = (config.active as string) || '0'
+        const eSideRaw = (config.side as string) || 'left'
+        const eLabel = this.resolveStrVal(eLabelRaw)
+        const eActive = this.evalExpr(eRaw)
+        let eSide = 'left'
+        const sideResolved = this.resolveStrVal(eSideRaw)
+        if (sideResolved === 'left' || sideResolved === 'right') {
+          eSide = sideResolved
+        } else {
+          eSide = this.evalExpr(eSideRaw) > 0 ? 'right' : 'left'
+        }
+        this.moduleOverlayText.push({ t: 'entry', v: eLabel, a: eActive > 0, side: eSide })
+        break
+      }
+      case 'overlay_request_hide': {
+        const hideSide = (config.side as string) || 'left'
+        this.overlayHideSides.add(hideSide)
+        break
+      }
     }
   }
 
@@ -1031,6 +1125,7 @@ export class AutoclickerEngine {
     if (this.moduleEnabled[key]) {
       this.moduleEnabled[key] = false
       this.moduleOverlayText = []
+      this.overlayHideSides.clear()
       this.pushOverlay()
       console.log(`[module] "${macro.name}" disabled`)
       return

@@ -30,6 +30,8 @@ export function registerAutoclickerIPC(engine: AutoclickerEngine, settingsWindow
       isGameFocused: engine.isGameFocused(),
       leftEnabled: engine.config.left.enabled,
       rightEnabled: engine.config.right.enabled,
+      hideDefaultLeft: engine.overlayHideSides.has('left'),
+      hideDefaultRight: engine.overlayHideSides.has('right'),
       leftCPS: engine.config.left.averageCPS,
       rightCPS: engine.config.right.averageCPS,
       blatantLeft: engine.config.left.blatant,
