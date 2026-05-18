@@ -1164,6 +1164,38 @@ export class AutoclickerEngine {
     }
   }
 
+  async startScriptModule(name: string): Promise<void> {
+    const script = this.config.scripts.list.find(s => s.name === name)
+    if (!script) { console.log(`[module] script "${name}" not found`); return }
+    const key = `scriptmod_${name}`
+    if (this.moduleEnabled[key]) { console.log(`[module] script "${name}" already running`); return }
+    const actions = this.parseScript(script.code)
+    if (actions.length === 0) return
+    this.modules[key] = actions
+    this.moduleEnabled[key] = true
+    console.log(`[module] script "${name}" started`)
+    this.runModule(key).catch(() => {})
+  }
+
+  stopScriptModule(name: string): void {
+    const key = `scriptmod_${name}`
+    if (!this.moduleEnabled[key]) return
+    this.moduleEnabled[key] = false
+    this.moduleOverlayText = []
+    this.overlayHideSides.clear()
+    this.pushOverlay()
+    console.log(`[module] script "${name}" stopped`)
+  }
+
+  getScriptModuleStatus(): Record<string, boolean> {
+    const status: Record<string, boolean> = {}
+    for (const script of this.config.scripts.list) {
+      const key = `scriptmod_${script.name}`
+      status[script.name] = !!this.moduleEnabled[key]
+    }
+    return status
+  }
+
   private async runMacroAction(macro: Macro, index: number): Promise<void> {
     if (macro.loop) {
       const key = `macro_${index}`

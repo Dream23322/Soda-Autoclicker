@@ -45,6 +45,9 @@ interface AutoclickerApi {
   savePreset: (args: { filename: string; displayName: string; Author: string; description: string }) => Promise<boolean>
   openResourceFolder: () => Promise<boolean>
   getModuleOverlay: () => Promise<Array<{ t: string; v: any; l?: number; filled?: number }>>
+  startScriptModule: (name: string) => Promise<boolean>
+  stopScriptModule: (name: string) => Promise<boolean>
+  getScriptModuleStatus: () => Promise<Record<string, boolean>>
   getStatus: () => Promise<{
     focusedProcess: string
     isGameFocused: boolean

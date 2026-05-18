@@ -177,6 +177,16 @@ export const DEFAULT_MACROS: MacrosConfig = {
   ],
 }
 
+export interface Script {
+  name: string
+  code: string
+  module: boolean
+}
+
+export interface ScriptsConfig {
+  list: Script[]
+}
+
 export interface AutoclickerConfig {
   left: LeftClickerConfig
   right: RightClickerConfig
@@ -186,6 +196,7 @@ export interface AutoclickerConfig {
   potions: PotionsConfig
   movement: MovementConfig
   macros: MacrosConfig
+  scripts: ScriptsConfig
   filename: string
   displayName: string
   description: string
@@ -283,6 +294,7 @@ export const DEFAULT_CONFIG: AutoclickerConfig = {
     fastStop: false,
   },
   macros: DEFAULT_MACROS,
+  scripts: { list: [] },
   filename: 'config',
   displayName: 'Default',
   description: 'Default Config',

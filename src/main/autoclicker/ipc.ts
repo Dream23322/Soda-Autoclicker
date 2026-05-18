@@ -163,6 +163,20 @@ export function registerAutoclickerIPC(engine: AutoclickerEngine, settingsWindow
     return [...engine.moduleOverlayText]
   })
 
+  ipcMain.handle('autoclicker:startScriptModule', async (_e, name: string) => {
+    await engine.startScriptModule(name)
+    return true
+  })
+
+  ipcMain.handle('autoclicker:stopScriptModule', async (_e, name: string) => {
+    engine.stopScriptModule(name)
+    return true
+  })
+
+  ipcMain.handle('autoclicker:getScriptModuleStatus', async () => {
+    return engine.getScriptModuleStatus()
+  })
+
   ipcMain.handle('debug:openLogs', () => {
     try {
       if (!fs.existsSync(LOG_FOLDER)) fs.mkdirSync(LOG_FOLDER, { recursive: true })

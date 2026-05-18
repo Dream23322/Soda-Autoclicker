@@ -22,7 +22,7 @@ function Sidebar() {
     { to: "/right-clicker", label: "Right Clicker", icon: <MousePointer size={16} /> },
     { to: "/recorder", label: "Recorder", icon: <Play size={16} /> },
     { to: "/movement", label: "Movement", icon: <Zap size={16} /> },
-    { to: "/macros", label: "Macros", icon: <Code size={16} /> },
+    { to: "/developer", label: "Developer", icon: <Code size={16} /> },
     { to: "/potions", label: "Potions", icon: <FlaskConical size={16} /> },
     { to: "/config-manager", label: "Configs", icon: <FileEdit size={16} /> },
     { to: "/misc", label: "Misc", icon: <List size={16} /> },
