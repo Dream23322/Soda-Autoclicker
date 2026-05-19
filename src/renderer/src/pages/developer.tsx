@@ -294,29 +294,29 @@ function ScriptingDocs({ onClose, onBack }: { onClose: () => void; onBack?: () =
           <section>
             <h3 className="font-semibold text-foreground mb-1">Basic Commands</h3>
             <div className="space-y-1 text-[11px]">
-              <p><code className="text-primary">//</code> \u2014 Comments. Anything after // on a line is ignored.</p>
-              <p><code className="text-primary">delay(ms)</code> \u2014 Wait for X milliseconds. Accepts numbers, <code>$_var</code>, and math expressions.</p>
-              <p><code className="text-primary">key(vk)</code> / <code>tap(vk)</code> \u2014 Press and release a key. Accepts VK hex (<code>0x31</code>), numeric (<code>49</code>), name (<code>"shift"</code>), <code>$_var</code>, or <code>convert_key("a")</code>.</p>
-              <p><code className="text-primary">keydown(vk)</code> \u2014 Hold a key down. Same VK formats as <code>key()</code>.</p>
-              <p><code className="text-primary">keyup(vk)</code> \u2014 Release a held key. Same VK formats.</p>
-              <p><code className="text-primary">click(button)</code> \u2014 Click mouse (1=left, 2=right). Supports <code>$_var</code>.</p>
-              <p><code className="text-primary">hold(vk, ms)</code> \u2014 Hold a key for X ms then release. Same VK formats.</p>
-              <p><code className="text-primary">setslot(n)</code> \u2014 Press hotbar slot 1-9. Accepts <code>$_var</code>.</p>
-              <p><code className="text-primary">pitch(delta)</code> \u2014 Move mouse vertically (negative = up). Supports <code>$_var</code>.</p>
-              <p><code className="text-primary">yaw(delta)</code> \u2014 Move mouse horizontally (negative = left). Supports <code>$_var</code>.</p>
+              <p><code className="text-primary">//</code> {'\u2014'} Comments. Anything after // on a line is ignored.</p>
+              <p><code className="text-primary">delay(ms)</code> {'\u2014'} Wait for X milliseconds. Accepts numbers, <code>$_var</code>, and math expressions.</p>
+              <p><code className="text-primary">key(vk)</code> / <code>tap(vk)</code> {'\u2014'} Press and release a key. Accepts VK hex (<code>0x31</code>), numeric (<code>49</code>), name (<code>"shift"</code>), <code>$_var</code>, or <code>convert_key("a")</code>.</p>
+              <p><code className="text-primary">keydown(vk)</code> {'\u2014'} Hold a key down. Same VK formats as <code>key()</code>.</p>
+              <p><code className="text-primary">keyup(vk)</code> {'\u2014'} Release a held key. Same VK formats.</p>
+              <p><code className="text-primary">click(button)</code> {'\u2014'} Click mouse (1=left, 2=right). Supports <code>$_var</code>.</p>
+              <p><code className="text-primary">hold(vk, ms)</code> {'\u2014'} Hold a key for X ms then release. Same VK formats.</p>
+              <p><code className="text-primary">setslot(n)</code> {'\u2014'} Press hotbar slot 1-9. Accepts <code>$_var</code>.</p>
+              <p><code className="text-primary">pitch(delta)</code> {'\u2014'} Move mouse vertically (negative = up). Supports <code>$_var</code>.</p>
+              <p><code className="text-primary">yaw(delta)</code> {'\u2014'} Move mouse horizontally (negative = left). Supports <code>$_var</code>.</p>
             </div>
           </section>
 
           <section>
             <h3 className="font-semibold text-foreground mb-1">Variables</h3>
             <div className="space-y-1 text-[11px]">
-              <p><code className="text-primary">_name: int = new_random(min, max)</code> \u2014 Random integer between min and max (inclusive). Supports <code>$_var</code> and math in min/max.</p>
-              <p><code className="text-primary">_name: float = new_random(min, max)</code> \u2014 Random float between min and max.</p>
-              <p><code className="text-primary">_name: float = new_random(0,1).fix=5</code> \u2014 Float rounded to N decimal places.</p>
-              <p><code className="text-primary">_name: str = "hello"</code> \u2014 String variable declaration. Strings referenced by <code>$_name</code> in <code>overlay_text()</code>.</p>
-              <p><code className="text-primary">_name: int = expression</code> \u2014 Numeric variable from a math expression. Evaluated each time the script runs.</p>
-              <p><code className="text-primary">_name = expression</code> \u2014 Assign runtime expression result to existing variable. Example: <code>_count = $_count + 1</code>.</p>
-              <p><code className="text-primary">$_varname</code> \u2014 Reference a variable in any numeric parameter (delay, pitch, yaw, click, condition, etc.).</p>
+              <p><code className="text-primary">_name: int = new_random(min, max)</code> {'\u2014'} Random integer between min and max (inclusive). Supports <code>$_var</code> and math in min/max.</p>
+              <p><code className="text-primary">_name: float = new_random(min, max)</code> {'\u2014'} Random float between min and max.</p>
+              <p><code className="text-primary">_name: float = new_random(0,1).fix=5</code> {'\u2014'} Float rounded to N decimal places.</p>
+              <p><code className="text-primary">_name: str = "hello"</code> {'\u2014'} String variable declaration. Strings referenced by <code>$_name</code> in <code>overlay_text()</code>.</p>
+              <p><code className="text-primary">_name: int = expression</code> {'\u2014'} Numeric variable from a math expression. Evaluated each time the script runs.</p>
+              <p><code className="text-primary">_name = expression</code> {'\u2014'} Assign runtime expression result to existing variable. Example: <code>_count = $_count + 1</code>.</p>
+              <p><code className="text-primary">$_varname</code> {'\u2014'} Reference a variable in any numeric parameter (delay, pitch, yaw, click, condition, etc.).</p>
             </div>
             <pre className="mt-2 rounded bg-[#0a0a0a] border border-[#222] p-2 text-[10px] font-mono text-muted-foreground">
 {`// Randomised strafe with runtime counters
@@ -332,12 +332,12 @@ yaw($_yaw + sin($_count))`}</pre>
             <h3 className="font-semibold text-foreground mb-1">Math &amp; Expressions</h3>
             <div className="space-y-1 text-[11px]">
               <p>Any parameter that accepts a number can use arithmetic expressions evaluated at runtime:</p>
-              <p><code className="text-primary">random(min, max)</code> / <code>rnd(min, max)</code> \u2014 Inline random number in any expression.</p>
-              <p><code className="text-primary">sin(x), cos(x)</code> \u2014 Sine and cosine (radians).</p>
-              <p><code className="text-primary">abs(x)</code> \u2014 Absolute value.</p>
-              <p><code className="text-primary">floor(x), ceil(x)</code> \u2014 Round down/up.</p>
-              <p><code className="text-primary">sqrt(x)</code> \u2014 Square root.</p>
-              <p><code className="text-primary">clamp(v, lo, hi)</code> \u2014 Constrain value between lo and hi.</p>
+              <p><code className="text-primary">random(min, max)</code> / <code>rnd(min, max)</code> {'\u2014'} Inline random number in any expression.</p>
+              <p><code className="text-primary">sin(x), cos(x)</code> {'\u2014'} Sine and cosine (radians).</p>
+              <p><code className="text-primary">abs(x)</code> {'\u2014'} Absolute value.</p>
+              <p><code className="text-primary">floor(x), ceil(x)</code> {'\u2014'} Round down/up.</p>
+              <p><code className="text-primary">sqrt(x)</code> {'\u2014'} Square root.</p>
+              <p><code className="text-primary">clamp(v, lo, hi)</code> {'\u2014'} Constrain value between lo and hi.</p>
               <p>Standard <code>+ - * / ( )</code> operators work. Combine with <code>$_var</code> references.</p>
             </div>
             <pre className="mt-2 rounded bg-[#0a0a0a] border border-[#222] p-2 text-[10px] font-mono text-muted-foreground">
@@ -349,15 +349,15 @@ delay(random(50, 150))`}</pre>
           <section>
             <h3 className="font-semibold text-foreground mb-1">Conditions (if/endif)</h3>
             <div className="space-y-1 text-[11px]">
-              <p><code className="text-primary">if key_held(vk)</code> \u2014 Run block if key is held down. Accepts names and hex.</p>
-              <p><code className="text-primary">if key_not_held(vk)</code> \u2014 Run block if key is NOT held.</p>
-              <p><code className="text-primary">if chance(percent)</code> \u2014 Run block with X% probability.</p>
-              <p><code className="text-primary">if mouse_held(button)</code> \u2014 Run block if mouse button is held (1=left, 2=right).</p>
-              <p><code className="text-primary">if focused</code> \u2014 Run block if Minecraft is focused.</p>
-              <p><code className="text-primary">if clicking_left</code> \u2014 Run block if left clicker is enabled.</p>
-              <p><code className="text-primary">if clicking_right</code> \u2014 Run block if right clicker is enabled.</p>
-              <p><code className="text-primary">if $_varname</code> \u2014 Run block if variable is non-zero.</p>
-              <p><code className="text-primary">endif</code> \u2014 End an if block. Can nest conditions.</p>
+              <p><code className="text-primary">if key_held(vk)</code> {'\u2014'} Run block if key is held down. Accepts names and hex.</p>
+              <p><code className="text-primary">if key_not_held(vk)</code> {'\u2014'} Run block if key is NOT held.</p>
+              <p><code className="text-primary">if chance(percent)</code> {'\u2014'} Run block with X% probability.</p>
+              <p><code className="text-primary">if mouse_held(button)</code> {'\u2014'} Run block if mouse button is held (1=left, 2=right).</p>
+              <p><code className="text-primary">if focused</code> {'\u2014'} Run block if Minecraft is focused.</p>
+              <p><code className="text-primary">if clicking_left</code> {'\u2014'} Run block if left clicker is enabled.</p>
+              <p><code className="text-primary">if clicking_right</code> {'\u2014'} Run block if right clicker is enabled.</p>
+              <p><code className="text-primary">if $_varname</code> {'\u2014'} Run block if variable is non-zero.</p>
+              <p><code className="text-primary">endif</code> {'\u2014'} End an if block. Can nest conditions.</p>
             </div>
             <pre className="mt-2 rounded bg-[#0a0a0a] border border-[#222] p-2 text-[10px] font-mono text-muted-foreground">
 {`if focused
@@ -373,12 +373,12 @@ endif`}</pre>
           <section>
             <h3 className="font-semibold text-foreground mb-1">Overlay Commands</h3>
             <div className="space-y-1 text-[11px]">
-              <p><code className="text-primary">overlay_text("text" + $_var + "...")</code> \u2014 Add a line of text to the overlay. Supports <code>$_var</code> (number and string), concatenation with <code>+</code>.</p>
-              <p><code className="text-primary">loadingbar(value, max, length)</code> \u2014 Display a loading bar. Example: <code>loadingbar($_cps, 20, 10)</code>. Accepts <code>$_var</code> and expressions.</p>
-              <p><code className="text-primary">overlay_dot("label", brightness)</code> \u2014 Display a colored dot indicator. Brightness 0-100, accepts expressions.</p>
-              <p><code className="text-primary">overlay_entry("label", active, "side")</code> \u2014 Text entry on left/right side of overlay. Active 1=on 0=off (accepts expressions). Side <code>"left"</code> or <code>"right"</code>.</p>
-              <p><code className="text-primary">overlay_request_hide("side")</code> \u2014 Request the overlay to hide L/R side dots. Side <code>"left"</code> or <code>"right"</code>.</p>
-              <p><code className="text-primary">overlay_clear</code> \u2014 Clear all overlay text, bars, and dots. Should be called at the start of each module loop iteration.</p>
+              <p><code className="text-primary">overlay_text("text" + $_var + "...")</code> {'\u2014'} Add a line of text to the overlay. Supports <code>$_var</code> (number and string), concatenation with <code>+</code>.</p>
+              <p><code className="text-primary">loadingbar(value, max, length)</code> {'\u2014'} Display a loading bar. Example: <code>loadingbar($_cps, 20, 10)</code>. Accepts <code>$_var</code> and expressions.</p>
+              <p><code className="text-primary">overlay_dot("label", brightness)</code> {'\u2014'} Display a colored dot indicator. Brightness 0-100, accepts expressions.</p>
+              <p><code className="text-primary">overlay_entry("label", active, "side")</code> {'\u2014'} Text entry on left/right side of overlay. Active 1=on 0=off (accepts expressions). Side <code>"left"</code> or <code>"right"</code>.</p>
+              <p><code className="text-primary">overlay_request_hide("side")</code> {'\u2014'} Request the overlay to hide L/R side dots. Side <code>"left"</code> or <code>"right"</code>.</p>
+              <p><code className="text-primary">overlay_clear</code> {'\u2014'} Clear all overlay text, bars, and dots. Should be called at the start of each module loop iteration.</p>
             </div>
             <pre className="mt-2 rounded bg-[#0a0a0a] border border-[#222] p-2 text-[10px] font-mono text-muted-foreground">
 {`overlay_clear
@@ -452,17 +452,17 @@ function MacroTutorial({ onClose, onDocs }: { onClose: () => void; onDocs: () =>
       <div className="max-w-lg rounded-lg border border-[#333] bg-[#0d0d0d] p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
         <h2 className="mb-3 text-lg font-bold">Macro Tutorial</h2>
         <div className="space-y-3 text-sm text-muted-foreground">
-          <p><strong>1. Create a Macro</strong> \u2014 Click "+ Add Macro" to add a new macro. Give it a name and bind key.</p>
-          <p><strong>2. Add Steps</strong> \u2014 Each macro has steps. Steps play in order from top to bottom.</p>
-          <p><strong>3. Add Actions</strong> \u2014 Click the action icons below a step to add actions to its timeline.</p>
-          <p><strong>4. Configure</strong> \u2014 Click the arrow on an action to expand its settings (delay time, key, button, etc.).</p>
-          <p><strong>5. Reorder</strong> \u2014 Use the up/down arrows on each action to reorder it within the step.</p>
-          <p><strong>6. Built-in</strong> \u2014 Rod, Pearl, and Potion actions are pre-configured. Just set your slot keys.</p>
-           <p><strong>7. Logic</strong> \u2014 Use <strong>Condition</strong> to check key states, <strong>Loop</strong> to repeat actions, and <strong>Script</strong> for custom commands.</p>
-           <p><strong>8. Loop Mode</strong> \u2014 Tick the <strong>loop</strong> checkbox to make the macro repeat continuously. Press the bind again to stop.</p>
-           <p><strong>9. Variables</strong> \u2014 Declare <code>_name: int = new_random(1,5)</code> and use <code>$_name</code> in commands. Each loop iteration gets fresh values.</p>
-           <p><strong>10. Scripting</strong> \u2014 See the <button onClick={onDocs} className="text-primary underline underline-offset-2">Scripting Reference</button> for all commands including <code>if/endif</code>, <code>chance</code>, <code>focused</code>, and more.</p>
-           <p><strong>11. Insert Script</strong> \u2014 In a Script action, use the <strong>Insert script</strong> dropdown to copy a script from the Scripts tab into the action.</p>
+          <p><strong>1. Create a Macro</strong> {'\u2014'} Click "+ Add Macro" to add a new macro. Give it a name and bind key.</p>
+          <p><strong>2. Add Steps</strong> {'\u2014'} Each macro has steps. Steps play in order from top to bottom.</p>
+          <p><strong>3. Add Actions</strong> {'\u2014'} Click the action icons below a step to add actions to its timeline.</p>
+          <p><strong>4. Configure</strong> {'\u2014'} Click the arrow on an action to expand its settings (delay time, key, button, etc.).</p>
+          <p><strong>5. Reorder</strong> {'\u2014'} Use the up/down arrows on each action to reorder it within the step.</p>
+          <p><strong>6. Built-in</strong> {'\u2014'} Rod, Pearl, and Potion actions are pre-configured. Just set your slot keys.</p>
+           <p><strong>7. Logic</strong> {'\u2014'} Use <strong>Condition</strong> to check key states, <strong>Loop</strong> to repeat actions, and <strong>Script</strong> for custom commands.</p>
+           <p><strong>8. Loop Mode</strong> {'\u2014'} Tick the <strong>loop</strong> checkbox to make the macro repeat continuously. Press the bind again to stop.</p>
+           <p><strong>9. Variables</strong> {'\u2014'} Declare <code>_name: int = new_random(1,5)</code> and use <code>$_name</code> in commands. Each loop iteration gets fresh values.</p>
+           <p><strong>10. Scripting</strong> {'\u2014'} See the <button onClick={onDocs} className="text-primary underline underline-offset-2">Scripting Reference</button> for all commands including <code>if/endif</code>, <code>chance</code>, <code>focused</code>, and more.</p>
+           <p><strong>11. Insert Script</strong> {'\u2014'} In a Script action, use the <strong>Insert script</strong> dropdown to copy a script from the Scripts tab into the action.</p>
         </div>
         <Button className="mt-4 w-full" onClick={onClose}>Got it</Button>
       </div>
