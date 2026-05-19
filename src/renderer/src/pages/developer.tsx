@@ -1,11 +1,11 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { BindButton } from '@/components/bind-button'
-import { Plus, Trash2, GripVertical, ChevronDown, ChevronRight, HelpCircle, ArrowUp, ArrowDown, RefreshCw, Play, Square, FileCode } from 'lucide-react'
+import { Plus, Trash2, GripVertical, ChevronDown, ChevronRight, HelpCircle, ArrowUp, ArrowDown, RefreshCw, Play, Square, FileCode, Terminal, X } from 'lucide-react'
 import { useAutoclicker } from '@/hooks/use-autoclicker'
 
 interface MacroAction {
@@ -165,6 +165,25 @@ function ScriptEditor({ value, onChange, scriptsList }: { value: string; onChang
   const ignoreNextChange = useRef(false)
 
   const historyRef = useRef<{ past: string[]; future: string[] }>({ past: [], future: [] })
+  const [errors, setErrors] = useState<{ line: number; message: string }[]>([])
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const validatingRef = useRef<boolean>(false)
+
+  const validate = useCallback(async (code: string) => {
+    const api = (window as any).electron?.autoclicker
+    if (!api?.validateScript) { setErrors([]); return }
+    try {
+      const result = await api.validateScript(code)
+      setErrors(result.errors || [])
+    } catch { setErrors([]) }
+  }, [])
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    if (!value.trim()) { setErrors([]); return }
+    debounceRef.current = setTimeout(() => { validatingRef.current = true; validate(value).finally(() => { validatingRef.current = false }) }, 500)
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
+  }, [value, validate])
 
   const pushHistory = (prevValue: string) => {
     const h = historyRef.current
@@ -275,22 +294,31 @@ function ScriptEditor({ value, onChange, scriptsList }: { value: string; onChang
 
   return (
     <div className="relative">
-      {scriptsList && scriptsList.length > 0 && (
-        <div className="flex items-center gap-2 mb-1">
-          <Label className="text-[10px] whitespace-nowrap">Insert script:</Label>
-          <select
-            className="bg-[#0d0d0d] border border-[#333] rounded px-1 py-0.5 text-[10px] text-muted-foreground flex-1"
-            value=""
-            onChange={e => {
-              const script = scriptsList.find(s => s.name === e.target.value)
-              if (script) { pushHistory(value); onChange(script.code) }
-            }}
-          >
-            <option value="" disabled>Select...</option>
-            {scriptsList.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
-          </select>
-        </div>
-      )}
+      <div className="flex items-center gap-2 mb-1">
+        <div className="flex-1" />
+        <button
+          onClick={() => { if (debounceRef.current) clearTimeout(debounceRef.current); validate(value) }}
+          className="text-[9px] text-[#555] hover:text-[#999] underline underline-offset-2 transition-colors"
+        >
+          Check Syntax
+        </button>
+        {scriptsList && scriptsList.length > 0 && (
+          <>
+            <Label className="text-[10px] whitespace-nowrap text-muted-foreground">Insert script:</Label>
+            <select
+              className="bg-[#0d0d0d] border border-[#333] rounded px-1 py-0.5 text-[10px] text-muted-foreground"
+              value=""
+              onChange={e => {
+                const script = scriptsList.find(s => s.name === e.target.value)
+                if (script) { pushHistory(value); onChange(script.code) }
+              }}
+            >
+              <option value="" disabled>Select...</option>
+              {scriptsList.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
+            </select>
+          </>
+        )}
+      </div>
       <textarea
         ref={textareaRef}
         className="w-full min-h-[12.5rem] resize-y rounded border border-[#333] bg-[#0d0d0d] p-1 text-[10px] font-mono text-muted-foreground"
@@ -306,6 +334,20 @@ function ScriptEditor({ value, onChange, scriptsList }: { value: string; onChang
         onKeyDown={handleKeyDown}
         onSelect={e => updateSuggestions(value, (e.target as HTMLTextAreaElement).selectionStart)}
       />
+      {errors.length > 0 && (
+        <div className="mt-1 rounded border border-red-500/20 bg-red-500/5 p-2">
+          <div className="flex items-center gap-1 mb-1">
+            <span className="text-[10px] text-red-400 font-bold">{errors.length} error{errors.length > 1 ? 's' : ''}</span>
+          </div>
+          <div className="space-y-0.5">
+            {errors.map((err, i) => (
+              <p key={i} className="text-[10px] text-red-300/80 font-mono">
+                <span className="text-red-400">line {err.line}</span> {err.message}
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
       {suggestions.length > 0 && (
         <div
           ref={dropdownRef}
@@ -451,7 +493,7 @@ delay(1000)`}</pre>
 
           <section>
             <h3 className="font-semibold text-foreground mb-1">Standalone Module Scripts</h3>
-            <p className="text-[11px]">Scripts created in the <strong>Scripts</strong> tab with <strong>module</strong> checked can be started/stopped from the Scripts tab. They loop continuously and support all commands including overlay, variables, conditions, and expressions. No <code>$fullscript</code> header needed \u2014 the module flag alone makes it a background script.</p>
+            <p className="text-[11px]">Scripts created in the <strong>Scripts</strong> tab with <strong>module</strong> checked can be started/stopped from the Scripts tab. They loop continuously and support all commands including overlay, variables, conditions, and expressions. No <code>$fullscript</code> header needed {'\u2014'} the module flag alone makes it a background script.</p>
             <p className="text-[11px]">Use the <strong>Insert script</strong> dropdown in a macro's Script action to copy a script's code into the action (embedding the script content directly).</p>
           </section>
 
@@ -752,7 +794,7 @@ function MacrosPanel({ config, updateConfig, scriptsList, onRefresh }: { config:
         <h2 className="text-lg font-bold">Macros</h2>
         <div className="flex items-center gap-2">
           <button onClick={() => onRefresh()} className="text-muted-foreground hover:text-primary cursor-pointer" title="Reload macros"><RefreshCw size={14} /></button>
-          <button onClick={() => setShowDocs(true)} className="text-[9px] text-[#555] hover:text-[#999] underline underline-offset-2 transition-colors" title="Scripting Reference">
+          <button onClick={() => setShowDocs(true)} data-guide="scripting-docs" className="text-[9px] text-[#555] hover:text-[#999] underline underline-offset-2 transition-colors" title="Scripting Reference">
             Scripting Docs
           </button>
           <button onClick={() => setShowTutorial(true)} className="text-[#555] hover:text-[#999] transition-colors" title="Tutorial">
@@ -821,6 +863,92 @@ function MacrosPanel({ config, updateConfig, scriptsList, onRefresh }: { config:
   )
 }
 
+function ScriptConsole({ moduleFilter }: { moduleFilter?: string }) {
+  const [logs, setLogs] = useState<Array<{ moduleName: string; level: string; message: string; timestamp: number }>>([])
+  const [autoScroll, setAutoScroll] = useState(true)
+  const [collapsed, setCollapsed] = useState(false)
+  const bottomRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const api = (window as any).electron?.scriptConsole
+    if (!api) return
+    const cleanup = api.on((data: any) => {
+      setLogs(prev => [...prev.slice(-499), data])
+    })
+    return () => cleanup()
+  }, [])
+
+  useEffect(() => {
+    if (autoScroll) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [logs, autoScroll])
+
+  const filtered = moduleFilter
+    ? logs.filter(l => l.moduleName.includes(moduleFilter))
+    : logs
+
+  const timeStr = (ts: number) => {
+    const d = new Date(ts)
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`
+  }
+
+  const levelColor = (level: string) => {
+    switch (level) {
+      case 'info': return 'text-blue-400'
+      case 'warn': return 'text-yellow-400'
+      case 'error': return 'text-red-400'
+      default: return 'text-muted-foreground'
+    }
+  }
+
+  return (
+    <div className="border border-[#1a1a1a] rounded mt-4">
+      <button
+        onClick={() => setCollapsed(!collapsed)}
+        className="flex items-center gap-2 w-full px-3 py-2 text-[10px] text-muted-foreground hover:text-foreground transition-colors bg-[#0d0d0d] border-b border-[#1a1a1a]"
+      >
+        <Terminal size={12} />
+        <span className="font-bold">Script Console</span>
+        <span className="text-[#555]">({filtered.length})</span>
+        <div className="ml-auto flex items-center gap-2">
+          {!collapsed && (
+            <>
+              <label className="flex items-center gap-1 text-[9px] cursor-pointer">
+                <input type="checkbox" checked={autoScroll} onChange={e => setAutoScroll(e.target.checked)} className="accent-primary w-2.5 h-2.5" />
+                auto-scroll
+              </label>
+              <button
+                onClick={(e) => { e.stopPropagation(); setLogs([]) }}
+                className="text-[#555] hover:text-foreground"
+                title="Clear console"
+              >
+                <X size={10} />
+              </button>
+            </>
+          )}
+          <ChevronRight size={12} className={`transition-transform ${collapsed ? '' : 'rotate-90'}`} />
+        </div>
+      </button>
+      {!collapsed && (
+        <div className="max-h-48 overflow-y-auto bg-[#0a0a0a] p-2 space-y-0.5 font-mono text-[10px]">
+          {filtered.length === 0 && (
+            <p className="text-[#444] italic">No console output yet. Start a module script to see logs.</p>
+          )}
+          {filtered.map((log, i) => (
+            <div key={i} className="flex items-start gap-2">
+              <span className="text-[#444] shrink-0">[{timeStr(log.timestamp)}]</span>
+              <span className="text-[#555] shrink-0">[{log.moduleName}]</span>
+              <span className={`${levelColor(log.level)}`}>{log.message}</span>
+            </div>
+          ))}
+          <div ref={bottomRef} />
+        </div>
+      )}
+    </div>
+  )
+}
+
 function ScriptsPanel({ config, updateConfig, onRefresh }: { config: any; updateConfig: (path: string[], value: unknown) => void; onRefresh: () => void }) {
   const [selected, setSelected] = useState(0)
   const [moduleStatus, setModuleStatus] = useState<Record<string, boolean>>({})
@@ -863,7 +991,7 @@ function ScriptsPanel({ config, updateConfig, onRefresh }: { config: any; update
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold">Scripts</h2>
         <div className="flex items-center gap-2">
-          <button onClick={() => setShowDocs(true)} className="text-[9px] text-[#555] hover:text-[#999] underline underline-offset-2 transition-colors" title="Scripting Reference">
+          <button onClick={() => setShowDocs(true)} data-guide="scripting-docs" className="text-[9px] text-[#555] hover:text-[#999] underline underline-offset-2 transition-colors" title="Scripting Reference">
             Scripting Docs
           </button>
           <button onClick={() => onRefresh()} className="text-muted-foreground hover:text-primary cursor-pointer" title="Reload"><RefreshCw size={14} /></button>
@@ -972,6 +1100,8 @@ function ScriptsPanel({ config, updateConfig, onRefresh }: { config: any; update
         </div>
       </div>
 
+      <ScriptConsole />
+
       {/* Module Running Status */}
       {scripts.filter(s => s.module).length > 0 && (
         <Card>
@@ -1020,6 +1150,7 @@ export function DeveloperPage({ config, updateConfig }: Props) {
       <div className="flex items-center gap-4 border-b border-[#1a1a1a] pb-2">
         <button
           onClick={() => setActiveTab('scripts')}
+          data-guide="scripts-tab"
           className={`text-xs cursor-pointer pb-2 -mb-2 border-b-2 transition-colors ${
             activeTab === 'scripts' ? 'text-primary border-primary font-bold' : 'text-muted-foreground border-transparent hover:text-foreground'
           }`}
@@ -1028,6 +1159,7 @@ export function DeveloperPage({ config, updateConfig }: Props) {
         </button>
         <button
           onClick={() => setActiveTab('macros')}
+          data-guide="macros-tab"
           className={`text-xs cursor-pointer pb-2 -mb-2 border-b-2 transition-colors ${
             activeTab === 'macros' ? 'text-primary border-primary font-bold' : 'text-muted-foreground border-transparent hover:text-foreground'
           }`}

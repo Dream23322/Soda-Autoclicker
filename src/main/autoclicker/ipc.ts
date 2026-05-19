@@ -177,6 +177,10 @@ export function registerAutoclickerIPC(engine: AutoclickerEngine, settingsWindow
     return engine.getScriptModuleStatus()
   })
 
+  ipcMain.handle('autoclicker:validateScript', async (_e, code: string) => {
+    return engine.validateScript(code)
+  })
+
   ipcMain.handle('debug:openLogs', () => {
     try {
       if (!fs.existsSync(LOG_FOLDER)) fs.mkdirSync(LOG_FOLDER, { recursive: true })
@@ -355,4 +359,13 @@ export function registerAutoclickerIPC(engine: AutoclickerEngine, settingsWindow
     if (engine.keystrokesInterval) { engine.stopKeystrokes(); return false }
     engine.startKeystrokes(); return true
   })
+
+  // ── Script Console ──
+
+  engine.onScriptConsole = (moduleName, data) => {
+    const wc = settingsWindow?.webContents
+    if (wc && !wc.isDestroyed()) {
+      wc.send('scriptConsole', { moduleName, ...data })
+    }
+  }
 }

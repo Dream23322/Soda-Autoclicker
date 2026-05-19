@@ -16,6 +16,7 @@ import { ConfigManagerPage } from "@/pages/config-manager"
 
 import Titlebar from "./components/titlebar"
 import Sidebar from "./components/sidebar"
+import GuideMode from "./components/guide-mode"
 
 import { Toaster } from "@/components/ui/sonner"
 import { useAutoclicker } from "@/hooks/use-autoclicker"
@@ -79,11 +80,39 @@ function SecretMenu() {
 
 function RoutedApp() {
   const { config, updateConfig } = useAutoclicker()
+  const [showGuide, setShowGuide] = useState(() => !localStorage.getItem('guide-done'))
   const [showSecret, setShowSecret] = useState(false)
   const arrowCount = useRef(0)
   const arrowTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const guideArrowCount = useRef(0)
+  const guideArrowTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+
+  useEffect(() => {
+    ;(window as any).__startGuide = () => {
+      localStorage.removeItem('guide-done')
+      setShowGuide(true)
+    }
+    return () => { delete (window as any).__startGuide }
+  }, [])
+
+  const handleGuideClose = () => {
+    localStorage.setItem('guide-done', 'true')
+    setShowGuide(false)
+  }
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'ArrowLeft') {
+      clearTimeout(guideArrowTimer.current)
+      guideArrowCount.current++
+      guideArrowTimer.current = setTimeout(() => { guideArrowCount.current = 0 }, 1000)
+      if (guideArrowCount.current >= 3) {
+        guideArrowCount.current = 0
+        clearTimeout(guideArrowTimer.current)
+        localStorage.removeItem('guide-done')
+        setShowGuide(true)
+      }
+      return
+    }
     if (e.key !== 'ArrowDown') return
     clearTimeout(arrowTimer.current)
     arrowCount.current++
@@ -122,6 +151,7 @@ function RoutedApp() {
           </Routes>
         </main>
       </div>
+      {showGuide && <GuideMode onClose={handleGuideClose} />}
       {showSecret && <SecretMenu />}
       <Toaster richColors closeButton />
     </div>

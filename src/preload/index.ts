@@ -20,6 +20,7 @@ const INVOKE_CHANNELS: Set<string> = new Set([
 	"autoclicker:stopScriptModule",
 	"autoclicker:getScriptModuleStatus",
 	"autoclicker:toggleKeystrokes",
+	"autoclicker:validateScript",
 	"cloud:getUserId",
 	"cloud:setUserId",
 	"cloud:getServerUrl",
@@ -44,7 +45,7 @@ const INVOKE_CHANNELS: Set<string> = new Set([
 ])
 
 const SEND_CHANNELS: Set<string> = new Set(["window-control", "debug:log", "update:startDownload", "theme:update"])
-const LISTEN_CHANNELS: Set<string> = new Set(["overlay:update", "theme:update"])
+const LISTEN_CHANNELS: Set<string> = new Set(["overlay:update", "theme:update", "scriptConsole"])
 
 function assertAllowed(set: Set<string>, channel: string): void {
 	if (!set.has(channel)) throw new Error(`Blocked IPC channel: ${channel}`)
@@ -75,6 +76,7 @@ const api = {
 		stopScriptModule: (name: string) => ipcRenderer.invoke("autoclicker:stopScriptModule", name),
 		getScriptModuleStatus: () => ipcRenderer.invoke("autoclicker:getScriptModuleStatus"),
 		toggleKeystrokes: () => ipcRenderer.invoke("autoclicker:toggleKeystrokes"),
+		validateScript: (code: string) => ipcRenderer.invoke("autoclicker:validateScript", code),
 	},
 
 	update: {
@@ -118,6 +120,14 @@ const api = {
 		status: () => ipcRenderer.invoke("debug:status"),
 		log: (level: string, ...args: unknown[]) => ipcRenderer.send("debug:log", level, ...args),
 		openLogs: () => ipcRenderer.invoke("debug:openLogs"),
+	},
+
+	scriptConsole: {
+		on: (callback: (data: { moduleName: string; level: string; message: string; timestamp: number }) => void) => {
+			const handler = (_e: any, data: any) => callback(data)
+			ipcRenderer.on("scriptConsole", handler)
+			return () => ipcRenderer.removeListener("scriptConsole", handler)
+		},
 	},
 
 	ipc: {

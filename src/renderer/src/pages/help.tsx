@@ -50,6 +50,15 @@ function HelpPage() {
           <p className="text-muted-foreground">github: https://github.com/Dream23322/Soda-Autoclicker/</p>
         </CardContent>
       </Card>
+
+      <div className="text-center">
+        <button
+          onClick={() => (window as any).__startGuide?.()}
+          className="text-xs bg-primary text-primary-foreground px-4 py-2 font-bold cursor-pointer border-none"
+        >
+          Start Guide
+        </button>
+      </div>
     </div>
   )
 }

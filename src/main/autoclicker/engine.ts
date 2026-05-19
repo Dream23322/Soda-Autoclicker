@@ -17,6 +17,7 @@ const VK_CTRL = 0x11
 const UNSAFE_KEYS = new Set(['__proto__', 'prototype', 'constructor'])
 
 export type ConfigUpdateCallback = (config: AutoclickerConfig) => void
+export type ScriptConsoleCallback = (moduleName: string, data: { level: string; message: string; timestamp: number }) => void
 
 // Per-section deep merge so a partial preset / saved file doesn't wipe other
 // sections with `undefined`. Goes one level deep, which matches the actual
@@ -99,6 +100,7 @@ export class AutoclickerEngine {
   onConfigUpdate: ConfigUpdateCallback | null = null
   onHideGUI: (() => void) | null = null
   onOverlayUpdate: ((items: any[]) => void) | null = null
+  onScriptConsole: ScriptConsoleCallback | null = null
 
   private bootstrapResources(): void {
     try {
@@ -563,6 +565,10 @@ export class AutoclickerEngine {
     this.onOverlayUpdate?.([...this.moduleOverlayText])
   }
 
+  private emitScriptConsole(moduleName: string, level: string, message: string): void {
+    this.onScriptConsole?.(moduleName, { level, message, timestamp: Date.now() })
+  }
+
   // ── Built-in keystrokes overlay ──
 
   /**
@@ -723,11 +729,12 @@ export class AutoclickerEngine {
     }
   }
 
-  private parseScriptLines(lines: string[], startIdx: number): { actions: MacroAction[]; nextIdx: number } {
+  private parseScriptLines(lines: string[], startIdx: number, errors?: { line: number; message: string }[]): { actions: MacroAction[]; nextIdx: number } {
     const actions: MacroAction[] = []
     const id = () => `script_${actions.length}_${Date.now()}`
     let i = startIdx
     while (i < lines.length) {
+      const lineNum = i + 1
       const s = lines[i].trim()
       i++
       if (!s || s.startsWith('//')) continue
@@ -735,10 +742,13 @@ export class AutoclickerEngine {
       // endif — pop back to the caller (handles nesting)
       if (/^endif\s*$/i.test(s)) break
 
+      // $fullscript module marker — valid at line start
+      if (/^\$fullscript\s*$/i.test(s)) continue
+
       // if condition ... endif
       const ifMatch = s.match(/^if\s+(.+)$/i)
       if (ifMatch) {
-        const { actions: body, nextIdx } = this.parseScriptLines(lines, i)
+        const { actions: body, nextIdx } = this.parseScriptLines(lines, i, errors)
         i = nextIdx
         actions.push({
           id: id(), type: 'script_if', label: `If: ${ifMatch[1]}`,
@@ -858,12 +868,19 @@ export class AutoclickerEngine {
       let keyUpMatch = s.match(/^keyup\s*\(\s*((?:0x[0-9a-f]+|\d+|\$_[\w]+|convert_key\s*\(\s*['"][^'"]+['"]\s*\)))\s*\)$/i)
       if (!keyUpMatch) keyUpMatch = s.match(/^keyup\s*\(\s*'([^']+)'\s*\)$/i)
       if (keyUpMatch) { const vk = keyUpMatch[1].startsWith('\'') ? `'${keyUpMatch[1].replace(/'/g, '')}'` : keyUpMatch[1]; actions.push({ id: id(), type: 'key_up', label: `KeyUp ${vk}`, config: { vk } }); continue }
+      if (errors) errors.push({ line: lineNum, message: `Unrecognized: "${s}"` })
     }
     return { actions, nextIdx: i }
   }
 
   private parseScript(code: string): MacroAction[] {
     return this.parseScriptLines(code.split('\n'), 0).actions
+  }
+
+  validateScript(code: string): { valid: boolean; errors: { line: number; message: string }[] } {
+    const errors: { line: number; message: string }[] = []
+    this.parseScriptLines(code.split('\n'), 0, errors)
+    return { valid: errors.length === 0, errors }
   }
 
   private async execAction(action: MacroAction): Promise<void> {
@@ -1127,6 +1144,7 @@ export class AutoclickerEngine {
       this.overlayHideSides.clear()
       this.pushOverlay()
       console.log(`[module] "${macro.name}" disabled`)
+      this.emitScriptConsole(macro.name, 'info', `Module "${macro.name}" disabled`)
       return
     }
 
@@ -1140,6 +1158,7 @@ export class AutoclickerEngine {
             this.modules[key] = this.parseScript(body)
             this.moduleEnabled[key] = true
             console.log(`[module] "${macro.name}" enabled`)
+            this.emitScriptConsole(macro.name, 'info', `Module "${macro.name}" enabled`)
             this.runModule(key).catch(() => {})
             return
           }
@@ -1151,12 +1170,21 @@ export class AutoclickerEngine {
   private async runModule(key: string): Promise<void> {
     const actions = this.modules[key]
     if (!actions) return
+    let moduleName = key
+    if (key.startsWith('module_')) {
+      const idx = parseInt(key.slice(7))
+      const macro = this.config.macros.list[idx]
+      if (macro) moduleName = macro.name
+    } else if (key.startsWith('scriptmod_')) {
+      moduleName = key.slice(10)
+    }
     while (this.moduleEnabled[key]) {
       // Module MUST call overlay_clear as its first action if it wants to
       // replace overlay content.  We no longer nuke moduleOverlayText here
       // so there's no frame where the overlay polls an empty array.
       for (const a of actions) {
         if (!this.moduleEnabled[key]) break
+        this.emitScriptConsole(moduleName, 'debug', `[${a.type}] ${a.label}`)
         await this.execAction(a)
       }
       this.pushOverlay()
@@ -1174,6 +1202,7 @@ export class AutoclickerEngine {
     this.modules[key] = actions
     this.moduleEnabled[key] = true
     console.log(`[module] script "${name}" started`)
+    this.emitScriptConsole(name, 'info', `Script "${name}" started`)
     this.runModule(key).catch(() => {})
   }
 
@@ -1185,6 +1214,7 @@ export class AutoclickerEngine {
     this.overlayHideSides.clear()
     this.pushOverlay()
     console.log(`[module] script "${name}" stopped`)
+    this.emitScriptConsole(name, 'info', `Script "${name}" stopped`)
   }
 
   getScriptModuleStatus(): Record<string, boolean> {

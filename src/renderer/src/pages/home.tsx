@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { CSSProperties } from 'react'
-import { Pencil, Check, X } from 'lucide-react'
+import { Pencil, Check, X, FileEdit, Code, Play } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { useAutoclicker } from '@/hooks/use-autoclicker'
 
@@ -9,31 +9,42 @@ interface Props {
 }
 
 interface PresetInfo {
-  filename: string  
+  filename: string
   displayName: string
   Author?: string
   description?: string
 }
 
+interface QuicklaunchSlot {
+  type: 'config' | 'script'
+  id: string
+}
+
 const QUICKLAUNCH_KEY = 'quicklaunchPresets'
 const MAX_QUICKLAUNCH = 6
 
-function loadSelection(): string[] {
+function loadSelection(): QuicklaunchSlot[] {
   try {
     const raw = localStorage.getItem(QUICKLAUNCH_KEY)
     if (!raw) return []
     const arr = JSON.parse(raw)
-    return Array.isArray(arr)
-      ? arr.filter((x: unknown) => typeof x === 'string').slice(0, MAX_QUICKLAUNCH)
-      : []
+    if (!Array.isArray(arr)) return []
+    if (arr.length > 0 && typeof arr[0] === 'string') {
+      const migrated = arr.filter((x: unknown) => typeof x === 'string').map((f: string) => ({ type: 'config' as const, id: f }))
+      try { localStorage.setItem(QUICKLAUNCH_KEY, JSON.stringify(migrated.slice(0, MAX_QUICKLAUNCH))) } catch {}
+      return migrated.slice(0, MAX_QUICKLAUNCH)
+    }
+    return arr.filter((x: unknown) => x && typeof x === 'object' && (x as any).type && (x as any).id)
+      .map((x: any) => ({ type: x.type, id: x.id }))
+      .slice(0, MAX_QUICKLAUNCH)
   } catch {
     return []
   }
 }
 
-function saveSelection(filenames: string[]): void {
+function saveSelection(slots: QuicklaunchSlot[]): void {
   try {
-    localStorage.setItem(QUICKLAUNCH_KEY, JSON.stringify(filenames.slice(0, MAX_QUICKLAUNCH)))
+    localStorage.setItem(QUICKLAUNCH_KEY, JSON.stringify(slots.slice(0, MAX_QUICKLAUNCH)))
   } catch {}
 }
 
@@ -58,17 +69,19 @@ function estimateBlatantness(cfg: any): { level: string; risk: string; color: st
 }
 
 export default function HomePage({ config: _config }: Props) {
-  const { config, getStatus } = useAutoclicker()
+  const { config, loadConfig, getStatus, updateConfig } = useAutoclicker()
   const [status, setStatus] = useState<any>(null)
   const [presets, setPresets] = useState<PresetInfo[]>([])
-  const [selection, setSelection] = useState<string[]>(loadSelection())
+  const [selection, setSelection] = useState<QuicklaunchSlot[]>(loadSelection())
   const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState<string[]>([])
+  const [draft, setDraft] = useState<QuicklaunchSlot[]>([])
   const [updateInfo, setUpdateInfo] = useState<{ version: string; downloadUrl: string; notes: string } | null>(null)
   const [updating, setUpdating] = useState(false)
   const [downloadProgress, setDownloadProgress] = useState(0)
   const [updateError, setUpdateError] = useState("")
   const effectiveConfig = config || _config
+  const scripts: { name: string; module: boolean }[] = effectiveConfig?.scripts?.list || []
+  const moduleScripts = scripts.filter(s => s.module)
 
   useEffect(() => {
     const e = (window as any).electron
@@ -91,18 +104,42 @@ export default function HomePage({ config: _config }: Props) {
     ;(window as any).electron?.autoclicker?.getConfigs().then(setPresets).catch(() => {})
   }, [])
 
+  const handleFullStart = async () => {
+    const e = (window as any).electron
+    for (const slot of selection) {
+      if (slot.type === 'config') {
+        try { await e.autoclicker.loadPreset(slot.id) } catch {}
+      } else {
+        try { await e.autoclicker.startScriptModule(slot.id) } catch {}
+      }
+    }
+    await loadConfig()
+    for (const slot of selection) {
+      if (slot.type === 'config') {
+        updateConfig(['left', 'enabled'], true)
+        updateConfig(['right', 'enabled'], true)
+      }
+    }
+  }
+
   const loadPreset = async (filename: string): Promise<void> => {
     try {
       // @ts-ignore
       await window.electron.autoclicker.loadPreset(filename)
-      window.location.reload()
+      await loadConfig()
     } catch {}
   }
 
   const startEdit = (): void => {
     const seed = selection.length > 0
-      ? selection.filter(f => presets.some(p => p.filename === f))
-      : presets.slice(0, MAX_QUICKLAUNCH).map(p => p.filename)
+      ? selection.filter(s =>
+          (s.type === 'config' && presets.some(p => p.filename === s.id)) ||
+          (s.type === 'script' && moduleScripts.some(sc => sc.name === s.id))
+        )
+      : [
+          ...presets.slice(0, MAX_QUICKLAUNCH).map(p => ({ type: 'config' as const, id: p.filename })),
+          ...moduleScripts.slice(0, MAX_QUICKLAUNCH).map(s => ({ type: 'script' as const, id: s.name })),
+        ].slice(0, MAX_QUICKLAUNCH)
     setDraft(seed)
     setEditing(true)
   }
@@ -117,19 +154,32 @@ export default function HomePage({ config: _config }: Props) {
     setEditing(false)
   }
 
-  const toggleDraft = (filename: string): void => {
+  const toggleDraft = (slot: QuicklaunchSlot): void => {
     setDraft(prev => {
-      if (prev.includes(filename)) return prev.filter(f => f !== filename)
+      const idx = prev.findIndex(s => s.type === slot.type && s.id === slot.id)
+      if (idx >= 0) return prev.filter((_, i) => i !== idx)
       if (prev.length >= MAX_QUICKLAUNCH) return prev
-      return [...prev, filename]
+      return [...prev, slot]
     })
   }
 
-  // Hide filenames that no longer exist, fall back to first 6 if nothing picked
+  // Resolve visible slots, falling back to first 6 available items
   const byName = new Map<string, PresetInfo>(presets.map(p => [p.filename, p]))
-  const visiblePresets: PresetInfo[] = selection.length > 0
-    ? selection.map(f => byName.get(f)).filter((p): p is PresetInfo => p !== undefined)
-    : presets.slice(0, MAX_QUICKLAUNCH)
+  const scriptByName = new Map<string, { name: string; module: boolean }>(moduleScripts.map(s => [s.name, s]))
+  const visibleSlots: ({ type: 'config' | 'script'; id: string; displayName: string; description?: string })[] =
+    selection.length > 0
+      ? selection.map(slot => {
+          if (slot.type === 'config') {
+            const p = byName.get(slot.id)
+            return p ? { type: 'config' as const, id: slot.id, displayName: p.displayName, description: p.description || p.Author } : null
+          }
+          const s = scriptByName.get(slot.id)
+          return s ? { type: 'script' as const, id: slot.id, displayName: s.name } : null
+        }).filter((x): x is NonNullable<typeof x> => x !== null)
+      : [
+          ...presets.slice(0, MAX_QUICKLAUNCH).map(p => ({ type: 'config' as const, id: p.filename, displayName: p.displayName, description: p.description || p.Author })),
+          ...moduleScripts.slice(0, MAX_QUICKLAUNCH).map(s => ({ type: 'script' as const, id: s.name, displayName: s.name })),
+        ].slice(0, MAX_QUICKLAUNCH)
 
   const blatant = estimateBlatantness(effectiveConfig)
   const blatantColor: CSSProperties = { color: blatant.color }
@@ -235,80 +285,108 @@ export default function HomePage({ config: _config }: Props) {
       <div className="group">
         <div className="flex items-center justify-between mb-2 h-4">
           <p className="text-[10px] text-muted-foreground tracking-wider uppercase">Quicklaunch</p>
-          {!editing && presets.length > 0 && (
-            <button
-              onClick={startEdit}
-              className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity text-muted-foreground hover:text-primary cursor-pointer"
-              title="Edit quicklaunch"
-              aria-label="Edit quicklaunch"
-            >
-              <Pencil className="w-3 h-3" />
-            </button>
-          )}
-          {editing && (
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] text-muted-foreground">{draft.length}/{MAX_QUICKLAUNCH}</span>
+          <div className="flex items-center gap-2">
+            {!editing && visibleSlots.length > 0 && selection.length > 0 && (
               <button
-                onClick={saveEdit}
-                className="text-primary hover:opacity-80 cursor-pointer"
-                title="Save"
-                aria-label="Save quicklaunch"
+                onClick={handleFullStart}
+                className="text-[10px] text-primary hover:opacity-80 cursor-pointer flex items-center gap-1"
+                title="Start all quicklaunch items"
               >
-                <Check className="w-3 h-3" />
+                <Play size={10} /> Full Start
               </button>
+            )}
+            {!editing && (presets.length > 0 || moduleScripts.length > 0) && (
               <button
-                onClick={cancelEdit}
-                className="text-muted-foreground hover:text-foreground cursor-pointer"
-                title="Cancel"
-                aria-label="Cancel edit"
+                onClick={startEdit}
+                className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity text-muted-foreground hover:text-primary cursor-pointer"
+                title="Edit quicklaunch"
+                aria-label="Edit quicklaunch"
               >
-                <X className="w-3 h-3" />
+                <Pencil className="w-3 h-3" />
               </button>
-            </div>
-          )}
+            )}
+            {editing && (
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-muted-foreground">{draft.length}/{MAX_QUICKLAUNCH}</span>
+                <button onClick={saveEdit} className="text-primary hover:opacity-80 cursor-pointer" title="Save" aria-label="Save quicklaunch">
+                  <Check className="w-3 h-3" />
+                </button>
+                <button onClick={cancelEdit} className="text-muted-foreground hover:text-foreground cursor-pointer" title="Cancel" aria-label="Cancel edit">
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {editing ? (
-          presets.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-4 border border-dashed border-[#1a1a1a]">no configs to pick from</p>
-          ) : (
-            <div className="space-y-1 border border-[#1a1a1a] bg-[#0d0d0d] p-2 max-h-72 overflow-y-auto">
-              {presets.map(p => {
-                const checked = draft.includes(p.filename)
-                const disabled = !checked && draft.length >= MAX_QUICKLAUNCH
-                return (
-                  <label
-                    key={p.filename}
-                    className={`flex items-center gap-2 p-1.5 cursor-pointer hover:bg-[#141414] ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      disabled={disabled}
-                      onChange={() => toggleDraft(p.filename)}
-                      className="accent-primary"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold truncate">{p.displayName}</p>
-                      <p className="text-[10px] text-muted-foreground truncate">{p.description || p.Author || ''}</p>
-                    </div>
-                  </label>
-                )
-              })}
-            </div>
-          )
-        ) : visiblePresets.length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center py-4 border border-dashed border-[#1a1a1a]">no configs found</p>
+          <div className="space-y-1 border border-[#1a1a1a] bg-[#0d0d0d] p-2 max-h-72 overflow-y-auto">
+            {presets.map(p => {
+              const checked = draft.some(s => s.type === 'config' && s.id === p.filename)
+              const disabled = !checked && draft.length >= MAX_QUICKLAUNCH
+              return (
+                <label key={`cfg:${p.filename}`}
+                  className={`flex items-center gap-2 p-1.5 cursor-pointer hover:bg-[#141414] ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+                >
+                  <input type="checkbox" checked={checked} disabled={disabled}
+                    onChange={() => toggleDraft({ type: 'config', id: p.filename })}
+                    className="accent-primary"
+                  />
+                  <FileEdit size={12} className="text-muted-foreground shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold truncate">{p.displayName}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">{p.description || p.Author || ''}</p>
+                  </div>
+                </label>
+              )
+            })}
+            {moduleScripts.map(s => {
+              const checked = draft.some(sl => sl.type === 'script' && sl.id === s.name)
+              const disabled = !checked && draft.length >= MAX_QUICKLAUNCH
+              return (
+                <label key={`scr:${s.name}`}
+                  className={`flex items-center gap-2 p-1.5 cursor-pointer hover:bg-[#141414] ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+                >
+                  <input type="checkbox" checked={checked} disabled={disabled}
+                    onChange={() => toggleDraft({ type: 'script', id: s.name })}
+                    className="accent-primary"
+                  />
+                  <Code size={12} className="text-muted-foreground shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold truncate">{s.name}</p>
+                  </div>
+                  <span className="text-[8px] text-primary border border-primary/30 px-1 shrink-0">module</span>
+                </label>
+              )
+            })}
+            {presets.length === 0 && moduleScripts.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-4">no configs or module scripts available</p>
+            )}
+          </div>
+        ) : visibleSlots.length === 0 ? (
+          <p className="text-xs text-muted-foreground text-center py-4 border border-dashed border-[#1a1a1a]">no quicklaunch items</p>
         ) : (
           <div className="grid grid-cols-2 gap-2">
-            {visiblePresets.map((p: PresetInfo) => (
+            {visibleSlots.map(slot => (
               <button
-                key={p.filename}
-                onClick={() => loadPreset(p.filename)}
+                key={`${slot.type}:${slot.id}`}
+                onClick={() => slot.type === 'config' ? loadPreset(slot.id) : (window as any).electron?.autoclicker?.startScriptModule(slot.id)}
                 className="text-left border border-[#1a1a1a] bg-[#0d0d0d] hover:bg-[#141414] hover:border-[#333] transition-colors p-3 cursor-pointer"
               >
-                <p className="text-xs font-bold truncate">{p.displayName}</p>
-                <p className="text-[10px] text-muted-foreground truncate">{p.description || p.Author || ''}</p>
+                <div className="flex items-center gap-2">
+                  {slot.type === 'config' ? (
+                    <FileEdit size={14} className="text-muted-foreground shrink-0" />
+                  ) : (
+                    <Code size={14} className="text-primary shrink-0" />
+                  )}
+                  <p className="text-xs font-bold truncate">{slot.displayName}</p>
+                </div>
+                {slot.type === 'config' && slot.description && (
+                  <p className="text-[10px] text-muted-foreground truncate mt-0.5">{slot.description}</p>
+                )}
+                {slot.type === 'script' && (
+                  <span className="text-[8px] text-primary border border-primary/30 px-1 mt-0.5 inline-block">module</span>
+                )}
               </button>
             ))}
           </div>
