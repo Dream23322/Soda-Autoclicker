@@ -225,3 +225,9 @@ ipcMain.on("window-control", (event, action: "minimize" | "maximize" | "close") 
 		case "close": win.hide(); break
 	}
 })
+
+ipcMain.on("theme:update", (_event, data) => {
+	if (overlayWindow && !overlayWindow.isDestroyed()) {
+		overlayWindow.webContents.send("theme:update", data)
+	}
+})

@@ -1,4 +1,5 @@
 import { useEffect, useState, Component, ReactNode } from 'react'
+import { COLOR_PRESETS, applyColorPreset, applyCustomColor } from '@/lib/utils'
 
 class Safe extends Component<{ children: ReactNode }, { hasError: boolean }> {
   state = { hasError: false }
@@ -47,6 +48,25 @@ function useOverlayState() {
       alive = false; clearInterval(id)
       // @ts-ignore
       window.electron.ipc.removeListener('overlay:update', handler)
+    }
+  }, [])
+
+  // Live theme updates — settings window sends theme:change when user picks a color
+  useEffect(() => {
+    const saved = localStorage.getItem('colorPreset') || 'white'
+    if (saved !== 'custom') applyColorPreset(saved as keyof typeof COLOR_PRESETS)
+    const handler = (data: { type: string; name?: string; hex?: string }) => {
+      if (data.type === 'preset' && data.name) {
+        applyColorPreset(data.name as keyof typeof COLOR_PRESETS)
+      } else if (data.type === 'custom' && data.hex) {
+        applyCustomColor(data.hex)
+      }
+    }
+    // @ts-ignore
+    window.electron.ipc.on('theme:update', handler)
+    return () => {
+      // @ts-ignore
+      window.electron.ipc.removeListener('theme:update', handler)
     }
   }, [])
 

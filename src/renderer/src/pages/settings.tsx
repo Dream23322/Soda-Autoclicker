@@ -53,12 +53,17 @@ function Settings({ config, updateConfig }: Props) {
   const handleColorChange = (colorName: string) => {
     setCurrentColor(colorName)
     applyColorPreset(colorName as keyof typeof COLOR_PRESETS)
+    // @ts-ignore
+    window.electron.ipc.send('theme:update', { type: 'preset', name: colorName })
   }
 
   const handleCustomSelect = () => {
     if (!m) return
-    applyCustomColor(rgbToHex(m.red ?? 0, m.green ?? 0, m.blue ?? 0))
+    const hex = rgbToHex(m.red ?? 0, m.green ?? 0, m.blue ?? 0)
+    applyCustomColor(hex)
     setCurrentColor("custom")
+    // @ts-ignore
+    window.electron.ipc.send('theme:update', { type: 'custom', hex })
   }
 
   const handleCustomPick = (hex: string) => {
@@ -70,6 +75,8 @@ function Settings({ config, updateConfig }: Props) {
     setConfig(['misc', 'blue'], b)
     applyCustomColor(hex)
     setCurrentColor('custom')
+    // @ts-ignore
+    window.electron.ipc.send('theme:update', { type: 'custom', hex })
   }
 
   return (

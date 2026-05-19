@@ -43,8 +43,8 @@ const INVOKE_CHANNELS: Set<string> = new Set([
 	"debug:openLogs",
 ])
 
-const SEND_CHANNELS: Set<string> = new Set(["window-control", "debug:log", "update:startDownload"])
-const LISTEN_CHANNELS: Set<string> = new Set(["overlay:update"])
+const SEND_CHANNELS: Set<string> = new Set(["window-control", "debug:log", "update:startDownload", "theme:update"])
+const LISTEN_CHANNELS: Set<string> = new Set(["overlay:update", "theme:update"])
 
 function assertAllowed(set: Set<string>, channel: string): void {
 	if (!set.has(channel)) throw new Error(`Blocked IPC channel: ${channel}`)
