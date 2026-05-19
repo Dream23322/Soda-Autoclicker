@@ -162,16 +162,28 @@ function ScriptEditor({ value, onChange, scriptsList }: { value: string; onChang
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const cursorRef = useRef<number | null>(null)
+  const ignoreNextChange = useRef(false)
 
-  const updateSuggestions = (text: string, cursor: number) => {
+  const historyRef = useRef<{ past: string[]; future: string[] }>({ past: [], future: [] })
+
+  const pushHistory = (prevValue: string) => {
+    const h = historyRef.current
+    h.past = [...h.past.slice(-49), prevValue]
+    h.future = []
+  }
+
+  const updateSuggestions = (text: string, cursor: number, force?: boolean) => {
     const before = text.slice(0, cursor)
     const wordMatch = before.match(/(\S+)$/)
     const word = wordMatch ? wordMatch[1].toLowerCase() : ''
-    if (!word || /[)"]$/.test(before)) {
+    if ((!word || /[)"]$/.test(before)) && !force) {
       setSuggestions([])
       return
     }
-    const filtered = SCRIPT_SUGGESTIONS.filter(s => s.text.toLowerCase().startsWith(word))
+    const filtered = SCRIPT_SUGGESTIONS.filter(s => {
+      const lower = s.text.toLowerCase()
+      return lower.includes(word) || lower.startsWith(word)
+    })
     setSuggestions(filtered)
     setSelectedIdx(0)
     setCursorPos(cursor)
@@ -182,6 +194,7 @@ function ScriptEditor({ value, onChange, scriptsList }: { value: string; onChang
     const after = value.slice(cursorPos)
     const wordMatch = before.match(/(\S+)$/)
     if (!wordMatch) return
+    pushHistory(value)
     const start = cursorPos - wordMatch[1].length
     const pos = start + suggestion.length + 1
     const newVal = value.slice(0, start) + suggestion + ' ' + after
@@ -209,25 +222,54 @@ function ScriptEditor({ value, onChange, scriptsList }: { value: string; onChang
   }, [])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (suggestions.length === 0) return
-    if (e.key === 'Tab' || (e.key === 'Enter' && suggestions.length > 0)) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
       e.preventDefault()
-      insert(suggestions[selectedIdx].text)
+      const h = historyRef.current
+      if (e.shiftKey) {
+        if (h.future.length === 0) return
+        const prev = h.future.pop()!
+        h.past.push(value)
+        ignoreNextChange.current = true
+        onChange(prev)
+        cursorRef.current = prev.length
+      } else {
+        if (h.past.length === 0) return
+        const prev = h.past.pop()!
+        h.future.push(value)
+        ignoreNextChange.current = true
+        onChange(prev)
+        cursorRef.current = prev.length
+      }
       return
     }
-    if (e.key === 'ArrowDown') {
+
+    if ((e.ctrlKey || e.metaKey) && e.key === ' ') {
       e.preventDefault()
-      setSelectedIdx(i => Math.min(i + 1, suggestions.length - 1))
+      const textarea = textareaRef.current
+      if (textarea) updateSuggestions(value, textarea.selectionStart, true)
       return
     }
-    if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      setSelectedIdx(i => Math.max(i - 1, 0))
-      return
-    }
-    if (e.key === 'Escape') {
-      setSuggestions([])
-      return
+
+    if (suggestions.length > 0) {
+      if (e.key === 'Tab' || (e.key === 'Enter' && suggestions.length > 0)) {
+        e.preventDefault()
+        insert(suggestions[selectedIdx].text)
+        return
+      }
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setSelectedIdx(i => Math.min(i + 1, suggestions.length - 1))
+        return
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setSelectedIdx(i => Math.max(i - 1, 0))
+        return
+      }
+      if (e.key === 'Escape') {
+        setSuggestions([])
+        return
+      }
     }
   }
 
@@ -241,7 +283,7 @@ function ScriptEditor({ value, onChange, scriptsList }: { value: string; onChang
             value=""
             onChange={e => {
               const script = scriptsList.find(s => s.name === e.target.value)
-              if (script) onChange(script.code)
+              if (script) { pushHistory(value); onChange(script.code) }
             }}
           >
             <option value="" disabled>Select...</option>
@@ -251,11 +293,13 @@ function ScriptEditor({ value, onChange, scriptsList }: { value: string; onChang
       )}
       <textarea
         ref={textareaRef}
-        className="h-16 w-full rounded border border-[#333] bg-[#0d0d0d] p-1 text-[10px] font-mono text-muted-foreground"
+        className="w-full min-h-[12.5rem] resize-y rounded border border-[#333] bg-[#0d0d0d] p-1 text-[10px] font-mono text-muted-foreground"
         placeholder={'delay(500)\nkey(0x31)\nclick(2)\nhold(0x31,200)'}
         value={value}
         onChange={e => {
           cursorRef.current = e.target.selectionStart
+          if (!ignoreNextChange.current) pushHistory(value)
+          ignoreNextChange.current = false
           onChange(e.target.value)
           updateSuggestions(e.target.value, e.target.selectionStart)
         }}
