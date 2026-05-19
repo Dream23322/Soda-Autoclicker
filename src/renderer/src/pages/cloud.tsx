@@ -1,11 +1,21 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
-import { Cloud, Download, Trash2, RefreshCw, User, AlertCircle, Info, Globe, Lock, Eye } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Cloud, Download, Trash2, RefreshCw, User, AlertCircle, Info, Globe, Lock, Eye, Search } from "lucide-react"
 
 import { useAutoclicker } from "@/hooks/use-autoclicker"
 
@@ -28,6 +38,9 @@ export function CloudPage() {
   const [showPrivacy, setShowPrivacy] = useState(false)
   const [downloadedId, setDownloadedId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<"mine" | "community">("mine")
+  const [search, setSearch] = useState("")
+  const [sortBy, setSortBy] = useState<"name" | "newest" | "oldest" | "type" | "downloads">("newest")
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
 
   // Upload dialog
   const [uploadDialog, setUploadDialog] = useState(false)
@@ -163,6 +176,65 @@ export function CloudPage() {
   const shortId = userId ? `${userId.slice(0, 4)}...${userId.slice(-4)}` : null
   const userMacros = ((config as any)?.macros?.list || []).filter((m: any) => !DEFAULT_MACRO_NAMES.has(m.name) || m.bind !== 0)
 
+  const filteredItems = useMemo(() => {
+    let result = [...items]
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      result = result.filter(i =>
+        i.name?.toLowerCase().includes(q) ||
+        i.description?.toLowerCase().includes(q)
+      )
+    }
+    switch (sortBy) {
+      case "name":
+        result.sort((a, b) => (a.name || "").localeCompare(b.name || ""))
+        break
+      case "newest":
+        result.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+        break
+      case "oldest":
+        result.sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime())
+        break
+      case "type":
+        result.sort((a, b) => (a.type || "").localeCompare(b.type || ""))
+        break
+    }
+    return result
+  }, [items, search, sortBy])
+
+  const merged = useMemo(() => {
+    const ownIds = new Set(items.filter((i: any) => i.public).map((i: any) => i.id))
+    const m = [
+      ...items.filter((i: any) => i.public).map((i: any) => ({ ...i, downloads: 0, _yours: true })),
+      ...publicItems.filter((i: any) => !ownIds.has(i.id)).map((i: any) => ({ ...i, _yours: false })),
+    ]
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      return m.filter(i =>
+        i.name?.toLowerCase().includes(q) ||
+        i.description?.toLowerCase().includes(q)
+      )
+    }
+    switch (sortBy) {
+      case "name":
+        m.sort((a, b) => (a.name || "").localeCompare(b.name || ""))
+        break
+      case "newest":
+        m.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+        break
+      case "oldest":
+        m.sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime())
+        break
+      case "type":
+        m.sort((a, b) => (a.type || "").localeCompare(b.type || ""))
+        break
+      case "downloads":
+        m.sort((a, b) => (b.downloads || 0) - (a.downloads || 0))
+        break
+    }
+    return m
+  }, [items, publicItems, search, sortBy])
+
   if (loading) return <div className="flex h-full items-center justify-center"><p className="text-sm text-muted-foreground">Connecting...</p></div>
 
   return (
@@ -289,11 +361,34 @@ export function CloudPage() {
           <Card>
             <CardContent className="pt-4 space-y-3">
               <h2 className="text-sm section-header font-bold">Cloud Items <span className="text-muted-foreground font-normal">({quota.used}/{quota.max})</span></h2>
-              {items.length === 0 ? (
-                <p className="text-xs text-muted-foreground py-4 text-center border border-dashed border-[#1a1a1a]">No cloud items yet. Upload a config or macro above.</p>
+              {items.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+                    <Input
+                      value={search}
+                      onChange={e => setSearch(e.target.value)}
+                      placeholder="Search items..."
+                      className="h-7 text-[10px] pl-6"
+                    />
+                  </div>
+                  <select
+                    value={sortBy}
+                    onChange={e => setSortBy(e.target.value as typeof sortBy)}
+                    className="bg-[#0d0d0d] border border-[#333] rounded px-1 py-0.5 text-[10px] text-muted-foreground h-7"
+                  >
+                    <option value="newest">Newest</option>
+                    <option value="oldest">Oldest</option>
+                    <option value="name">Name</option>
+                    <option value="type">Type</option>
+                  </select>
+                </div>
+              )}
+              {filteredItems.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-4 text-center border border-dashed border-[#1a1a1a]">{items.length === 0 ? "No cloud items yet. Upload a config or macro above." : "No items match your search."}</p>
               ) : (
                 <div className="space-y-2">
-                  {items.map((item: any) => (
+                  {filteredItems.map((item: any) => (
                     <div key={item.id} className="flex items-center justify-between border border-[#1a1a1a] bg-[#0d0d0d] p-2">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
@@ -310,7 +405,7 @@ export function CloudPage() {
                           catch (e: any) { setError(e.message || "Download failed") }
                         }} className="p-1 text-muted-foreground hover:text-primary cursor-pointer" title="Download"><Download className="w-3 h-3" /></button>
                         {downloadedId === item.id && <p className="text-[10px] text-foreground mt-1">// downloaded successfully</p>}
-                        <button onClick={async () => { try { const e = (window as any).electron; await e.cloud.delete(item.id); await loadAll(); await loadPublic() } catch (e: any) { setError(e.message || "Delete failed") } }} className="p-1 text-muted-foreground hover:text-red-500 cursor-pointer" title="Delete"><Trash2 className="w-3 h-3" /></button>
+                        <button onClick={() => setDeleteConfirmId(item.id)} className="p-1 text-muted-foreground hover:text-red-500 cursor-pointer" title="Delete"><Trash2 className="w-3 h-3" /></button>
                       </div>
                     </div>
                   ))}
@@ -332,14 +427,34 @@ export function CloudPage() {
           <Card>
             <CardContent className="pt-4 space-y-3">
               <h2 className="text-sm section-header font-bold">Community</h2>
-              {(() => {
-                const ownIds = new Set(items.filter((i: any) => i.public).map((i: any) => i.id))
-                const merged: any[] = [
-                  ...items.filter((i: any) => i.public).map((i: any) => ({ ...i, downloads: 0, _yours: true })),
-                  ...publicItems.filter((i: any) => !ownIds.has(i.id)).map((i: any) => ({ ...i, _yours: false })),
-                ]
-                if (merged.length === 0) return <p className="text-xs text-muted-foreground py-4 text-center border border-dashed border-[#1a1a1a]">No shared items yet. Mark something as public to share it.</p>
-                return <div className="space-y-2">
+              {merged.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+                    <Input
+                      value={search}
+                      onChange={e => setSearch(e.target.value)}
+                      placeholder="Search community items..."
+                      className="h-7 text-[10px] pl-6"
+                    />
+                  </div>
+                  <select
+                    value={sortBy}
+                    onChange={e => setSortBy(e.target.value as typeof sortBy)}
+                    className="bg-[#0d0d0d] border border-[#333] rounded px-1 py-0.5 text-[10px] text-muted-foreground h-7"
+                  >
+                    <option value="newest">Newest</option>
+                    <option value="oldest">Oldest</option>
+                    <option value="name">Name</option>
+                    <option value="type">Type</option>
+                    <option value="downloads">Downloads</option>
+                  </select>
+                </div>
+              )}
+              {merged.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-4 text-center border border-dashed border-[#1a1a1a]">No shared items yet. Mark something as public to share it.</p>
+              ) : (
+                <div className="space-y-2">
                   {merged.map((item: any) => (
                     <div key={item.id} className="flex items-center justify-between border border-[#1a1a1a] bg-[#0d0d0d] p-2">
                       <div className="min-w-0 flex-1">
@@ -366,7 +481,7 @@ export function CloudPage() {
                     </div>
                   ))}
                 </div>
-              })()}
+              )}
             </CardContent>
           </Card>
           <div className="flex justify-center">
@@ -378,6 +493,29 @@ export function CloudPage() {
       <div className="text-center">
         <button onClick={() => setShowPrivacy(true)} className="text-[10px] text-muted-foreground hover:text-primary underline underline-offset-2 cursor-pointer inline-flex items-center gap-1"><Info className="w-2.5 h-2.5" /> privacy</button>
       </div>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={deleteConfirmId !== null} onOpenChange={(open) => { if (!open) setDeleteConfirmId(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-sm font-bold text-primary">delete item</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-muted-foreground">This will permanently delete this item from the cloud. This cannot be undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel className="text-xs h-8" onClick={() => setDeleteConfirmId(null)}>cancel</AlertDialogCancel>
+            <AlertDialogAction className="text-xs h-8 bg-red-500 hover:bg-red-600" onClick={async () => {
+              if (!deleteConfirmId) return
+              try {
+                const e = (window as any).electron
+                await e.cloud.delete(deleteConfirmId)
+                setDeleteConfirmId(null)
+                await loadAll()
+                await loadPublic()
+              } catch (e: any) { setError(e.message || "Delete failed"); setDeleteConfirmId(null) }
+            }}>delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Upload Dialog */}
       <Dialog open={uploadDialog} onOpenChange={setUploadDialog}>

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { NavLink } from "react-router"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { Home, Settings, MousePointer2, MousePointer, Menu, HelpCircle, Play, FlaskConical, Zap, FileEdit, List, Code, Cloud } from "lucide-react"
+import { Home, Settings, MousePointer2, MousePointer, Menu, HelpCircle, Play, FlaskConical, Zap, FileEdit, List, Code, Cloud, Bug } from "lucide-react"
 
 function Sidebar() {
   const [collapsed, setCollapsed] = useState(false)
@@ -105,6 +105,15 @@ function Sidebar() {
             )}
           </NavLink>
         ))}
+        <button
+          onClick={() => window.open('https://discord.gg/4ZqBfDFMG4', '_blank')}
+          className={cn("relative flex items-center rounded-none px-3 py-2 text-xs transition-all gap-2 border-l-2 border-l-transparent hover:bg-[#141414] hover:text-foreground text-muted-foreground w-full group")}
+          aria-label={collapsed ? "Report Bug" : undefined}
+        >
+          <span className="flex items-center justify-center w-4 h-4"><Bug size={16} /></span>
+          <LabelWrapper>Report Bug</LabelWrapper>
+          <Tooltip text="Report Bug" />
+        </button>
       </nav>
     </aside>
   )

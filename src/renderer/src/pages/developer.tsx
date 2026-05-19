@@ -780,6 +780,7 @@ function MacrosPanel({ config, updateConfig, scriptsList, onRefresh }: { config:
 function ScriptsPanel({ config, updateConfig, onRefresh }: { config: any; updateConfig: (path: string[], value: unknown) => void; onRefresh: () => void }) {
   const [selected, setSelected] = useState(0)
   const [moduleStatus, setModuleStatus] = useState<Record<string, boolean>>({})
+  const [showDocs, setShowDocs] = useState(false)
 
   const scripts: Script[] = config.scripts?.list || []
 
@@ -817,8 +818,14 @@ function ScriptsPanel({ config, updateConfig, onRefresh }: { config: any; update
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold">Scripts</h2>
-        <button onClick={() => onRefresh()} className="text-muted-foreground hover:text-primary cursor-pointer" title="Reload"><RefreshCw size={14} /></button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setShowDocs(true)} className="text-[9px] text-[#555] hover:text-[#999] underline underline-offset-2 transition-colors" title="Scripting Reference">
+            Scripting Docs
+          </button>
+          <button onClick={() => onRefresh()} className="text-muted-foreground hover:text-primary cursor-pointer" title="Reload"><RefreshCw size={14} /></button>
+        </div>
       </div>
+      {showDocs && <ScriptingDocs onClose={() => setShowDocs(false)} />}
 
       <div className="flex gap-4">
         <div className="w-48 shrink-0 space-y-1">
