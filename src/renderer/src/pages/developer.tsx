@@ -693,11 +693,10 @@ function MacroEditor({ macro, index, onChange, onDelete, updateConfig, scriptsLi
   )
 }
 
-function MacrosPanel({ config, updateConfig, scriptsList }: { config: any; updateConfig: (path: string[], value: unknown) => void; scriptsList: Script[] }) {
+function MacrosPanel({ config, updateConfig, scriptsList, onRefresh }: { config: any; updateConfig: (path: string[], value: unknown) => void; scriptsList: Script[]; onRefresh: () => void }) {
   const [showTutorial, setShowTutorial] = useState(false)
   const [showDocs, setShowDocs] = useState(false)
   const [selected, setSelected] = useState(0)
-  const { loadConfig } = useAutoclicker()
 
   const macros: Macro[] = config.macros?.list || []
 
@@ -708,7 +707,7 @@ function MacrosPanel({ config, updateConfig, scriptsList }: { config: any; updat
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold">Macros</h2>
         <div className="flex items-center gap-2">
-          <button onClick={() => loadConfig()} className="text-muted-foreground hover:text-primary cursor-pointer" title="Reload macros"><RefreshCw size={14} /></button>
+          <button onClick={() => onRefresh()} className="text-muted-foreground hover:text-primary cursor-pointer" title="Reload macros"><RefreshCw size={14} /></button>
           <button onClick={() => setShowDocs(true)} className="text-[9px] text-[#555] hover:text-[#999] underline underline-offset-2 transition-colors" title="Scripting Reference">
             Scripting Docs
           </button>
@@ -732,13 +731,13 @@ function MacrosPanel({ config, updateConfig, scriptsList }: { config: any; updat
               }`}
             >
               <div className="font-medium">{m.name || 'Unnamed'}</div>
-              <div className="text-[10px] text-[#555]">{m.steps.length} step{m.steps.length !== 1 ? 's' : ''} {'\u00B7'} {m.steps.reduce((s: number, st: MacroStep) => s + st.actions.length, 0)} actions</div>
+              <div className="text-[10px] text-[#555]">{m.steps.length} step{m.steps.length !== 1 ? 's' : ''} ${'\u00B7'} {m.steps.reduce((s: number, st: MacroStep) => s + st.actions.length, 0)} actions</div>
             </button>
           ))}
           <Button variant="outline" size="sm" className="w-full text-xs h-7" onClick={() => {
             updateMacros([...macros, { name: 'New Macro', bind: 0, loop: false, steps: [{ id: uid(), label: 'Step 1', actions: [] }] }])
             setSelected(macros.length)
-            loadConfig()
+            onRefresh()
           }}>
             <Plus size={12} className="mr-1" /> Add Macro
           </Button>
@@ -756,13 +755,13 @@ function MacrosPanel({ config, updateConfig, scriptsList }: { config: any; updat
                   const list = [...macros]
                   list[selected] = m
                   updateMacros(list)
-                  loadConfig()
+                  onRefresh()
                 }}
                 onDelete={() => {
                   const list = macros.filter((_, i) => i !== selected)
                   updateMacros(list)
                   if (selected >= list.length) setSelected(Math.max(0, list.length - 1))
-                  loadConfig()
+                  onRefresh()
                 }}
                 scriptsList={scriptsList}
               />
@@ -778,10 +777,9 @@ function MacrosPanel({ config, updateConfig, scriptsList }: { config: any; updat
   )
 }
 
-function ScriptsPanel({ config, updateConfig }: { config: any; updateConfig: (path: string[], value: unknown) => void }) {
+function ScriptsPanel({ config, updateConfig, onRefresh }: { config: any; updateConfig: (path: string[], value: unknown) => void; onRefresh: () => void }) {
   const [selected, setSelected] = useState(0)
   const [moduleStatus, setModuleStatus] = useState<Record<string, boolean>>({})
-  const { loadConfig } = useAutoclicker()
 
   const scripts: Script[] = config.scripts?.list || []
 
@@ -819,7 +817,7 @@ function ScriptsPanel({ config, updateConfig }: { config: any; updateConfig: (pa
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold">Scripts</h2>
-        <button onClick={() => loadConfig()} className="text-muted-foreground hover:text-primary cursor-pointer" title="Reload"><RefreshCw size={14} /></button>
+        <button onClick={() => onRefresh()} className="text-muted-foreground hover:text-primary cursor-pointer" title="Reload"><RefreshCw size={14} /></button>
       </div>
 
       <div className="flex gap-4">
@@ -842,7 +840,7 @@ function ScriptsPanel({ config, updateConfig }: { config: any; updateConfig: (pa
           <Button variant="outline" size="sm" className="w-full text-xs h-7" onClick={() => {
             updateScripts([...scripts, { name: 'New Script', code: '', module: false }])
             setSelected(scripts.length)
-            loadConfig()
+            onRefresh()
           }}>
             <Plus size={12} className="mr-1" /> Add Script
           </Button>
@@ -859,7 +857,7 @@ function ScriptsPanel({ config, updateConfig }: { config: any; updateConfig: (pa
                       const list = [...scripts]
                       list[selected] = { ...current, name: e.target.value }
                       updateScripts(list)
-                      loadConfig()
+                      onRefresh()
                     }}
                     className="h-7 text-sm font-bold flex-1"
                     placeholder="Script name..."
@@ -877,7 +875,7 @@ function ScriptsPanel({ config, updateConfig }: { config: any; updateConfig: (pa
                         if (!e.target.checked && moduleStatus[current.name]) {
                           toggleModule(current)
                         }
-                        loadConfig()
+                        onRefresh()
                       }}
                       className="accent-primary w-3 h-3 cursor-pointer"
                     />
@@ -897,7 +895,7 @@ function ScriptsPanel({ config, updateConfig }: { config: any; updateConfig: (pa
                     if (moduleStatus[current.name]) toggleModule(current)
                     updateScripts(list)
                     if (selected >= list.length) setSelected(Math.max(0, list.length - 1))
-                    loadConfig()
+                    onRefresh()
                   }} className="text-red-500/60 hover:text-red-400 shrink-0"><Trash2 size={14} /></button>
                 </div>
 
@@ -909,7 +907,7 @@ function ScriptsPanel({ config, updateConfig }: { config: any; updateConfig: (pa
                       const list = [...scripts]
                       list[selected] = { ...current, code: v }
                       updateScripts(list)
-                      loadConfig()
+                      onRefresh()
                     }}
                   />
                 </div>
@@ -957,10 +955,9 @@ function ScriptsPanel({ config, updateConfig }: { config: any; updateConfig: (pa
   )
 }
 
-export function DeveloperPage({ config: _config, updateConfig }: Props) {
+export function DeveloperPage({ config, updateConfig }: Props) {
+  const { loadConfig } = useAutoclicker()
   const [activeTab, setActiveTab] = useState<'scripts' | 'macros'>('scripts')
-  const { config: hookConfig } = useAutoclicker()
-  const config = hookConfig || _config
   if (!config) return null
 
   const scripts: Script[] = config.scripts?.list || []
@@ -988,8 +985,8 @@ export function DeveloperPage({ config: _config, updateConfig }: Props) {
         </button>
       </div>
 
-      {activeTab === 'scripts' && <ScriptsPanel config={config} updateConfig={updateConfig} />}
-      {activeTab === 'macros' && <MacrosPanel config={config} updateConfig={updateConfig} scriptsList={scripts} />}
+      {activeTab === 'scripts' && <ScriptsPanel config={config} updateConfig={updateConfig} onRefresh={loadConfig} />}
+      {activeTab === 'macros' && <MacrosPanel config={config} updateConfig={updateConfig} scriptsList={scripts} onRefresh={loadConfig} />}
     </div>
   )
 }
