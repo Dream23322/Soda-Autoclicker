@@ -39,6 +39,149 @@ function mergeConfig(defaults: AutoclickerConfig, data: Record<string, unknown>)
   return out as unknown as AutoclickerConfig
 }
 
+/**
+ * Safe arithmetic expression evaluator.
+ * Replaces `new Function()` to avoid runtime compilation overhead.
+ */
+class ExprEvaluator {
+  static evaluate(expr: string, getVar: (name: string) => number, getState: (name: string) => number): number {
+    const t = expr.trim()
+    if (/^-?\d+(\.\d+)?$/.test(t)) return parseFloat(t)
+    const tokens = ExprEvaluator.tokenize(t)
+    const pos = { i: 0 }
+    try {
+      return ExprEvaluator.parseExpr(tokens, pos, getVar, getState)
+    } catch {
+      return 0
+    }
+  }
+
+  private static tokenize(expr: string): { type: string; value: string }[] {
+    const tokens: { type: string; value: string }[] = []
+    let i = 0
+    while (i < expr.length) {
+      const ch = expr[i]
+      if (ch === ' ' || ch === '\t') { i++; continue }
+      if ('()+-*/%,'.includes(ch)) { tokens.push({ type: ch, value: ch }); i++; continue }
+      if (ch === "'") {
+        let str = ''
+        i++
+        while (i < expr.length && expr[i] !== "'") { str += expr[i]; i++ }
+        i++
+        tokens.push({ type: 'str', value: str })
+        continue
+      }
+      if (ch === '$') {
+        let name = ''
+        i++
+        if (i < expr.length && expr[i] === '_') { name += '_'; i++ }
+        while (i < expr.length && /[a-zA-Z0-9_]/.test(expr[i])) { name += expr[i]; i++ }
+        tokens.push({ type: 'var', value: name })
+        continue
+      }
+      if (/[a-zA-Z_]/.test(ch)) {
+        let name = ''
+        while (i < expr.length && /[a-zA-Z0-9_]/.test(expr[i])) { name += expr[i]; i++ }
+        tokens.push({ type: 'name', value: name })
+        continue
+      }
+      if (/[0-9.]/.test(ch)) {
+        let num = ''
+        while (i < expr.length && /[0-9.]/.test(expr[i])) { num += expr[i]; i++ }
+        tokens.push({ type: 'num', value: num })
+        continue
+      }
+      i++
+    }
+    return tokens
+  }
+
+  private static parseExpr(tokens: { type: string; value: string }[], pos: { i: number }, getVar: (name: string) => number, getState: (name: string) => number): number {
+    let left = ExprEvaluator.parseTerm(tokens, pos, getVar, getState)
+    while (pos.i < tokens.length && (tokens[pos.i].type === '+' || tokens[pos.i].type === '-')) {
+      const op = tokens[pos.i].type
+      pos.i++
+      const right = ExprEvaluator.parseTerm(tokens, pos, getVar, getState)
+      left = op === '+' ? left + right : left - right
+    }
+    return left
+  }
+
+  private static parseTerm(tokens: { type: string; value: string }[], pos: { i: number }, getVar: (name: string) => number, getState: (name: string) => number): number {
+    let left = ExprEvaluator.parseUnary(tokens, pos, getVar, getState)
+    while (pos.i < tokens.length && (tokens[pos.i].type === '*' || tokens[pos.i].type === '/' || tokens[pos.i].type === '%')) {
+      const op = tokens[pos.i].type
+      pos.i++
+      const right = ExprEvaluator.parseUnary(tokens, pos, getVar, getState)
+      if (op === '*') left = left * right
+      else if (op === '/') left = right !== 0 ? left / right : 0
+      else left = left % right
+    }
+    return left
+  }
+
+  private static parseUnary(tokens: { type: string; value: string }[], pos: { i: number }, getVar: (name: string) => number, getState: (name: string) => number): number {
+    if (pos.i < tokens.length && tokens[pos.i].type === '-') { pos.i++; return -ExprEvaluator.parseUnary(tokens, pos, getVar, getState) }
+    if (pos.i < tokens.length && tokens[pos.i].type === '+') { pos.i++; return ExprEvaluator.parseUnary(tokens, pos, getVar, getState) }
+    return ExprEvaluator.parseAtom(tokens, pos, getVar, getState)
+  }
+
+  private static parseAtom(tokens: { type: string; value: string }[], pos: { i: number }, getVar: (name: string) => number, getState: (name: string) => number): number {
+    if (pos.i >= tokens.length) return 0
+    const tok = tokens[pos.i]
+
+    if (tok.type === 'num') { pos.i++; return parseFloat(tok.value) }
+    if (tok.type === 'var') { pos.i++; return getVar(tok.value) }
+
+    if (tok.type === '(') {
+      pos.i++
+      const val = ExprEvaluator.parseExpr(tokens, pos, getVar, getState)
+      if (pos.i < tokens.length && tokens[pos.i].type === ')') pos.i++
+      return val
+    }
+
+    if (tok.type === 'name') {
+      const fnName = tok.value.toLowerCase()
+      pos.i++
+
+      if (fnName === 'get_state') {
+        if (pos.i < tokens.length && tokens[pos.i].type === '(') pos.i++
+        let stateName = ''
+        if (pos.i < tokens.length && tokens[pos.i].type === 'str') { stateName = tokens[pos.i].value; pos.i++ }
+        if (pos.i < tokens.length && tokens[pos.i].type === ')') pos.i++
+        return getState(stateName)
+      }
+
+      if (pos.i < tokens.length && tokens[pos.i].type === '(') pos.i++
+      const args: number[] = []
+      if (pos.i < tokens.length && tokens[pos.i].type !== ')') {
+        args.push(ExprEvaluator.parseExpr(tokens, pos, getVar, getState))
+        while (pos.i < tokens.length && tokens[pos.i].type === ',') {
+          pos.i++
+          args.push(ExprEvaluator.parseExpr(tokens, pos, getVar, getState))
+        }
+      }
+      if (pos.i < tokens.length && tokens[pos.i].type === ')') pos.i++
+
+      switch (fnName) {
+        case 'sin': return Math.sin(args[0] ?? 0)
+        case 'cos': return Math.cos(args[0] ?? 0)
+        case 'abs': return Math.abs(args[0] ?? 0)
+        case 'floor': return Math.floor(args[0] ?? 0)
+        case 'ceil': return Math.ceil(args[0] ?? 0)
+        case 'sqrt': return Math.sqrt(args[0] ?? 0)
+        case 'clamp': { const [v, lo, hi] = args; return v < lo ? lo : v > hi ? hi : v }
+        case 'rnd':
+        case 'random': { const [min, max] = args; return min + Math.random() * (max - min) }
+        default: return 0
+      }
+    }
+
+    pos.i++
+    return 0
+  }
+}
+
 export class AutoclickerEngine {
   config: AutoclickerConfig = { ...DEFAULT_CONFIG }
   private running = false
@@ -86,6 +229,11 @@ export class AutoclickerEngine {
   // physical button stuck pressed at the OS level.
   private leftHoldingMouse = false
   private rightHoldingMouse = false
+  private leftClickHoldPhase: 'idle' | 'pressing' | 'armed' | 'clicking' = 'idle'
+  private rightClickHoldPhase: 'idle' | 'pressing' | 'armed' | 'clicking' = 'idle'
+  private leftClickHoldArmedAt = 0
+  private rightClickHoldArmedAt = 0
+  private readonly CLICK_HOLD_TIMEOUT = 300
   // Set to true after the first successful window-listener poll so we know
   // an empty focusedProcess means "genuinely not Minecraft" vs "not checked yet".
   private windowPolledOnce = false
@@ -96,6 +244,7 @@ export class AutoclickerEngine {
 
   private windowInterval: ReturnType<typeof setInterval> | null = null
   private bindPollInterval: ReturnType<typeof setInterval> | null = null
+  private movementInterval: ReturnType<typeof setInterval> | null = null
 
   onConfigUpdate: ConfigUpdateCallback | null = null
   onHideGUI: (() => void) | null = null
@@ -141,15 +290,14 @@ export class AutoclickerEngine {
     this.startRightClicker()
     this.startSmartBH()
     this.startWTap()
-    this.startAutoSprint()
-    this.startBetterInput()
-    this.startFastStop()
+    this.startMovementTick()
   }
 
   stop(): void {
     this.running = false
     if (this.windowInterval) clearInterval(this.windowInterval)
     if (this.bindPollInterval) clearInterval(this.bindPollInterval)
+    if (this.movementInterval) clearInterval(this.movementInterval)
     this.releaseHeldInputs()
     this.input.stop()
   }
@@ -161,6 +309,8 @@ export class AutoclickerEngine {
    * Synchronous fire-and-forget; safe to call from non-async contexts.
    */
   private releaseHeldInputs(): void {
+    this.leftClickHoldPhase = 'idle'
+    this.rightClickHoldPhase = 'idle'
     if (this.leftHoldingMouse) {
       this.input.mouseUp(1).catch(() => {})
       this.leftHoldingMouse = false
@@ -283,9 +433,12 @@ export class AutoclickerEngine {
       if (!this.config.left.workInMenus && this.cursorIsInMenu()) return
     }
     this.config.left.enabled = wouldEnable
-    if (!wouldEnable && this.leftHoldingMouse) {
-      this.input.mouseUp(1).catch(() => {})
-      this.leftHoldingMouse = false
+    if (!wouldEnable) {
+      this.leftClickHoldPhase = 'idle'
+      if (this.leftHoldingMouse) {
+        this.input.mouseUp(1).catch(() => {})
+        this.leftHoldingMouse = false
+      }
     }
     console.log(`[clicker] left ${this.config.left.enabled ? 'ENABLED' : 'DISABLED'}`)
     this.playToggleSound(this.config.left.enabled)
@@ -299,9 +452,12 @@ export class AutoclickerEngine {
       if (!this.config.right.workInMenus && this.cursorIsInMenu()) return
     }
     this.config.right.enabled = wouldEnable
-    if (!wouldEnable && this.rightHoldingMouse) {
-      this.input.mouseUp(2).catch(() => {})
-      this.rightHoldingMouse = false
+    if (!wouldEnable) {
+      this.rightClickHoldPhase = 'idle'
+      if (this.rightHoldingMouse) {
+        this.input.mouseUp(2).catch(() => {})
+        this.rightHoldingMouse = false
+      }
     }
     console.log(`[clicker] right ${this.config.right.enabled ? 'ENABLED' : 'DISABLED'}`)
     this.playToggleSound(this.config.right.enabled)
@@ -371,17 +527,48 @@ export class AutoclickerEngine {
           await this.sleep(delay); continue
         }
 
+        // One batched key query for the entire loop iteration
+        let lmb = false, rmb = false, shift = false
+        try {
+          const states = await this.input.getKeyStates([VK_LMB, VK_RMB, 0x10])
+          lmb = states[0]; rmb = states[1]; shift = states[2]
+        } catch { await this.sleep(10); continue }
+
         if (cfg.mode === 'Hold') {
-          const lmb = await this.input.isKeyDown(VK_LMB)
           if (!lmb) { await this.sleep(5); continue }
         }
 
-        if (cfg.RMBLock && await this.input.isKeyDown(VK_RMB)) { await this.sleep(10); continue }
+        if (cfg.mode === 'ClickHold') {
+          if (!lmb) {
+            if (this.leftClickHoldPhase === 'pressing') {
+              this.leftClickHoldPhase = 'armed'
+              this.leftClickHoldArmedAt = Date.now()
+            } else if (this.leftClickHoldPhase === 'clicking') {
+              this.leftClickHoldPhase = 'idle'
+            }
+            await this.sleep(5); continue
+          }
+          if (this.leftClickHoldPhase === 'idle') {
+            this.leftClickHoldPhase = 'pressing'
+            await this.sleep(5); continue
+          }
+          if (this.leftClickHoldPhase === 'armed') {
+            if (Date.now() - this.leftClickHoldArmedAt > this.CLICK_HOLD_TIMEOUT) {
+              this.leftClickHoldPhase = 'idle'
+              await this.sleep(5); continue
+            }
+            this.leftClickHoldPhase = 'clicking'
+          }
+          if (this.leftClickHoldPhase !== 'clicking') {
+            await this.sleep(5); continue
+          }
+        }
+
+        if (cfg.RMBLock && rmb) { await this.sleep(10); continue }
         if (cfg.onlyWhenFocused && this.focusedProcess && !this.isGameFocused()) { await this.sleep(50); continue }
         if (!cfg.workInMenus && this.cursorIsInMenu()) { await this.sleep(50); continue }
 
         const breakMode = cfg.breakBlocks
-        const shift = (breakMode === 'Shift No Click' || breakMode === 'Shift With Click') ? await this.input.isKeyDown(0x10) : false
 
         if (breakMode === 'Shift No Click' && shift) { await this.sleep(delay); continue }
         if (breakMode === 'Shift With Click' && shift) {
@@ -399,7 +586,6 @@ export class AutoclickerEngine {
         }
 
         if (cfg.blockHit) {
-          const lmb = await this.input.isKeyDown(VK_LMB)
           if (lmb && Math.random() <= cfg.blockHitChance / 100 && Date.now() - this.lastBlockHitTime >= 500) {
             this.lastBlockHitTime = Date.now()
             await this.input.windowRightClick()
@@ -431,15 +617,44 @@ export class AutoclickerEngine {
           await this.sleep(delay); continue
         }
 
+        // One batched key query for the entire loop iteration
+        let rmb = false, lmb = false
+        try {
+          const states = await this.input.getKeyStates([VK_RMB, VK_LMB])
+          rmb = states[0]; lmb = states[1]
+        } catch { await this.sleep(10); continue }
+
         if (cfg.mode === 'Hold') {
-          const rmb = await this.input.isKeyDown(VK_RMB)
           if (!rmb) { await this.sleep(10); continue }
         }
 
-        if (cfg.LMBLock) {
-          const lmb = await this.input.isKeyDown(VK_LMB)
-          if (lmb) { await this.sleep(10); continue }
+        if (cfg.mode === 'ClickHold') {
+          if (!rmb) {
+            if (this.rightClickHoldPhase === 'pressing') {
+              this.rightClickHoldPhase = 'armed'
+              this.rightClickHoldArmedAt = Date.now()
+            } else if (this.rightClickHoldPhase === 'clicking') {
+              this.rightClickHoldPhase = 'idle'
+            }
+            await this.sleep(10); continue
+          }
+          if (this.rightClickHoldPhase === 'idle') {
+            this.rightClickHoldPhase = 'pressing'
+            await this.sleep(10); continue
+          }
+          if (this.rightClickHoldPhase === 'armed') {
+            if (Date.now() - this.rightClickHoldArmedAt > this.CLICK_HOLD_TIMEOUT) {
+              this.rightClickHoldPhase = 'idle'
+              await this.sleep(10); continue
+            }
+            this.rightClickHoldPhase = 'clicking'
+          }
+          if (this.rightClickHoldPhase !== 'clicking') {
+            await this.sleep(10); continue
+          }
         }
+
+        if (cfg.LMBLock && lmb) { await this.sleep(10); continue }
 
         if (cfg.onlyWhenFocused && this.focusedProcess && !this.isGameFocused()) { await this.sleep(50); continue }
         if (!cfg.workInMenus && this.cursorIsInMenu()) { await this.sleep(50); continue }
@@ -598,7 +813,7 @@ export class AutoclickerEngine {
       } catch {
         // input helper down — keep last frame rather than clearing
       }
-    }, 30)
+    }, 50)
   }
 
   stopKeystrokes(): void {
@@ -690,43 +905,7 @@ export class AutoclickerEngine {
    *  $var values, not the full JS environment.
    *  Built-in functions: rnd(min,max), sin(x), cos(x), abs(x), floor(x), clamp(v,lo,hi), get_state('name') */
   private evalExpr(expr: string): number {
-    const t = expr.trim()
-    if (/^-?\d+(\.\d+)?$/.test(t)) return parseFloat(t)
-
-    // Resolve $_var references
-    let resolved = t.replace(/\$(_[a-zA-Z_]\w*)/g, (_, name) => {
-      return String(this.scriptVars[name] ?? '0')
-    })
-
-    // Evaluate random() / rnd(min, max) at runtime — matches up to nested parens via simple heuristic
-    resolved = resolved.replace(/\br(?:nd|andom)\s*\(\s*([^,]+?)\s*,\s*([^)]+?)\s*\)/gi, (_, minStr, maxStr) => {
-      const min = this.evalExpr(minStr)
-      const max = this.evalExpr(maxStr)
-      return String(min + Math.random() * (max - min))
-    })
-
-    // Resolve get_state('name') calls — reads config state at runtime
-    resolved = resolved.replace(/\bget_state\s*\(\s*'([^']+)'\s*\)/g, (_, name) => {
-      return String(this.getModuleState(name))
-    })
-
-    // Map math function names for new Function
-    resolved = resolved
-      .replace(/\bsin\s*\(/g, 'Math.sin(')
-      .replace(/\bcos\s*\(/g, 'Math.cos(')
-      .replace(/\babs\s*\(/g, 'Math.abs(')
-      .replace(/\bfloor\s*\(/g, 'Math.floor(')
-      .replace(/\bceil\s*\(/g, 'Math.ceil(')
-      .replace(/\bsqrt\s*\(/g, 'Math.sqrt(')
-      .replace(/\bclamp\s*\(/g, '_clamp(')
-
-    try {
-      const fn = new Function(`"use strict"; var _clamp=function(v,l,u){return v<l?l:v>u?u:v}; return (${resolved})`)
-      const r = fn()
-      return typeof r === 'number' && !isNaN(r) ? r : 0
-    } catch {
-      return 0
-    }
+    return ExprEvaluator.evaluate(expr, (n) => this.scriptVars[n] ?? 0, (n) => this.getModuleState(n))
   }
 
   private parseScriptLines(lines: string[], startIdx: number, errors?: { line: number; message: string }[]): { actions: MacroAction[]; nextIdx: number } {
@@ -1283,12 +1462,16 @@ export class AutoclickerEngine {
     while (this.running) {
       await this.sleep(10)
       const mv = this.config.movement
-      if (!mv.autoWTap || !this.inActiveGameplay() || !(await this.input.isKeyDown(VK_LMB))) {
+      const lmb = await this.input.isKeyDown(VK_LMB)
+      if (!mv.autoWTap || !this.inActiveGameplay() || !lmb) {
         await this.sleep(500); continue
       }
-      const w = await this.input.isKeyDown(0x57)
-      const a = await this.input.isKeyDown(0x41)
-      const d = await this.input.isKeyDown(0x44)
+      // Batch the remaining 3 keys
+      let w = false, a = false, d = false
+      try {
+        const states = await this.input.getKeyStates([0x57, 0x41, 0x44])
+        w = states[0]; a = states[1]; d = states[2]
+      } catch { continue }
       if (!(a || d) || !w) continue
       if (mv.wTapMode === 'chance' && Math.random() > mv.wTapValue / 100) continue
       await this.input.keyUp(0x57); await this.sleep(50); await this.input.keyDown(0x57)
@@ -1296,57 +1479,64 @@ export class AutoclickerEngine {
     }
   }
 
-  private async startAutoSprint(): Promise<void> {
-    while (this.running) {
-      const enabled = this.config.movement.autoSprint
-      if (!enabled || !this.inActiveGameplay()) {
+  /**
+   * Consolidated movement tick — replaces three separate polling loops
+   * (AutoSprint, BetterInput, FastStop) with a single interval that does
+   * one batched key state query per tick instead of 3-6 individual IPC calls.
+   * startWTap is kept separate because it contains blocking sleeps.
+   */
+  private startMovementTick(): void {
+    this.movementInterval = setInterval(async () => {
+      if (!this.running) return
+      const mv = this.config.movement
+      const anyEnabled = mv.autoSprint || mv.betterInput || mv.fastStop
+      if (!anyEnabled || !this.inActiveGameplay()) {
         if (this.sprintHoldingCtrl) {
+          await this.input.keyUp(VK_CTRL).catch(() => {})
+          this.sprintHoldingCtrl = false
+        }
+        return
+      }
+
+      // One batched query for all 6 keys used by movement features
+      let w = false, a = false, s = false, d = false, space = false
+      try {
+        const states = await this.input.getKeyStates([0x57, 0x41, 0x53, 0x44, 0x20])
+        w = states[0]; a = states[1]; s = states[2]; d = states[3]; space = states[4]
+      } catch { return }
+
+      // AutoSprint
+      if (mv.autoSprint) {
+        const moving = w || a || d
+        if (moving && !this.sprintHoldingCtrl) {
+          await this.input.keyDown(VK_CTRL)
+          this.sprintHoldingCtrl = true
+        } else if (!moving && this.sprintHoldingCtrl) {
           await this.input.keyUp(VK_CTRL)
           this.sprintHoldingCtrl = false
         }
-        await this.sleep(200)
-        continue
       }
-      await this.sleep(50)
-      const moving = await this.input.isKeyDown(0x57) || await this.input.isKeyDown(0x41) || await this.input.isKeyDown(0x44)
-      if (moving && !this.sprintHoldingCtrl) {
-        await this.input.keyDown(VK_CTRL)
-        this.sprintHoldingCtrl = true
-      } else if (!moving && this.sprintHoldingCtrl) {
-        await this.input.keyUp(VK_CTRL)
-        this.sprintHoldingCtrl = false
-      }
-    }
-  }
 
-  private async startBetterInput(): Promise<void> {
-    while (this.running) {
-      if (!this.config.movement.betterInput || !this.inActiveGameplay()) { await this.sleep(100); continue }
-      const a = await this.input.isKeyDown(0x41)
-      const d = await this.input.isKeyDown(0x44)
-      if (this.strafeState.a && d) { await this.input.keyUp(0x41); this.betterInputTimestamp = Date.now() }
-      else if (this.strafeState.d && a) { await this.input.keyUp(0x44); this.betterInputTimestamp = Date.now() }
-      this.strafeState.a = a; this.strafeState.d = d
-      await this.sleep(10)
-    }
-  }
-
-  private async startFastStop(): Promise<void> {
-    while (this.running) {
-      if (!this.config.movement.fastStop || !this.inActiveGameplay()) { await this.sleep(100); continue }
-      if (await this.input.isKeyDown(0x20)) this.movementState.jump = Date.now()
-      const w = await this.input.isKeyDown(0x57); const s = await this.input.isKeyDown(0x53)
-      const a = await this.input.isKeyDown(0x41); const d = await this.input.isKeyDown(0x44)
-      const grounded = Date.now() - this.movementState.jump > 700 && Date.now() - this.betterInputTimestamp > 700
-      if (grounded) {
-        if (!w && !s && this.movementState.w) await this.input.keyTap(0x53)
-        if (!s && !w && this.movementState.s) await this.input.keyTap(0x57)
-        if (!a && !d && this.movementState.a) await this.input.keyTap(0x44)
-        if (!d && !a && this.movementState.d) await this.input.keyTap(0x41)
+      // BetterInput (SOCD)
+      if (mv.betterInput) {
+        if (this.strafeState.a && d) { await this.input.keyUp(0x41).catch(() => {}); this.betterInputTimestamp = Date.now() }
+        else if (this.strafeState.d && a) { await this.input.keyUp(0x44).catch(() => {}); this.betterInputTimestamp = Date.now() }
+        this.strafeState.a = a; this.strafeState.d = d
       }
-      this.movementState.w = w; this.movementState.s = s; this.movementState.a = a; this.movementState.d = d
-      await this.sleep(10)
-    }
+
+      // FastStop
+      if (mv.fastStop) {
+        if (space) this.movementState.jump = Date.now()
+        const grounded = Date.now() - this.movementState.jump > 700 && Date.now() - this.betterInputTimestamp > 700
+        if (grounded) {
+          if (!w && !s && this.movementState.w) await this.input.keyTap(0x53).catch(() => {})
+          if (!s && !w && this.movementState.s) await this.input.keyTap(0x57).catch(() => {})
+          if (!a && !d && this.movementState.a) await this.input.keyTap(0x44).catch(() => {})
+          if (!d && !a && this.movementState.d) await this.input.keyTap(0x41).catch(() => {})
+        }
+        this.movementState.w = w; this.movementState.s = s; this.movementState.a = a; this.movementState.d = d
+      }
+    }, 10)
   }
 
   // ── Config ──

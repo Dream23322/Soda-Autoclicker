@@ -83,7 +83,7 @@ export function RecorderPage({ config, updateConfig }: Props) {
           <div className="space-y-2">
             <Label>Multiplier: {(r.recordMultiplier ?? 1).toFixed(2)}x</Label>
             <Slider min={0.5} max={2.5} step={0.1} value={[r.recordMultiplier ?? 1]}
-              onValueChange={([v]) => updateConfig(['recorder', 'recordMultiplier'], Math.round(v * 100) / 100)} />
+              onValueCommit={([v]) => updateConfig(['recorder', 'recordMultiplier'], Math.round(v * 100) / 100)} />
           </div>
           <div className="flex gap-2">
             <Button onClick={startRecording} disabled={recording}>Start Recording</Button>

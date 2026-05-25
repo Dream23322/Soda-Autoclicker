@@ -7,10 +7,7 @@
     "src/types/**/*",
     "src/main/**/*",
     "src/preload/**/*",
-    "src/types/**/*",
-    "src/renderer/src/hooks/**/*",
-    "src/renderer/src/**/*",
-    "src/preload/*.d.ts"
+    "src/renderer/src/hooks/**/*"
   ],
   "compilerOptions": {
     "composite": true,

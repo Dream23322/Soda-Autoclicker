@@ -45,7 +45,7 @@ export function CloudPage() {
   // Upload dialog
   const [uploadDialog, setUploadDialog] = useState(false)
   const [uploadData, setUploadData] = useState<any>(null)
-  const [uploadType, setUploadType] = useState<"config" | "macro">("config")
+  const [uploadType, setUploadType] = useState<"config" | "macro" | "script">("config")
   const [uploadName, setUploadName] = useState("")
   const [uploadDesc, setUploadDesc] = useState("")
   const [uploadPublic, setUploadPublic] = useState(false)
@@ -96,7 +96,7 @@ export function CloudPage() {
     ;(window as any).electron?.debug?.status().then((on: boolean) => setDebugMode(on)).catch(() => {})
   }, [])
 
-  const openUpload = (data: any, type: "config" | "macro", name: string, desc?: string) => {
+  const openUpload = (data: any, type: "config" | "macro" | "script", name: string, desc?: string) => {
     setUploadData(data)
     setUploadType(type)
     setUploadName(name)
@@ -140,6 +140,17 @@ export function CloudPage() {
     } catch (err: any) { setError(err.message || "Upload failed") }
   }
 
+  const uploadScript = async (script: any, isPublic: boolean) => {
+    if (quota.used >= quota.max) return
+    setError("")
+    try {
+      const e = (window as any).electron
+      await e.cloud.upload({ type: "script", name: script.name || "Untitled Script", description: "", data: script, public: isPublic })
+      await loadAll()
+      if (isPublic) await loadPublic()
+    } catch (err: any) { setError(err.message || "Upload failed") }
+  }
+
   const uploadLocalConfig = async (filename: string) => {
     try {
       const e = (window as any).electron
@@ -175,6 +186,7 @@ export function CloudPage() {
 
   const shortId = userId ? `${userId.slice(0, 4)}...${userId.slice(-4)}` : null
   const userMacros = ((config as any)?.macros?.list || []).filter((m: any) => !DEFAULT_MACRO_NAMES.has(m.name) || m.bind !== 0)
+  const userScripts = ((config as any)?.scripts?.list || [])
 
   const filteredItems = useMemo(() => {
     let result = [...items]
@@ -357,6 +369,29 @@ export function CloudPage() {
             </Card>
           )}
 
+          {/* Scripts */}
+          {userScripts.length > 0 && (
+            <Card>
+              <CardContent className="pt-4 space-y-2">
+                <h2 className="text-sm section-header font-bold">Scripts</h2>
+                <div className="space-y-1">
+                  {userScripts.map((script: any, i: number) => (
+                    <div key={i} className="flex items-center justify-between border border-[#1a1a1a] bg-[#0d0d0d] p-2">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <span className="text-[10px] uppercase text-muted-foreground font-bold">script</span>
+                        <p className="text-xs font-bold truncate">{script.name || `script ${i + 1}`}</p>
+                      </div>
+                      <div className="flex items-center gap-1 ml-2">
+                        <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={() => openUpload(script, "script", script.name || "untitled")} disabled={quota.used >= quota.max}>upload</Button>
+                        <Button size="sm" variant="ghost" className="h-6 text-[10px] text-primary" onClick={() => uploadScript(script, true)} disabled={quota.used >= quota.max}>share</Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Cloud Items */}
           <Card>
             <CardContent className="pt-4 space-y-3">
@@ -385,7 +420,7 @@ export function CloudPage() {
                 </div>
               )}
               {filteredItems.length === 0 ? (
-                <p className="text-xs text-muted-foreground py-4 text-center border border-dashed border-[#1a1a1a]">{items.length === 0 ? "No cloud items yet. Upload a config or macro above." : "No items match your search."}</p>
+                <p className="text-xs text-muted-foreground py-4 text-center border border-dashed border-[#1a1a1a]">{items.length === 0 ? "No cloud items yet. Upload a config, macro, or script above." : "No items match your search."}</p>
               ) : (
                 <div className="space-y-2">
                   {filteredItems.map((item: any) => (
@@ -558,7 +593,7 @@ export function CloudPage() {
           <div className="space-y-4 text-xs leading-relaxed text-foreground/90">
             <p>Soda Cloud is designed with privacy first. A random UUID is generated locally and stored in <code className="text-[10px] bg-[#0d0d0d] px-1">~/soda/user.json</code>. This UUID is the only identifier sent to the server.</p>
             <h3 className="text-sm font-bold text-primary">stored data</h3>
-            <p>Uploaded configs/macros store: anonymous UUID, type (config/macro), name, description, config/macro data, public flag, and timestamps.</p>
+             <p>Uploaded configs/macros/scripts store: anonymous UUID, type (config/macro/script), name, description, data, public flag, and timestamps.</p>
             <h3 className="text-sm font-bold text-primary">not stored</h3>
             <p>No passwords, emails, IPs (in DB), hardware IDs, location, or payment info.</p>
             <h3 className="text-sm font-bold text-primary">your control</h3>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -17,7 +17,12 @@ export function LeftClickerPage({ config, updateConfig }: Props) {
   if (!config) return null
   const l = config.left
   const [showRange, setShowRange] = useState(l.minCPS < l.averageCPS)
-  const gap = l.averageCPS - l.minCPS
+  const [localAvgCPS, setLocalAvgCPS] = useState(l.averageCPS)
+  const [localMinCPS, setLocalMinCPS] = useState(l.minCPS)
+  const gap = localAvgCPS - localMinCPS
+
+  useEffect(() => { setLocalAvgCPS(l.averageCPS) }, [l.averageCPS])
+  useEffect(() => { setLocalMinCPS(l.minCPS) }, [l.minCPS])
 
   return (
     <div className="space-y-4">
@@ -39,6 +44,7 @@ export function LeftClickerPage({ config, updateConfig }: Props) {
                 <SelectContent>
                   <SelectItem value="Hold">Hold</SelectItem>
                   <SelectItem value="Always">Always</SelectItem>
+                  <SelectItem value="ClickHold">Click + Hold</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -55,14 +61,14 @@ export function LeftClickerPage({ config, updateConfig }: Props) {
                 {showRange ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
               </Button>
             </div>
-            <Slider min={1} max={60} step={1} value={[l.averageCPS]} onValueChange={([v]) => { updateConfig(['left', 'averageCPS'], v); if (!showRange) updateConfig(['left', 'minCPS'], v) }} />
+            <Slider min={1} max={60} step={1} value={[localAvgCPS]} onValueChange={([v]) => setLocalAvgCPS(v[0])} onValueCommit={([v]) => { updateConfig(['left', 'averageCPS'], v); if (!showRange) updateConfig(['left', 'minCPS'], v) }} />
           </div>
           {showRange && (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Label>Min CPS: {l.minCPS}</Label>
+                <Label>Min CPS: {localMinCPS}</Label>
               </div>
-              <Slider min={1} max={60} step={1} value={[l.minCPS]} onValueChange={([v]) => updateConfig(['left', 'minCPS'], v)} />
+              <Slider min={1} max={60} step={1} value={[localMinCPS]} onValueChange={([v]) => setLocalMinCPS(v[0])} onValueCommit={([v]) => updateConfig(['left', 'minCPS'], v)} />
               {gap < 4 && gap > 0 && (
                 <p className="text-[10px] text-muted-foreground">a gap of at least 4 is recommended</p>
               )}
@@ -80,7 +86,7 @@ export function LeftClickerPage({ config, updateConfig }: Props) {
           </div>
           <div className="space-y-2">
             <Label>Chance: {l.blockHitChance}%</Label>
-            <Slider min={1} max={100} step={1} value={[l.blockHitChance]} onValueChange={([v]) => updateConfig(['left', 'blockHitChance'], v)} />
+            <Slider min={1} max={100} step={1} value={[l.blockHitChance]} onValueCommit={([v]) => updateConfig(['left', 'blockHitChance'], v)} />
           </div>
           <BindButton currentBind={l.smartBH} configPath={['left', 'smartBH']} onBindChange={updateConfig} label="Smart BH" />
         </CardContent>
@@ -95,7 +101,7 @@ export function LeftClickerPage({ config, updateConfig }: Props) {
           </div>
           <div className="space-y-2">
             <Label>Shake Force: {l.shakeEffectForce}</Label>
-            <Slider min={1} max={20} step={1} value={[l.shakeEffectForce]} onValueChange={([v]) => updateConfig(['left', 'shakeEffectForce'], v)} />
+            <Slider min={1} max={20} step={1} value={[l.shakeEffectForce]} onValueCommit={([v]) => updateConfig(['left', 'shakeEffectForce'], v)} />
           </div>
         </CardContent>
       </Card>
@@ -109,7 +115,7 @@ export function LeftClickerPage({ config, updateConfig }: Props) {
           </div>
           <div className="space-y-2">
             <Label>Chance: {l.AutoRodChance}%</Label>
-            <Slider min={1} max={100} step={1} value={[l.AutoRodChance]} onValueChange={([v]) => updateConfig(['left', 'AutoRodChance'], v)} />
+            <Slider min={1} max={100} step={1} value={[l.AutoRodChance]} onValueCommit={([v]) => updateConfig(['left', 'AutoRodChance'], v)} />
           </div>
         </CardContent>
       </Card>

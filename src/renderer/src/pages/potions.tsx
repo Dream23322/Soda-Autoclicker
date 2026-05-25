@@ -30,11 +30,11 @@ export function PotionsPage({ config, updateConfig }: Props) {
           <BindButton currentBind={p.potResetBind} configPath={['potions', 'potResetBind']} onBindChange={updateConfig} label="Reset Bind" />
           <div className="space-y-2">
             <Label>Lowest Slot: {p.lowestSlot}</Label>
-            <Slider min={1} max={9} step={1} value={[p.lowestSlot]} onValueChange={([v]) => updateConfig(['potions', 'lowestSlot'], v)} />
+            <Slider min={1} max={9} step={1} value={[p.lowestSlot]} onValueCommit={([v]) => updateConfig(['potions', 'lowestSlot'], v)} />
           </div>
           <div className="space-y-2">
             <Label>Highest Slot: {p.highestSlot}</Label>
-            <Slider min={1} max={9} step={1} value={[p.highestSlot]} onValueChange={([v]) => updateConfig(['potions', 'highestSlot'], v)} />
+            <Slider min={1} max={9} step={1} value={[p.highestSlot]} onValueCommit={([v]) => updateConfig(['potions', 'highestSlot'], v)} />
           </div>
           <div className="flex items-center gap-2">
             <Label>Throw Delay (s)</Label>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -17,7 +17,12 @@ export function RightClickerPage({ config, updateConfig }: Props) {
   if (!config) return null
   const r = config.right
   const [showRange, setShowRange] = useState(r.minCPS < r.averageCPS)
-  const gap = r.averageCPS - r.minCPS
+  const [localAvgCPS, setLocalAvgCPS] = useState(r.averageCPS)
+  const [localMinCPS, setLocalMinCPS] = useState(r.minCPS)
+  const gap = localAvgCPS - localMinCPS
+
+  useEffect(() => { setLocalAvgCPS(r.averageCPS) }, [r.averageCPS])
+  useEffect(() => { setLocalMinCPS(r.minCPS) }, [r.minCPS])
 
   return (
     <div className="space-y-4">
@@ -39,6 +44,7 @@ export function RightClickerPage({ config, updateConfig }: Props) {
                 <SelectContent>
                   <SelectItem value="Hold">Hold</SelectItem>
                   <SelectItem value="Always">Always</SelectItem>
+                  <SelectItem value="ClickHold">Click + Hold</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -55,14 +61,14 @@ export function RightClickerPage({ config, updateConfig }: Props) {
                 {showRange ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
               </Button>
             </div>
-            <Slider min={1} max={60} step={1} value={[r.averageCPS]} onValueChange={([v]) => { updateConfig(['right', 'averageCPS'], v); if (!showRange) updateConfig(['right', 'minCPS'], v) }} />
+            <Slider min={1} max={60} step={1} value={[localAvgCPS]} onValueChange={([v]) => setLocalAvgCPS(v[0])} onValueCommit={([v]) => { updateConfig(['right', 'averageCPS'], v); if (!showRange) updateConfig(['right', 'minCPS'], v) }} />
           </div>
           {showRange && (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Label>Min CPS: {r.minCPS}</Label>
+                <Label>Min CPS: {localMinCPS}</Label>
               </div>
-              <Slider min={1} max={60} step={1} value={[r.minCPS]} onValueChange={([v]) => updateConfig(['right', 'minCPS'], v)} />
+              <Slider min={1} max={60} step={1} value={[localMinCPS]} onValueChange={([v]) => setLocalMinCPS(v[0])} onValueCommit={([v]) => updateConfig(['right', 'minCPS'], v)} />
               {gap < 4 && gap > 0 && (
                 <p className="text-[10px] text-muted-foreground">a gap of at least 4 is recommended</p>
               )}
@@ -80,7 +86,7 @@ export function RightClickerPage({ config, updateConfig }: Props) {
           </div>
           <div className="space-y-2">
             <Label>Shake Force: {r.shakeEffectForce}</Label>
-            <Slider min={1} max={20} step={1} value={[r.shakeEffectForce]} onValueChange={([v]) => updateConfig(['right', 'shakeEffectForce'], v)} />
+            <Slider min={1} max={20} step={1} value={[r.shakeEffectForce]} onValueCommit={([v]) => updateConfig(['right', 'shakeEffectForce'], v)} />
           </div>
         </CardContent>
       </Card>

@@ -4,6 +4,8 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { BindButton } from "@/components/bind-button"
 
+const SLOT_OPTIONS = ['1','2','3','4','5','6','7','8','9']
+
 interface Props {
   config?: any
   updateConfig?: (path: string[], value: unknown) => void
@@ -39,7 +41,7 @@ function MiscPage({ config, updateConfig }: Props) {
             <Select value={m?.rodSlot ?? '2'} onValueChange={(v) => setConfig(['misc', 'rodSlot'], v)}>
               <SelectTrigger className="w-16"><SelectValue /></SelectTrigger>
               <SelectContent>
-                {['1','2','3','4','5','6','7','8','9'].map(s => (
+                {SLOT_OPTIONS.map(s => (
                   <SelectItem key={s} value={s}>{s}</SelectItem>
                 ))}
               </SelectContent>
@@ -72,7 +74,7 @@ function MiscPage({ config, updateConfig }: Props) {
             <Select value={m?.pearlSlot ?? '8'} onValueChange={(v) => setConfig(['misc', 'pearlSlot'], v)}>
               <SelectTrigger className="w-16"><SelectValue /></SelectTrigger>
               <SelectContent>
-                {['1','2','3','4','5','6','7','8','9'].map(s => (
+                {SLOT_OPTIONS.map(s => (
                   <SelectItem key={s} value={s}>{s}</SelectItem>
                 ))}
               </SelectContent>
@@ -89,7 +91,7 @@ function MiscPage({ config, updateConfig }: Props) {
             <Select value={m?.swordSlot ?? '1'} onValueChange={(v) => setConfig(['misc', 'swordSlot'], v)}>
               <SelectTrigger className="w-16"><SelectValue /></SelectTrigger>
               <SelectContent>
-                {['1','2','3','4','5','6','7','8','9'].map(s => (
+                {SLOT_OPTIONS.map(s => (
                   <SelectItem key={s} value={s}>{s}</SelectItem>
                 ))}
               </SelectContent>

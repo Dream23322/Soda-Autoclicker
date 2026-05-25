@@ -1,6 +1,6 @@
 export interface LeftClickerConfig {
   enabled: boolean
-  mode: 'Hold' | 'Always'
+  mode: 'Hold' | 'Always' | 'ClickHold'
   bind: number
   averageCPS: number
   minCPS: number
@@ -21,7 +21,7 @@ export interface LeftClickerConfig {
 
 export interface RightClickerConfig {
   enabled: boolean
-  mode: 'Hold' | 'Always'
+  mode: 'Hold' | 'Always' | 'ClickHold'
   bind: number
   averageCPS: number
   minCPS: number

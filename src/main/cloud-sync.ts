@@ -7,7 +7,7 @@ const USER_FILE = path.join(os.homedir(), 'soda', 'user.json')
 
 interface CloudItem {
   id: string
-  type: 'config' | 'macro'
+  type: 'config' | 'macro' | 'script'
   name: string
   description: string
   version: number
@@ -30,7 +30,7 @@ interface SyncResponse {
 
 interface PublicItem {
   id: string
-  type: 'config' | 'macro'
+  type: 'config' | 'macro' | 'script'
   name: string
   description: string
   version: number
@@ -43,18 +43,24 @@ interface PublicListResponse {
   items: PublicItem[]
 }
 
+let dataCache: { userId?: string; serverUrl?: string } | null = null
+
 function readData(): { userId?: string; serverUrl?: string } {
+  if (dataCache) return dataCache
   try {
-    return JSON.parse(fs.readFileSync(USER_FILE, 'utf-8'))
+    dataCache = JSON.parse(fs.readFileSync(USER_FILE, 'utf-8'))
+    return dataCache!
   } catch {
-    return {}
+    dataCache = {}
+    return dataCache
   }
 }
 
 function writeData(data: { userId?: string; serverUrl?: string }): void {
   fs.mkdirSync(path.dirname(USER_FILE), { recursive: true })
   const existing = readData()
-  fs.writeFileSync(USER_FILE, JSON.stringify({ ...existing, ...data }, null, 2))
+  dataCache = { ...existing, ...data }
+  fs.writeFileSync(USER_FILE, JSON.stringify(dataCache, null, 2))
 }
 
 function readUserId(): string | null {
@@ -110,7 +116,7 @@ export async function getQuota(): Promise<{ used: number; max: number }> {
   return apiFetch('/items/quota')
 }
 
-export async function uploadItem(type: 'config' | 'macro', name: string, description: string, data: any, isPublic = false): Promise<{ id: string; type: string; name: string; description: string; version: number; public: boolean }> {
+export async function uploadItem(type: 'config' | 'macro' | 'script', name: string, description: string, data: any, isPublic = false): Promise<{ id: string; type: string; name: string; description: string; version: number; public: boolean }> {
   return apiFetch('/items', {
     method: 'POST',
     body: JSON.stringify({ type, name, description, data, public: isPublic }),

@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useRef, useState } from "react"
-import ReactMarkdown from "react-markdown"
+import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react"
 import remarkGfm from "remark-gfm"
+
+const ReactMarkdown = lazy(() => import("react-markdown"))
 
 interface AutoResizeTextareaProps {
 	value: string
@@ -99,9 +100,11 @@ export function AutoResizeTextarea({
         onMouseDown={e => e.stopPropagation()}
         onDragStart={e => e.preventDefault()}
       >
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-          {value || ""}
-        </ReactMarkdown>
+        <Suspense fallback={<div className="text-xs text-muted-foreground p-2">Loading preview...</div>}>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {value || ""}
+          </ReactMarkdown>
+        </Suspense>
       </div>
     )
   }

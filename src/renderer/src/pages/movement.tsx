@@ -27,7 +27,7 @@ export function MovementPage({ config, updateConfig }: Props) {
           </div>
           <div className="space-y-2">
             <Label>Value: {mv.wTapValue}{mv.wTapMode === 'chance' ? '%' : 'ms'}</Label>
-            <Slider min={1} max={100} step={1} value={[mv.wTapValue]} onValueChange={([v]) => updateConfig(['movement', 'wTapValue'], v)} />
+            <Slider min={1} max={100} step={1} value={[mv.wTapValue]} onValueCommit={([v]) => updateConfig(['movement', 'wTapValue'], v)} />
           </div>
           <div className="flex items-center gap-2">
             <Label>Mode</Label>

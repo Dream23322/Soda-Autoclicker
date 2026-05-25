@@ -11,11 +11,13 @@ export class InputHelper {
   private cmdId = 0
   started = false
   private installGuideShown = false
-  // One-shot warning when the bundled helper is older than the engine and
-  // doesn't recognise the batched get_key_states action. We fall back to
-  // per-vk isKeyDown so the user isn't dead in the water, but they should
-  // rebuild the helper to drop the extra round-trips.
   private warnedStaleBatch = false
+
+  // Key state cache: avoids redundant IPC round-trips for the same VKs
+  // within a short window (5ms). Cleared on each new batched call.
+  private keyStateCache: Map<number, boolean> | null = null
+  private keyStateCacheTime = 0
+  private readonly KEY_CACHE_TTL = 5
 
   async start(): Promise<void> {
     // Kill tracked helper if any.
@@ -196,19 +198,37 @@ export class InputHelper {
   async windowRightClick() { await this.send({ action: 'window_right_click' }) }
 
   async isKeyDown(vk: number): Promise<boolean> {
+    // Check cache first
+    if (this.keyStateCache && Date.now() - this.keyStateCacheTime < this.KEY_CACHE_TTL) {
+      const cached = this.keyStateCache.get(vk)
+      if (cached !== undefined) return cached
+    }
     const r = await this.send({ action: 'get_key_state', vk }, true) as any
-    return r?.ok ? !!r.held : false
+    const held = r?.ok ? !!r.held : false
+    // Seed cache with this single value
+    if (!this.keyStateCache) this.keyStateCache = new Map()
+    this.keyStateCache.set(vk, held)
+    this.keyStateCacheTime = Date.now()
+    return held
   }
 
   /**
    * Batched: query several VKs in a single round-trip. Returns parallel boolean array.
+   * Populates the key state cache for subsequent individual isKeyDown calls.
    * If the helper is too old to recognise the action (stale bundled .exe), falls back
    * to per-vk isKeyDown so binds keep working until it's rebuilt.
    */
   async getKeyStates(vks: number[]): Promise<boolean[]> {
     if (vks.length === 0) return []
     const r = await this.send({ action: 'get_key_states', vks }, true) as any
-    if (r?.ok && Array.isArray(r.held)) return r.held.map((v: unknown) => !!v)
+    if (r?.ok && Array.isArray(r.held)) {
+      const result = r.held.map((v: unknown) => !!v)
+      // Populate cache
+      this.keyStateCache = new Map()
+      vks.forEach((vk, i) => this.keyStateCache!.set(vk, result[i]))
+      this.keyStateCacheTime = Date.now()
+      return result
+    }
     if (!this.warnedStaleBatch) {
       this.warnedStaleBatch = true
       console.warn('InputHelper: batched get_key_states unavailable (stale helper exe?). Falling back to per-vk isKeyDown. Rebuild with `npm run build:win` to drop the fallback.')

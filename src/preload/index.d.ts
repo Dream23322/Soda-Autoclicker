@@ -4,7 +4,7 @@ type WindowControlAction = "minimize" | "maximize" | "close"
 
 interface CloudItem {
   id: string
-  type: "config" | "macro"
+  type: "config" | "macro" | "script"
   name: string
   description: string
   version: number
@@ -21,7 +21,7 @@ interface CloudApi {
   sync: () => Promise<string | null>
   listItems: () => Promise<{ items: CloudItem[]; quota: { used: number; max: number } }>
   getQuota: () => Promise<{ used: number; max: number }>
-  upload: (args: { type: "config" | "macro"; name: string; description: string; data: any; public?: boolean }) => Promise<{ id: string; type: string; name: string; description: string; version: number; public: boolean }>
+  upload: (args: { type: "config" | "macro" | "script"; name: string; description: string; data: any; public?: boolean }) => Promise<{ id: string; type: string; name: string; description: string; version: number; public: boolean }>
   listPublicItems: () => Promise<{ items: Array<CloudItem & { downloads: number }> }>
   downloadPublicItem: (itemId: string) => Promise<CloudItem & { data: any; downloads: number }>
   downloadPublicAndSave: (itemId: string) => Promise<boolean>

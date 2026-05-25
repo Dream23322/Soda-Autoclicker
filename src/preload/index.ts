@@ -104,7 +104,7 @@ const api = {
 		sync: (userId?: string) => ipcRenderer.invoke("cloud:sync", userId),
 		listItems: () => ipcRenderer.invoke("cloud:listItems"),
 		getQuota: () => ipcRenderer.invoke("cloud:getQuota"),
-		upload: (args: { type: "config" | "macro"; name: string; description: string; data: any; public?: boolean }) =>
+		upload: (args: { type: "config" | "macro" | "script"; name: string; description: string; data: any; public?: boolean }) =>
 			ipcRenderer.invoke("cloud:upload", args),
 		listPublicItems: () => ipcRenderer.invoke("cloud:listPublicItems"),
 		downloadPublicItem: (itemId: string) => ipcRenderer.invoke("cloud:downloadPublicItem", itemId),

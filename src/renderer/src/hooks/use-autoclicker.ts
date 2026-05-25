@@ -59,7 +59,7 @@ export function useAutoclicker() {
     // Optimistically update local state
     setConfig(prev => {
       if (!prev) return prev
-      const next = JSON.parse(JSON.stringify(prev))
+      const next = structuredClone(prev) as any
       let target: Record<string, unknown> = next
       for (let i = 0; i < path.length - 1; i++) {
         target = target[path[i]] as Record<string, unknown>

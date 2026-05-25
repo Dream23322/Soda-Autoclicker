@@ -125,7 +125,7 @@ export function registerAutoclickerIPC(engine: AutoclickerEngine, settingsWindow
       if (!isSafeFilename(args?.filename)) return false
       if (!fs.existsSync(RESOURCE_FOLDER)) fs.mkdirSync(RESOURCE_FOLDER, { recursive: true })
       // Deep clone so we never mutate the live config.
-      const cfg = JSON.parse(JSON.stringify(engine.getConfig()))
+      const cfg = structuredClone(engine.getConfig())
       // Don't bake `enabled: true` into a shared preset — otherwise loading
       // it would auto-start the clicker on whoever imports it.
       stripEphemeralFlags(cfg)
@@ -254,7 +254,7 @@ export function registerAutoclickerIPC(engine: AutoclickerEngine, settingsWindow
     return cloud.getQuota()
   })
 
-  ipcMain.handle('cloud:upload', async (_e, args: { type: 'config' | 'macro'; name: string; description: string; data: any; public?: boolean }) => {
+  ipcMain.handle('cloud:upload', async (_e, args: { type: 'config' | 'macro' | 'script'; name: string; description: string; data: any; public?: boolean }) => {
     return cloud.uploadItem(args.type, args.name, args.description, args.data, args.public)
   })
 
@@ -281,8 +281,13 @@ export function registerAutoclickerIPC(engine: AutoclickerEngine, settingsWindow
       } else if (item.type === 'macro') {
         const macro = typeof item.data === 'object' ? item.data : JSON.parse(item.data)
         macro.name = item.name
-        // Merge into the engine's macro list
         engine.config.macros.list.push(macro)
+        engine.saveConfig()
+        engine.emitUpdate()
+      } else if (item.type === 'script') {
+        const script = typeof item.data === 'object' ? item.data : JSON.parse(item.data)
+        script.name = item.name
+        engine.config.scripts.list.push(script)
         engine.saveConfig()
         engine.emitUpdate()
       }
@@ -315,6 +320,12 @@ export function registerAutoclickerIPC(engine: AutoclickerEngine, settingsWindow
         engine.config.macros.list.push(macro)
         engine.saveConfig()
         engine.emitUpdate()
+      } else if (item.type === 'script') {
+        const script = typeof item.data === 'object' ? item.data : JSON.parse(item.data)
+        script.name = item.name
+        engine.config.scripts.list.push(script)
+        engine.saveConfig()
+        engine.emitUpdate()
       }
       return true
     } catch (e) {
@@ -342,8 +353,21 @@ export function registerAutoclickerIPC(engine: AutoclickerEngine, settingsWindow
         cfg.cloudId = item.id
         fs.writeFileSync(filepath, JSON.stringify(cfg, null, 2), 'utf-8')
         imported++
+      } else if (item.type === 'macro') {
+        const macro = typeof item.data === 'object' ? item.data : JSON.parse(item.data)
+        macro.name = item.name
+        engine.config.macros.list.push(macro)
+        engine.saveConfig()
+        engine.emitUpdate()
+        imported++
+      } else if (item.type === 'script') {
+        const script = typeof item.data === 'object' ? item.data : JSON.parse(item.data)
+        script.name = item.name
+        engine.config.scripts.list.push(script)
+        engine.saveConfig()
+        engine.emitUpdate()
+        imported++
       }
-      // Macros are handled separately — the user can merge them via cloud page UI
     }
     return { imported }
     })
