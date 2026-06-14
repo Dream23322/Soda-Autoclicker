@@ -111,6 +111,11 @@ export function RightClickerPage({ config, updateConfig }: Props) {
             <Switch checked={r.blatant} onCheckedChange={(v) => updateConfig(['right', 'blatant'], v)} />
           </div>
           <div className="flex items-center justify-between">
+            <Label>Fullscreen Fix</Label>
+            <Switch checked={r.fullscreenMode} onCheckedChange={(v) => updateConfig(['right', 'fullscreenMode'], v)} />
+
+          </div>
+          <div className="flex items-center justify-between">
             <Label>Items Mode</Label>
             <Switch checked={r.items} onCheckedChange={(v) => updateConfig(['right', 'items'], v)} />
           </div>

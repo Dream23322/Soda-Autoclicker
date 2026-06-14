@@ -139,6 +139,10 @@ export function LeftClickerPage({ config, updateConfig }: Props) {
             <Label>Blatant Mode</Label>
             <Switch checked={l.blatant} onCheckedChange={(v) => updateConfig(['left', 'blatant'], v)} />
           </div>
+          <div className="flex items-center justify-between">
+            <Label>FullScreen Fix</Label>
+            <Switch checked={l.fullscreenMode} onCheckedChange={(v) => updateConfig(['left', 'fullscreenMode'], v)} />
+          </div>
           <div className="flex items-center gap-2">
             <Label>Break Blocks</Label>
             <Select value={l.breakBlocks} onValueChange={(v) => updateConfig(['left', 'breakBlocks'], v)}>

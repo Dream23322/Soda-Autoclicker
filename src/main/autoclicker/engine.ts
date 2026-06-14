@@ -370,8 +370,9 @@ export class AutoclickerEngine {
         return
       }
 
-      const gameOk = this.isGameFocused() || (!this.windowPolledOnce && this.focusedProcess === '')
-      const gameplayOk = gameOk && !this.cursorIsInMenu()
+      const fullscreenBypass = this.config.left.fullscreenMode || this.config.right.fullscreenMode
+      const gameOk = this.isGameFocused() || (!this.windowPolledOnce && this.focusedProcess === '') || fullscreenBypass
+      const gameplayOk = gameOk && (!this.cursorIsInMenu() || fullscreenBypass)
 
       const active = this.cachedChecks.filter(c => c.vk && (c.gate === 'always' || gameplayOk))
       if (active.length === 0) {
@@ -428,7 +429,7 @@ export class AutoclickerEngine {
 
   private toggleLeft(): void {
     const wouldEnable = !this.config.left.enabled
-    if (wouldEnable) {
+    if (wouldEnable && !this.config.left.fullscreenMode) {
       if (this.config.left.onlyWhenFocused && this.focusedProcess && !this.isGameFocused()) return
       if (!this.config.left.workInMenus && this.cursorIsInMenu()) return
     }
@@ -447,7 +448,7 @@ export class AutoclickerEngine {
 
   private toggleRight(): void {
     const wouldEnable = !this.config.right.enabled
-    if (wouldEnable) {
+    if (wouldEnable && !this.config.right.fullscreenMode) {
       if (this.config.right.onlyWhenFocused && this.focusedProcess && !this.isGameFocused()) return
       if (!this.config.right.workInMenus && this.cursorIsInMenu()) return
     }
@@ -491,10 +492,12 @@ export class AutoclickerEngine {
 
   private isFocused(section: string): boolean {
     const cfg = section === 'left' ? this.config.left : this.config.right
+    if (cfg.fullscreenMode) return true
     if (cfg.onlyWhenFocused && !this.isGameFocused()) return false
     if (!cfg.workInMenus && this.cursorIsInMenu()) return false
     return true
   }
+
 
   private randomCPS(cfg: { averageCPS: number; minCPS: number }): number {
     if (cfg.minCPS < cfg.averageCPS) {
@@ -565,8 +568,8 @@ export class AutoclickerEngine {
         }
 
         if (cfg.RMBLock && rmb) { await this.sleep(10); continue }
-        if (cfg.onlyWhenFocused && this.focusedProcess && !this.isGameFocused()) { await this.sleep(50); continue }
-        if (!cfg.workInMenus && this.cursorIsInMenu()) { await this.sleep(50); continue }
+        if (cfg.onlyWhenFocused && this.focusedProcess && !this.isGameFocused() && !cfg.fullscreenMode) { await this.sleep(50); continue }
+        if (!cfg.fullscreenMode && !cfg.workInMenus && this.cursorIsInMenu()) { await this.sleep(50); continue }
 
         const breakMode = cfg.breakBlocks
 
@@ -656,8 +659,8 @@ export class AutoclickerEngine {
 
         if (cfg.LMBLock && lmb) { await this.sleep(10); continue }
 
-        if (cfg.onlyWhenFocused && this.focusedProcess && !this.isGameFocused()) { await this.sleep(50); continue }
-        if (!cfg.workInMenus && this.cursorIsInMenu()) { await this.sleep(50); continue }
+        if (!cfg.fullscreenMode && cfg.onlyWhenFocused && this.focusedProcess && !this.isGameFocused()) { await this.sleep(50); continue }
+        if (!cfg.fullscreenMode && !cfg.workInMenus && this.cursorIsInMenu()) { await this.sleep(50); continue }
 
         if (cfg.items) {
           await this.input.mouseDown(2)
@@ -1508,7 +1511,7 @@ export class AutoclickerEngine {
       // AutoSprint
       if (mv.autoSprint) {
         const moving = w || a || d
-        if (moving && !this.sprintHoldingCtrl) {
+        if (moving && !this.sprintHoldingCtrl && this.isFocused('left')) {
           await this.input.keyDown(VK_CTRL)
           this.sprintHoldingCtrl = true
         } else if (!moving && this.sprintHoldingCtrl) {

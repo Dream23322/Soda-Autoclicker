@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 export interface AutoclickerConfig {
   left: {
     enabled: boolean; mode: string; bind: number; averageCPS: number; minCPS: number
-    onlyWhenFocused: boolean; breakBlocks: string; RMBLock: boolean
+    onlyWhenFocused: boolean; fullscreenMode: boolean; breakBlocks: string; RMBLock: boolean
     blockHit: boolean; blockHitChance: number; bhType: string
     smartBH: number; shakeEffect: boolean; shakeEffectForce: number
     soundPath: string; workInMenus: boolean; blatant: boolean
@@ -11,7 +11,7 @@ export interface AutoclickerConfig {
   }
   right: {
     enabled: boolean; mode: string; bind: number; averageCPS: number; minCPS: number
-    onlyWhenFocused: boolean; LMBLock: boolean; shakeEffect: boolean
+    onlyWhenFocused: boolean; fullscreenMode: boolean; LMBLock: boolean; shakeEffect: boolean
     shakeEffectForce: number; soundPath: string; workInMenus: boolean
     blatant: boolean; items: boolean
   }
